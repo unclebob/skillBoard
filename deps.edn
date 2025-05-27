@@ -1,0 +1,16 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/clojurescript {:mvn/version "1.11.132"}
+        quil/quil {:mvn/version "4.3.1563"}
+        speclj/speclj {:mvn/version "3.4.6"}}
+ :aliases {:spec  {:main-opts ["-m" "speclj.main" "-c"]
+                   :extra-deps  {speclj/speclj {:mvn/version "3.4.6"}}
+                   :extra-paths ["spec"]}
+	         :skillBoard {:main-opts [-m skillBoard.core]}
+					 :run {:main-opts [-m skillBoard.core]}
+					 :cljs {:main-opts ["-m" "cljs.main"
+					                         "--optimizations" "none"
+					                         "--compile" "skillBoard.core"
+																	 ]}
+				 }
+			 }
