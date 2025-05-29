@@ -3,7 +3,7 @@
 (def aspect-ratio 1.3)
 (def margin-ratio 0.05)
 (def segment-width-ratio 0.07)
-(def segment-gap-ratio (* 0.5 segment-width-ratio))
+(def segment-gap-ratio (* 0.3 segment-width-ratio))
 
 (defn build-context [width]
   (let [width (double width)
@@ -51,9 +51,19 @@
         bottom-tip (translate-point bottom-tip-right [(- half-segment-width) tip-height])
         bottom-tip-left (translate-point bottom-tip [(- half-segment-width) (- tip-height)])
         top-tip-left (translate-point bottom-tip-left [0 (- vbar-length)])]
-    [top-tip top-tip-right bottom-tip-right bottom-tip bottom-tip-left top-tip-left]
-    )
-  )
+    [top-tip top-tip-right bottom-tip-right bottom-tip bottom-tip-left top-tip-left]))
+
+(defn build-backslash-segment [{:keys [margin segment-width segment-length segment-height segment-gap height width]}]
+  (let [half-segment-width (* 0.5 segment-width)
+        tip-side (* 0.7 segment-width)
+        top-tip [(+ margin segment-width segment-gap) (+ margin segment-width segment-gap)]
+        top-right-base (translate-point top-tip [tip-side 0])
+        bottom-right-base [(- (* 0.5 width) half-segment-width segment-gap)
+                           (- (* 0.5 height) half-segment-width segment-gap tip-side)]
+        bottom-tip (translate-point bottom-right-base [0 tip-side])
+        bottom-left-base (translate-point bottom-tip [(- tip-side) 0])
+        top-left-base (translate-point top-tip [0 tip-side])]
+    [top-tip top-right-base bottom-right-base bottom-tip bottom-left-base top-left-base]))
 
 
 (defn draw-segment [seg]
@@ -66,6 +76,7 @@
 (defn draw [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as display}]
   (let [hseg (build-horizontal-segment display)
         vseg (build-vertical-segment display)
+        backslash-seg (build-backslash-segment display)
         right-displacement (+ segment-length segment-gap)
         half-segment-width (* 0.5 segment-width)
         half-height (* 0.5 height)
@@ -82,10 +93,15 @@
     ;segment 2
     (draw-segment vseg)
 
+    ;segment 3
+    (draw-segment backslash-seg)
+
     ;segment 4
     (q/with-translation
       [(+ segment-length (* 0.5 segment-gap)) 0]
       (draw-segment vseg))
+
+    ;segment 5
 
     ;segment 6
     (q/with-translation
@@ -107,15 +123,23 @@
       [0 vertical-displacement]
       (draw-segment vseg))
 
+    ;segment 10
+
     ;segment 11
     (q/with-translation
        [(+ segment-length (* 0.5 segment-gap)) vertical-displacement]
        (draw-segment vseg))
 
+    ;segment 12
+    (q/with-translation
+      [(- (* 0.5 width) half-segment-width margin) (- (* 0.5 height) half-segment-width margin)]
+      (draw-segment backslash-seg))
+
     ;segment 13
     (q/with-translation
       [(- width margin margin segment-width) vertical-displacement]
       (draw-segment vseg))
+
     ;segment 14
     (q/with-translation
       [0 (- height segment-width margin margin)]
@@ -125,7 +149,6 @@
     (q/with-translation
       [right-displacement (- height segment-width margin margin)]
       (draw-segment hseg))
-
     )
   )
 
