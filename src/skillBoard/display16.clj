@@ -88,7 +88,11 @@
       (q/vertex x y)))
   (q/end-shape :close))
 
-(defn draw [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as display}]
+(defn draw [segments]
+  (doseq [seg segments]
+    (draw-segment seg)))
+
+(defn build-segments [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as display}]
   (let [hseg (build-horizontal-segment display)
         vseg (build-vertical-segment display)
         backslash-seg (build-backslash-segment display)
@@ -112,12 +116,8 @@
         s12 (translate-segment backslash-seg [(- (* 0.5 width) half-segment-width margin) (- (* 0.5 height) half-segment-width margin)])
         s13 (translate-segment vseg [(- width margin margin segment-width) vertical-displacement])
         s14 (translate-segment hseg [0 (- height segment-width margin margin)])
-        s15 (translate-segment hseg [right-displacement (- height segment-width margin margin)])
-        ]
-    (doseq [seg [s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15]]
-      (draw-segment seg))
-    )
-  )
+        s15 (translate-segment hseg [right-displacement (- height segment-width margin margin)])]
+    [s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15]))
 
 
 

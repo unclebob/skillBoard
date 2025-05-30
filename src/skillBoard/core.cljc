@@ -16,8 +16,8 @@
   (q/background 255)
   (q/no-fill)
   (q/stroke 0)
-  (let [{:keys [margin width height] :as display} (display/build-context 80)
-        [w h] (:box display)]
+  (let [display (display/build-context 80)
+        segments (display/build-segments display)]
     ;(q/rect 0 0 w h)
     ;(q/stroke 128 128 128)
     ;(q/rect margin margin (- w margin margin) (- h margin margin))
@@ -28,7 +28,7 @@
     (doseq [x (range 0 1000 80)]
       (q/with-translation
         [x 0]
-        (display/draw display)))))
+        (display/draw segments)))))
 
 (def size
   #?(
