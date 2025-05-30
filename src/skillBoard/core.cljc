@@ -16,16 +16,19 @@
   (q/background 255)
   (q/no-fill)
   (q/stroke 0)
-  (let [{:keys [margin width height] :as display} (display/build-context 400)
+  (let [{:keys [margin width height] :as display} (display/build-context 80)
         [w h] (:box display)]
-    (q/rect 0 0 w h)
-    (q/stroke 128 128 128)
-    (q/rect margin margin (- w margin margin) (- h margin margin))
-    (q/line (* 0.5 width) 0 (* 0.5 width) height)
-    (q/line 0 (* 0.5 height) width (* 0.5 height))
+    ;(q/rect 0 0 w h)
+    ;(q/stroke 128 128 128)
+    ;(q/rect margin margin (- w margin margin) (- h margin margin))
+    ;(q/line (* 0.5 width) 0 (* 0.5 width) height)
+    ;(q/line 0 (* 0.5 height) width (* 0.5 height))
     (q/fill 200 200 255 150)
     (q/stroke 0 0 255)
-    (display/draw display)))
+    (doseq [x (range 0 1000 80)]
+      (q/with-translation
+        [x 0]
+        (display/draw display)))))
 
 (def size
   #?(
