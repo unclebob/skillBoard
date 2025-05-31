@@ -19,7 +19,7 @@
     (doseq [[x n] (map vector (range 10 1000 85) (range))]
       (q/with-translation
         [x 10]
-        (display/draw-character display n)))))
+        (display/draw-character display \A)))))
 
 (def size
   #?(

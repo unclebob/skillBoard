@@ -5,6 +5,45 @@
 (def segment-width-ratio 0.07)
 (def segment-gap-ratio (* 0.3 segment-width-ratio))
 
+;  -0-- -1--
+; |\   |   /|
+; 2 3  4  5 6
+; |  \ | /  |
+; |   \|/   |
+;  -7-- -8--
+; |   /|\   |
+; 9  A B C  D
+; | /  |  \ |
+; |/   |   \|
+;  -E-- -F--
+
+(def segment-map
+  {\0 1
+   \1 2
+   \2 4
+   \3 8
+   \4 16
+   \5 32
+   \6 64
+   \7 128
+   \8 256
+   \9 512
+   \A 1024
+   \B 2048
+   \C 4096
+   \D 8192
+   \E 16384
+   \F 32768})
+
+(defn char-desc-to-bits [desc]
+  (let [bits (map segment-map desc)]
+    (reduce + 0 bits)))
+
+(def character-desc-map
+  {\A "0126789D"
+
+   })
+
 (defn build-context [width]
   (let [width (double width)
         height (* aspect-ratio width)
@@ -88,15 +127,14 @@
       (q/vertex x y)))
   (q/end-shape :close))
 
-(defn draw-character [{:keys [segments context]} bits]
-  (let [[width height] (:box context)]
+(defn draw-character [{:keys [segments context]} c]
+  (let [bits (char-desc-to-bits (character-desc-map c))
+        [width height] (:box context)]
     (q/stroke 100 100 100)
     (q/fill 0 0 0)
     (q/rect 0 0 width height)
     (q/fill 255 255 255)
     (q/no-stroke)
-    ;(doseq [seg segments]
-    ;  (draw-segment seg))
     (loop [segments segments
            bits bits]
       (if (empty? segments)

@@ -3,6 +3,5 @@
 						[skillBoard.core :refer :all]))
 
 (describe "skillBoard"
-	(it "needs writing"
-		(should false)))
+	)
 
