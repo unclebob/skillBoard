@@ -5,18 +5,6 @@
 (def segment-width-ratio 0.07)
 (def segment-gap-ratio (* 0.3 segment-width-ratio))
 
-;  -0-- -1--
-; |\   |   /|
-; 2 3  4  5 6
-; |  \ | /  |
-; |   \|/   |
-;  -7-- -8--
-; |   /|\   |
-; 9  A B C  D
-; | /  |  \ |
-; |/   |   \|
-;  -E-- -F--
-
 (def segment-map
   {\0 1
    \1 2
@@ -39,9 +27,62 @@
   (let [bits (map segment-map desc)]
     (reduce + 0 bits)))
 
+;  -0-- -1--
+; |\   |   /|
+; 2 3  4  5 6
+; |  \ | /  |
+; |   \|/   |
+;  -7-- -8--
+; |   /|\   |
+; 9  A B C  D
+; | /  |  \ |
+; |/   |   \|
+;  -E-- -F--
+
+
 (def character-desc-map
   {\A "0126789D"
-
+   \B "01468BDEF"
+   \C "0129EF"
+   \D "0146BDEF"
+   \E "01279EF"
+   \F "01279"
+   \G "0129EFD8"
+   \H "29789D"
+   \I "014BEF"
+   \J "6DFE9"
+   \K "2975C"
+   \L "29EF"
+   \M "29356D"
+   \N "293C6D"
+   \O "016DEF29"
+   \P "0126789"
+   \Q "01269DCEF"
+   \R "0126789C"
+   \S "10278DEF"
+   \T "014B"
+   \U "29EF6D"
+   \V "29A5"
+   \W "29AC6D"
+   \X "3CA5"
+   \Y "35B"
+   \Z "015AEF"
+   \0 "016DEF295A"
+   \1 "6D"
+   \2 "016789EF"
+   \3 "01687DEF"
+   \4 "2678D"
+   \5 "01278DFE"
+   \6 "012978DEF"
+   \7 "016D"
+   \8 "0126789DEF"
+   \9 "012678DEF"
+   \. "E"
+   \space ""
+   \/ "A5"
+   \+ "478B"
+   \- "78"
+   \: "7E"
    })
 
 (defn build-context [width]
