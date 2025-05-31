@@ -15,11 +15,9 @@
   (q/background 0 0 0)
   (q/no-fill)
   (q/stroke 0)
-  (let [display (display/build-character-display 80)]
-    (doseq [[x n] (map vector (range 10 1000 85) (range))]
-      (q/with-translation
-        [x 10]
-        (display/draw-character display \A)))))
+  (let [display (display/build-character-display 35)]
+    (display/draw-line display "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./+-:")
+    ))
 
 (def size
   #?(

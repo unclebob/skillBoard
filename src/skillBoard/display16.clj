@@ -4,6 +4,7 @@
 (def margin-ratio 0.05)
 (def segment-width-ratio 0.07)
 (def segment-gap-ratio (* 0.3 segment-width-ratio))
+(def between-chars-ratio 0.1)
 
 (def segment-map
   {\0 1
@@ -48,7 +49,7 @@
    \E "01279EF"
    \F "01279"
    \G "0129EFD8"
-   \H "29789D"
+   \H "296D78"
    \I "014BEF"
    \J "6DFE9"
    \K "2975C"
@@ -96,7 +97,8 @@
         segment-height (- (* 0.5 height) margin (* 1.5 segment-width))
         tip-height (* 0.5 segment-width)
         hbar-length (- segment-length tip-height tip-height)
-        vbar-length (- segment-height (* 2 tip-height))]
+        vbar-length (- segment-height (* 2 tip-height))
+        between-chars (* between-chars-ratio width)]
     {:box box
      :width width
      :height height
@@ -107,8 +109,8 @@
      :segment-height segment-height
      :tip-height tip-height
      :hbar-length hbar-length
-     :vbar-length vbar-length})
-  )
+     :vbar-length vbar-length
+     :between-chars between-chars}))
 
 (defn translate-point [[x y] [dx dy]]
   [(+ x dx) (+ y dy)])
@@ -213,6 +215,14 @@
     {:context context
      :segments [s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15]}))
 
+(defn draw-line [{:keys [context] :as display} line]
+  (let [width (:width context)
+        between-chars (:between-chars context)
+        char-spacing (+ width between-chars)]
+    (doseq [[x c] (map vector (range 0 10000 char-spacing) line)]
+            (q/with-translation
+              [x 0]
+              (draw-character display c)))))
 
 
 
