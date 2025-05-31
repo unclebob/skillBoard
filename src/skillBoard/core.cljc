@@ -13,16 +13,14 @@
   (q/background 255))
 
 (defn draw-state [state]
-  (q/background 255)
+  (q/background 0 0 0)
   (q/no-fill)
   (q/stroke 0)
   (let [display (display/build-character-display 80)]
-    (q/fill 200 200 255 150)
-    (q/stroke 0 0 255)
     (doseq [x (range 0 1000 80)]
       (q/with-translation
         [x 0]
-        (display/draw display)))))
+        (display/draw-character display)))))
 
 (def size
   #?(

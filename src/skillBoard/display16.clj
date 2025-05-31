@@ -88,9 +88,15 @@
       (q/vertex x y)))
   (q/end-shape :close))
 
-(defn draw [segments]
-  (doseq [seg segments]
-    (draw-segment seg)))
+(defn draw-character [{:keys [segments context]}]
+  (let [[width height] (:box context)]
+    (q/stroke 100 100 100)
+    (q/fill 0 0 0)
+    (q/rect 0 0 width height)
+    (q/fill 255 255 255)
+    (q/no-stroke)
+    (doseq [seg segments]
+      (draw-segment seg))))
 
 (defn build-character-display [width]
   (let [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as context} (build-context width)
@@ -118,7 +124,8 @@
         s13 (translate-segment vseg [(- width margin margin segment-width) vertical-displacement])
         s14 (translate-segment hseg [0 (- height segment-width margin margin)])
         s15 (translate-segment hseg [right-displacement (- height segment-width margin margin)])]
-    [s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15]))
+    {:context context
+     :segments [s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15]}))
 
 
 
