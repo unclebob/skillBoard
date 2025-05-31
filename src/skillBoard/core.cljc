@@ -7,7 +7,6 @@
 (defn update-state [state]
   state)
 
-
 (defn setup []
   (q/frame-rate 30)
   (q/background 255))
@@ -17,10 +16,10 @@
   (q/no-fill)
   (q/stroke 0)
   (let [display (display/build-character-display 80)]
-    (doseq [x (range 0 1000 80)]
+    (doseq [[x n] (map vector (range 10 1000 85) (range))]
       (q/with-translation
-        [x 0]
-        (display/draw-character display)))))
+        [x 10]
+        (display/draw-character display n)))))
 
 (def size
   #?(

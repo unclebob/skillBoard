@@ -88,15 +88,22 @@
       (q/vertex x y)))
   (q/end-shape :close))
 
-(defn draw-character [{:keys [segments context]}]
+(defn draw-character [{:keys [segments context]} bits]
   (let [[width height] (:box context)]
     (q/stroke 100 100 100)
     (q/fill 0 0 0)
     (q/rect 0 0 width height)
     (q/fill 255 255 255)
     (q/no-stroke)
-    (doseq [seg segments]
-      (draw-segment seg))))
+    ;(doseq [seg segments]
+    ;  (draw-segment seg))
+    (loop [segments segments
+           bits bits]
+      (if (empty? segments)
+        nil
+        (do (when (odd? bits)
+              (draw-segment (first segments)))
+            (recur (rest segments) (bit-shift-right bits 1)))))))
 
 (defn build-character-display [width]
   (let [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as context} (build-context width)
