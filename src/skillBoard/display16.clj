@@ -92,11 +92,12 @@
   (doseq [seg segments]
     (draw-segment seg)))
 
-(defn build-segments [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as display}]
-  (let [hseg (build-horizontal-segment display)
-        vseg (build-vertical-segment display)
-        backslash-seg (build-backslash-segment display)
-        slash-seg (build-slash-segment display)
+(defn build-character-display [width]
+  (let [{:keys [segment-gap segment-length segment-height segment-width height width margin] :as context} (build-context width)
+        hseg (build-horizontal-segment context)
+        vseg (build-vertical-segment context)
+        backslash-seg (build-backslash-segment context)
+        slash-seg (build-slash-segment context)
         right-displacement (+ segment-length segment-gap)
         half-segment-width (* 0.5 segment-width)
         half-height (* 0.5 height)

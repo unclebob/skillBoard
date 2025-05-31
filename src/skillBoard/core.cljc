@@ -16,19 +16,13 @@
   (q/background 255)
   (q/no-fill)
   (q/stroke 0)
-  (let [display (display/build-context 80)
-        segments (display/build-segments display)]
-    ;(q/rect 0 0 w h)
-    ;(q/stroke 128 128 128)
-    ;(q/rect margin margin (- w margin margin) (- h margin margin))
-    ;(q/line (* 0.5 width) 0 (* 0.5 width) height)
-    ;(q/line 0 (* 0.5 height) width (* 0.5 height))
+  (let [display (display/build-character-display 80)]
     (q/fill 200 200 255 150)
     (q/stroke 0 0 255)
     (doseq [x (range 0 1000 80)]
       (q/with-translation
         [x 0]
-        (display/draw segments)))))
+        (display/draw display)))))
 
 (def size
   #?(
