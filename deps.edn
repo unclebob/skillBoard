@@ -4,7 +4,8 @@
         quil/quil {:mvn/version "4.3.1563"}
         speclj/speclj {:mvn/version "3.4.6"}
 				clj-http/clj-http {:mvn/version "3.12.3"}
-				cheshire {:mvn/version "5.12.0"}
+				cljs-http/cljs-http {:mvn/version "0.1.46"}
+				org.clojure/data.json {:mvn/version "2.5.1"}
 				}
  :aliases {:spec  {:main-opts ["-m" "speclj.main" "-c"]
                    :extra-deps  {speclj/speclj {:mvn/version "3.4.6"}}

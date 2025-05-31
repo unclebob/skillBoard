@@ -17,7 +17,9 @@
         pre (-> rawOb
                 (str/split #"RMK")
                 first)]
-    pre))
+    (prn "METAR:" metar)
+    pre)
+  )
 
 
 (defn draw-state [state]
