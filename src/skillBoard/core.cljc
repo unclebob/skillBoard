@@ -1,7 +1,9 @@
 (ns skillBoard.core
-  (:require [quil.core :as q]
+  (:require [clojure.string :as str]
+            [quil.core :as q]
             [quil.middleware :as m]
             [skillBoard.display16 :as display]
+            [skillBoard.weather :as weather]
             ))
 
 (defn update-state [state]
@@ -9,15 +11,24 @@
 
 (defn setup []
   (q/frame-rate 30)
-  (q/background 255))
+  (q/background 255)
+  (let [metar (weather/get-metar "KUGN")
+        rawOb (:rawOb (first metar))
+        pre (-> rawOb
+                (str/split #"RMK")
+                first)]
+    pre))
+
 
 (defn draw-state [state]
   (q/background 0 0 0)
   (q/no-fill)
   (q/stroke 0)
-  (let [display (display/build-character-display 35)]
-    (display/draw-line display "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./+-:")
-    ))
+  (q/with-translation
+    [10 10]
+    (let [display (display/build-character-display 25)]
+      (display/draw-line display state)
+      )))
 
 (def size
   #?(

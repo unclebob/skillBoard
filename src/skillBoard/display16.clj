@@ -69,13 +69,13 @@
    \Y "35B"
    \Z "015AEF"
    \0 "016DEF295A"
-   \1 "6D"
+   \1 "56D"
    \2 "016789EF"
    \3 "01687DEF"
    \4 "2678D"
    \5 "01278DFE"
    \6 "012978DEF"
-   \7 "016D"
+   \7 "015B"
    \8 "0126789DEF"
    \9 "012678DEF"
    \. "E"
@@ -173,8 +173,8 @@
 (defn draw-character [{:keys [segments context]} c]
   (let [bits (char-desc-to-bits (character-desc-map c))
         [width height] (:box context)]
-    (q/stroke 100 100 100)
-    (q/fill 0 0 0)
+    (q/no-stroke)
+    (q/fill 30 30 30)
     (q/rect 0 0 width height)
     (q/fill 255 255 255)
     (q/no-stroke)
