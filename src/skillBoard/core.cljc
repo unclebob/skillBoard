@@ -29,7 +29,6 @@
      "HELLO")
   )
 
-
 (defn draw-state [state]
   (q/background 0 0 0)
   (q/image @logo 0 0 400 200)
