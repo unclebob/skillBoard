@@ -12,13 +12,13 @@
 (defn setup []
   (q/frame-rate 30)
   (q/background 255)
-  (let [metar (weather/get-metar "KUGN")
-        rawOb (:rawOb (first metar))
-        pre (-> rawOb
-                (str/split #"RMK")
-                first)]
-    (prn "METAR:" metar)
-    pre)
+  ;(let [metar (weather/get-metar "KUGN")
+  ;      rawOb (:rawOb (first metar))
+  ;      pre (-> rawOb
+  ;              (str/split #"RMK")
+  ;              first)]
+  ;  pre)
+  "HELLO"
   )
 
 
@@ -28,9 +28,9 @@
   (q/stroke 0)
   (q/with-translation
     [10 10]
-    (let [display (display/build-character-display 25)]
-      (display/draw-line display state)
-      )))
+    (let [display (display/build-character-display 35)]
+      (display/draw-line display state)))
+  )
 
 (def size
   #?(
