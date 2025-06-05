@@ -4,6 +4,7 @@
             [quil.middleware :as m]
             [skillBoard.display16 :as display]
             [skillBoard.weather :as weather]
+            [skillBoard.text-util :as text]
             ))
 
 (defn update-state [state]
@@ -19,26 +20,32 @@
   (reset! logo (q/load-image logo-url))
 
   #?(:clj
-  (let [metar (weather/get-metar "KUGN")
-        rawOb (:rawOb (first metar))
-        pre (-> rawOb
-                (str/split #"RMK")
-                first)]
-    pre)
-  :cljs
-     "HELLO")
-  )
+     (let [metar (weather/get-metar "KUGN")
+           rawOb (:rawOb (first metar))
+           pre (-> rawOb
+                   (str/split #"RMK")
+                   first)]
+       (text/wrap rawOb 40))
+       :cljs
+       ["HELLO"])
+     )
+
 
 (defn draw-state [state]
   (q/background 0 0 0)
   (q/image @logo 0 0 400 200)
   (q/no-fill)
   (q/stroke 0)
-  (q/with-translation
-    [400 10]
-    (let [display (display/build-character-display 30)]
-      (display/draw-line display state)))
-  )
+  (let [display (display/build-character-display 30)]
+  (loop [lines state
+         y 10]
+    (if (empty? lines)
+      nil
+      (let [line (first lines)]
+        (q/with-translation
+          [400 y]
+          (display/draw-line display line))
+        (recur (rest lines) (+ y 60)))))))
 
 (def size
   #?(
