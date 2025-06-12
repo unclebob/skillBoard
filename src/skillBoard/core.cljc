@@ -3,6 +3,7 @@
             [quil.core :as q]
             [quil.middleware :as m]
             [skillBoard.display16 :as display]
+            [skillBoard.sources :as sources]
             [skillBoard.flight-schedule-pro :as fsp]
             [skillBoard.text-util :as text]
             [skillBoard.weather :as weather]
@@ -39,21 +40,16 @@
   (reset! logo (q/load-image logo-url))
 
   #?(:clj
-     (let [metar (weather/get-metar "KUGN")
+     (let [metar (sources/get-metar weather/source "KUGN")
            metar-text (:rawOb (first metar))
            pre (-> metar-text
                    (str/split #"RMK")
                    first)
-           aircraft (:items (fsp/get-aircraft "12957"))
-           aircraft (filter #(= "Active" (get-in % [:status :name])) aircraft)
-           tail-numbers (map #(get % :tailNumber) aircraft)
-           tail-numbers (str/join " " tail-numbers)
-           reservations (fsp/get-reservations "12957")
-           flights (fsp/get-flights "12957")
+           reservations (sources/get-reservations fsp/source "12957")
+           flights (sources/get-flights fsp/source "12957")
            flights (:items flights)
            flights-summary (map format-flight flights)
            metar-text (text/wrap metar-text 40)
-           tail-numbers (text/wrap tail-numbers 40)
            res-summary (for [res (:items reservations)
                              :let [activity (get-in res [:activityType :name])]
                              :when (or (str/starts-with? activity "Flight")
@@ -99,7 +95,7 @@
      :clj
      [(- (q/screen-width) 10) (- (q/screen-height) 40)]))
 
-(defn on-close [x]
+(defn on-close [_]
   (q/no-loop)
   (q/exit) ; Exit the sketch
   (println "Skill Board closed.")
@@ -117,5 +113,5 @@
              :host "skillBoard")
 
 
-(defn -main [& args]
+(defn -main [& _args]
   (println "skillBoard has begun."))

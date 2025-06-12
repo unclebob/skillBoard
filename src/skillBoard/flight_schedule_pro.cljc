@@ -1,13 +1,13 @@
 (ns skillBoard.flight-schedule-pro
   (:require
-      #?(:clj [clojure.data.json :as json])
-      #?(:clj [clj-http.client :as http]
-         :cljs [cljs-http.client :as http])
-      [clojure.string :as str]
-      [java-time.api :as time]
-      ))
+    [clojure.data.json :as json]
+    [clj-http.client :as http]
+    [java-time.api :as time]
+    [skillBoard.sources :as sources]
+    ))
 
 (def fsp-key (slurp "private/fsp-key"))
+
 
 (defn get-aircraft
   [operator-id]
@@ -22,7 +22,7 @@
            )
         (throw (ex-info "Failed to fetch aircraft" {:status (:status response)}))))
     (catch #?(:clj Exception :cljs js/Error) e
-      (str "Error fetching aircraft: " (#?(:clj .getMessage :cljs .-message) e)))))
+      (str "Error fetching aircraft: " (.getMessage e)))))
 
 (defn get-reservations
   [operator-id]
@@ -42,7 +42,7 @@
            )
         (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))
     (catch #?(:clj Exception :cljs js/Error) e
-      (str "Error fetching reservations: " (#?(:clj .getMessage :cljs .-message) e)))))
+      (str "Error fetching reservations: " (.getMessage e)))))
 
 (defn get-flights
   [operator-id]
@@ -65,4 +65,12 @@
            )
         (throw (ex-info "Failed to fetch flights" {:status (:status response)}))))
     (catch #?(:clj Exception :cljs js/Error) e
-      (str "Error fetching flights: " (#?(:clj .getMessage :cljs .-message) e)))))
+      (str "Error fetching flights: " (.getMessage e)))))
+
+(def source {:type :fsp})
+
+(defmethod sources/get-reservations :fsp [_source operator-id]
+  (get-reservations operator-id))
+
+(defmethod sources/get-flights :fsp [_source operator-id]
+  (get-flights operator-id))
