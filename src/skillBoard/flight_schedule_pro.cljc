@@ -16,7 +16,7 @@
              (for [reservation items]
                [(:reservationId reservation)
                 {:reservationId (:reservationId reservation)
-                 :tail-number (:tail-number (:aircraft reservation))
+                 :tail-number (:tailNumber (:aircraft reservation))
                  :activity-type (:name (:activityType reservation))
                  :start-time (:startTime reservation)
                  :pilot-name (when-let [pilot (first (:pilots reservation))]

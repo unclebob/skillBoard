@@ -47,7 +47,9 @@
            pre (-> metar-text
                    (str/split #"RMK")
                    first)
-           reservations (:items (sources/get-reservations fsp/source "12957"))
+           reservations-packet (sources/get-reservations fsp/source "12957")
+           reservations (:items reservations-packet)
+           unpacked-res (fsp/unpack-reservations reservations-packet)
            flights (sources/get-flights fsp/source "12957")
            flights (:items flights)
            flights-summary (map format-flight flights)
@@ -79,6 +81,7 @@
          (prn 'common commonIds)
          (prn 'res-cnt (count resids) 'flight-cnt (count flightids) 'common-cnt (count commonIds))
          (prn 'res-stats res-stats)
+         (prn 'unpacked-reservations unpacked-res)
          )
 
        (concat summary-lines metar-text))

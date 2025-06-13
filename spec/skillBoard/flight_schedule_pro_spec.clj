@@ -25,7 +25,7 @@
 
                (fsp/unpack-reservations
                  {:items [{:reservationId "id"
-                           :aircraft {:tail-number "tail-number"}
+                           :aircraft {:tailNumber "tail-number"}
                            :activityType {:name "Flight type"}
                            :startTime "start-time"
                            :pilots [{:firstName "pilot first name" :lastName "pilot last name"}]
@@ -47,7 +47,7 @@
 
                (fsp/unpack-reservations
                  {:items [{:reservationId "id"
-                           :aircraft {:tail-number "tail-number"}
+                           :aircraft {:tailNumber "tail-number"}
                            :activityType {:name "Flight type"}
                            :startTime "start-time"
                            :reservationStatus {:name "reservation status"}
