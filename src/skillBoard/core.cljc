@@ -1,13 +1,15 @@
 (ns skillBoard.core
-  (:require [clojure.string :as str]
-            [quil.core :as q]
-            [quil.middleware :as m]
-            [skillBoard.display16 :as display]
-            [skillBoard.sources :as sources]
-            [skillBoard.flight-schedule-pro :as fsp]
-            [skillBoard.text-util :as text]
-            [skillBoard.weather :as weather]
-            ))
+  (:require
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [quil.core :as q]
+    [quil.middleware :as m]
+    [skillBoard.display16 :as display]
+    [skillBoard.flight-schedule-pro :as fsp]
+    [skillBoard.sources :as sources]
+    [skillBoard.text-util :as text]
+    [skillBoard.weather :as weather]
+    ))
 
 (defn update-state [state]
   state)
@@ -45,12 +47,12 @@
            pre (-> metar-text
                    (str/split #"RMK")
                    first)
-           reservations (sources/get-reservations fsp/source "12957")
+           reservations (:items (sources/get-reservations fsp/source "12957"))
            flights (sources/get-flights fsp/source "12957")
            flights (:items flights)
            flights-summary (map format-flight flights)
            metar-text (text/wrap metar-text 40)
-           res-summary (for [res (:items reservations)
+           res-summary (for [res reservations
                              :let [activity (get-in res [:activityType :name])]
                              :when (or (str/starts-with? activity "Flight")
                                        (= activity "New Customer"))]
@@ -65,10 +67,20 @@
            ]
        (doseq [flight-summary flights-summary]
          (prn flight-summary))
-       (concat summary-lines metar-text))
-     :cljs
-     ["HELLO"])
-  )
+       (doseq [reservation reservations]
+         (prn 'res (:reservationId reservation)))
+       (doseq [flight flights]
+         (prn 'flt (:reservationId flight)))
+       (let [resids (set (for [res reservations] (:reservationId res)))
+             flightids (set (for [flight flights] (:reservationId flight)))
+             commonIds (set/intersection resids flightids)]
+         (prn 'common commonIds)
+         (prn 'res-cnt (count resids) 'flight-cnt (count flightids) 'common-cnt (count commonIds)))
+
+     (concat summary-lines metar-text))
+  :cljs
+  ["HELLO"])
+)
 
 
 (defn draw-state [state]
@@ -97,7 +109,7 @@
 
 (defn on-close [_]
   (q/no-loop)
-  (q/exit) ; Exit the sketch
+  (q/exit)                                                  ; Exit the sketch
   (println "Skill Board closed.")
   (System/exit 0))
 

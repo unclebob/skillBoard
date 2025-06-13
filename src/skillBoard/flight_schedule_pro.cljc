@@ -29,10 +29,14 @@
   (try
     (let [today (time/local-date)
           tomorrow (time/plus today (time/days 1))
-          start-time (time/format "yyyy-MM-dd" today)
+          yesterday (time/minus today (time/days 1))
+          start-time (time/format "yyyy-MM-dd" yesterday)
           end-time (time/format "yyyy-MM-dd" tomorrow)
           url (str "https://usc-api.flightschedulepro.com/scheduling/v1.0/operators/" operator-id
-                   "/reservations?startTime=gte:" start-time "&endTime=lt:" end-time)
+                   "/reservations"
+                   "?startTime=gte:" start-time
+                   "&endTime=lt:" end-time
+                   "&limit=200")
           response (http/get url {:headers {"x-subscription-key" fsp-key}})]
       (if (= (:status response) 200)
         #?(:clj
@@ -54,8 +58,8 @@
           url (str "https://usc-api.flightschedulepro.com/reports/v1.0/operators/" operator-id
                    "/flights" "?flightDate=gte:" start-time
                    "&flightDateRangeEndDate=lt:" end-time
+                   "&limit=200"
                    )
-          _ (prn 'url url)
           response (http/get url {:headers {"x-subscription-key" fsp-key}})]
       (if (= (:status response) 200)
         #?(:clj
