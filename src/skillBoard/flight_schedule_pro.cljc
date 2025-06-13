@@ -1,12 +1,31 @@
 (ns skillBoard.flight-schedule-pro
   (:require
-    [clojure.data.json :as json]
     [clj-http.client :as http]
+    [clojure.data.json :as json]
     [java-time.api :as time]
     [skillBoard.sources :as sources]
     ))
 
 (def fsp-key (slurp "private/fsp-key"))
+
+(defn unpack-reservations [{:keys [items]}]
+  (if (empty? items)
+    []
+    (apply hash-map
+           (flatten
+             (for [reservation items]
+               [(:reservationId reservation)
+                {:reservationId (:reservationId reservation)
+                 :tail-number (:tail-number (:aircraft reservation))
+                 :activity-type (:name (:activityType reservation))
+                 :start-time (:startTime reservation)
+                 :pilot-name (when-let [pilot (first (:pilots reservation))]
+                               [(:firstName pilot)
+                                (:lastName pilot)])
+                 :instructor-name (when-let [instructor (:instructor reservation)]
+                                    [(:firstName instructor) (:lastName instructor)])
+                 :reservationStatus (:name (:reservationStatus reservation))}]))))
+  )
 
 
 (defn get-aircraft

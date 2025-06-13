@@ -73,14 +73,18 @@
          (prn 'flt (:reservationId flight)))
        (let [resids (set (for [res reservations] (:reservationId res)))
              flightids (set (for [flight flights] (:reservationId flight)))
-             commonIds (set/intersection resids flightids)]
+             commonIds (set/intersection resids flightids)
+             res-stats (set (for [res reservations] (:reservationStatus res)))
+             ]
          (prn 'common commonIds)
-         (prn 'res-cnt (count resids) 'flight-cnt (count flightids) 'common-cnt (count commonIds)))
+         (prn 'res-cnt (count resids) 'flight-cnt (count flightids) 'common-cnt (count commonIds))
+         (prn 'res-stats res-stats)
+         )
 
-     (concat summary-lines metar-text))
-  :cljs
-  ["HELLO"])
-)
+       (concat summary-lines metar-text))
+     :cljs
+     ["HELLO"])
+  )
 
 
 (defn draw-state [state]
@@ -113,17 +117,18 @@
   (println "Skill Board closed.")
   (System/exit 0))
 
-(q/defsketch skillBoard
-             :title "Skill Board"
-             :size size
-             :setup setup
-             :update update-state
-             :draw draw-state
-             :features [:keep-on-top]
-             :middleware [m/fun-mode]
-             :on-close on-close
-             :host "skillBoard")
+
 
 
 (defn -main [& _args]
-  (println "skillBoard has begun."))
+  (println "skillBoard has begun.")
+  (q/defsketch skillBoard
+               :title "Skill Board"
+               :size size
+               :setup setup
+               :update update-state
+               :draw draw-state
+               :features [:keep-on-top]
+               :middleware [m/fun-mode]
+               :on-close on-close
+               :host "skillBoard"))
