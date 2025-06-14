@@ -27,22 +27,6 @@
                  :reservationStatus (:name (:reservationStatus reservation))}]))))
   )
 
-
-(defn get-aircraft
-  [operator-id]
-  (try
-    (let [url (str "https://usc-api.flightschedulepro.com/core/v1.0/operators/" operator-id "/aircraft")
-          response (http/get url {:headers {"x-subscription-key" fsp-key}})]
-      (if (= (:status response) 200)
-        #?(:clj
-           (json/read-str (:body response) :key-fn keyword)
-           :cljs
-           (js->clj (js/JSON.parse (:body response)) :keywordize-keys true)
-           )
-        (throw (ex-info "Failed to fetch aircraft" {:status (:status response)}))))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (str "Error fetching aircraft: " (.getMessage e)))))
-
 (defn get-reservations
   [operator-id]
   (try
@@ -58,13 +42,9 @@
                    "&limit=200")
           response (http/get url {:headers {"x-subscription-key" fsp-key}})]
       (if (= (:status response) 200)
-        #?(:clj
-           (json/read-str (:body response) :key-fn keyword)
-           :cljs
-           (js->clj (js/JSON.parse (:body response)) :keywordize-keys true)
-           )
+        (json/read-str (:body response) :key-fn keyword)
         (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))
-    (catch #?(:clj Exception :cljs js/Error) e
+    (catch Exception e
       (str "Error fetching reservations: " (.getMessage e)))))
 
 (defn get-flights

@@ -17,16 +17,15 @@
 (def logo (atom nil))
 (def logo-url "https://static.wixstatic.com/media/e1b9b5_ecc3842ca044483daa055d2546ba22cc~mv2.png/v1/crop/x_0,y_0,w_1297,h_762/fill/w_306,h_180,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Skill%20Aviation%20logo.png")
 
-(defn format-name [first-name last-name]
+(defn format-name [[first-name last-name]]
   (if (nil? first-name)
     "     "
     (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
 
-(defn format-res [{:keys [start-time tail-number pilot-first-name pilot-last-name
-                          instructor-first-name instructor-last-name]}]
-  (format "%5s %-6s %5s %5s" start-time tail-number
-          (format-name pilot-first-name pilot-last-name)
-          (format-name instructor-first-name instructor-last-name)))
+(defn format-res [{:keys [start-time tail-number pilot-name instructor-name]}]
+  (format "%5s %-6s %5s %5s" (subs start-time 11 16) tail-number
+          (format-name pilot-name)
+          (format-name instructor-name)))
 
 (defn format-flight [flight]
   (format "CO: %s, CI: %s, %s"
@@ -48,42 +47,20 @@
                    (str/split #"RMK")
                    first)
            reservations-packet (sources/get-reservations fsp/source "12957")
-           reservations (:items reservations-packet)
            unpacked-res (fsp/unpack-reservations reservations-packet)
            flights (sources/get-flights fsp/source "12957")
            flights (:items flights)
            flights-summary (map format-flight flights)
            metar-text (text/wrap metar-text 40)
-           res-summary (for [res reservations
-                             :let [activity (get-in res [:activityType :name])]
+           res-summary (for [res (vals unpacked-res)
+                             :let [activity (:activity-type res)]
                              :when (or (str/starts-with? activity "Flight")
                                        (= activity "New Customer"))]
-                         {:start-time (subs (:startTime res) 11 16)
-                          :tail-number (get-in res [:aircraft :tailNumber])
-                          :activity (get-in res [:activityType :name])
-                          :pilot-first-name (:firstName (first (:pilots res)))
-                          :pilot-last-name (:lastName (first (:pilots res)))
-                          :instructor-first-name (get-in res [:instructor :firstName])
-                          :instructor-last-name (get-in res [:instructor :lastName])})
+                         res)
            summary-lines (map format-res res-summary)
            ]
        (doseq [flight-summary flights-summary]
          (prn flight-summary))
-       (doseq [reservation reservations]
-         (prn 'res (:reservationId reservation)))
-       (doseq [flight flights]
-         (prn 'flt (:reservationId flight)))
-       (let [resids (set (for [res reservations] (:reservationId res)))
-             flightids (set (for [flight flights] (:reservationId flight)))
-             commonIds (set/intersection resids flightids)
-             res-stats (set (for [res reservations] (:reservationStatus res)))
-             ]
-         (prn 'common commonIds)
-         (prn 'res-cnt (count resids) 'flight-cnt (count flightids) 'common-cnt (count commonIds))
-         (prn 'res-stats res-stats)
-         (prn 'unpacked-reservations unpacked-res)
-         )
-
        (concat summary-lines metar-text))
      :cljs
      ["HELLO"])
