@@ -46,9 +46,9 @@
            pre (-> metar-text
                    (str/split #"RMK")
                    first)
-           reservations-packet (sources/get-reservations fsp/source "12957")
+           reservations-packet (sources/get-reservations fsp/source)
            unpacked-res (fsp/unpack-reservations reservations-packet)
-           flights (sources/get-flights fsp/source "12957")
+           flights (sources/get-flights fsp/source)
            flights (:items flights)
            flights-summary (map format-flight flights)
            metar-text (text/wrap metar-text 40)
