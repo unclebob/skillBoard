@@ -22,7 +22,7 @@
     (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name]}]
-  (format "%5s %-6s %5s %5s" (subs start-time 11 16) tail-number
+  (format "%5s %-6s %5s %5s" (fsp/get-HHmm start-time) tail-number
           (format-name pilot-name)
           (format-name instructor-name)))
 

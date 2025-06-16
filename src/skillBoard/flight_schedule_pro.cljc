@@ -6,6 +6,15 @@
     [skillBoard.sources :as sources]
     ))
 
+(defn parse-time [time-str]
+  (if (= (count time-str) 22)
+    (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss.SS" time-str)
+    (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss" time-str)
+    ))
+
+(defn get-HHmm [time]
+  (time/format "HH:mm" time))
+
 (defn unpack-reservations [{:keys [items]}]
   (if (empty? items)
     []
@@ -16,7 +25,7 @@
                 {:reservationId (:reservationId reservation)
                  :tail-number (:tailNumber (:aircraft reservation))
                  :activity-type (:name (:activityType reservation))
-                 :start-time (:startTime reservation)
+                 :start-time (parse-time (:startTime reservation))
                  :pilot-name (when-let [pilot (first (:pilots reservation))]
                                [(:firstName pilot)
                                 (:lastName pilot)])
