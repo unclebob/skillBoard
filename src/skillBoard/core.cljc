@@ -1,6 +1,5 @@
 (ns skillBoard.core
   (:require
-    [clojure.set :as set]
     [clojure.string :as str]
     [quil.core :as q]
     [quil.middleware :as m]
@@ -29,10 +28,10 @@
 
 (defn format-flight [flight]
   (format "CO: %s, CI: %s, %s"
-          (:checkedOutOn flight)
-          (:checkedInOn flight)
-          (:aircraft flight)
-          ))
+          (:checked-out-on flight)
+          (:checked-in-on flight)
+          (:reservation-id flight)))
+
 
 (defn setup []
   (q/frame-rate 30)
@@ -43,24 +42,26 @@
   #?(:clj
      (let [metar (sources/get-metar weather/source "KUGN")
            metar-text (:rawOb (first metar))
-           pre (-> metar-text
-                   (str/split #"RMK")
-                   first)
+           short-metar (-> metar-text
+                           (str/split #"RMK")
+                           first)
            reservations-packet (sources/get-reservations fsp/source)
            unpacked-res (fsp/unpack-reservations reservations-packet)
-           flights (sources/get-flights fsp/source)
-           flights (:items flights)
+           flights-packet (sources/get-flights fsp/source)
+           flights (fsp/unpack-flights flights-packet)
            flights-summary (map format-flight flights)
-           metar-text (text/wrap metar-text 40)
+           metar-text (text/wrap short-metar 40)
            res-summary (for [res (vals unpacked-res)
                              :let [activity (:activity-type res)]
                              :when (or (str/starts-with? activity "Flight")
                                        (= activity "New Customer"))]
                          res)
            summary-lines (map format-res res-summary)
+           reservation-statuses (set (map :reservation-status (vals unpacked-res)))
            ]
        (doseq [flight-summary flights-summary]
          (prn flight-summary))
+       (prn 'reservation-statuses reservation-statuses)
        (concat summary-lines metar-text))
      :cljs
      ["HELLO"])

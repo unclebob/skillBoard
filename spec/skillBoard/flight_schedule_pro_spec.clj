@@ -19,7 +19,7 @@
                  :start-time "start-time"
                  :pilot-name ["pilot first name" "pilot last name"]
                  :instructor-name ["instructor first name" "instructor last name"]
-                 :reservationStatus "reservation status"
+                 :reservation-status "reservation status"
                  }
                 }
 
@@ -42,7 +42,7 @@
                       :start-time "start-time"
                       :pilot-name nil
                       :instructor-name nil
-                      :reservationStatus "reservation status"
+                      :reservation-status "reservation status"
                       }}
 
                (fsp/unpack-reservations
@@ -53,6 +53,32 @@
                            :reservationStatus {:name "reservation status"}
                            }]})
                )
+      )
+    )
+
+  (context "flights"
+    (it "unpacks degenerate packets"
+      (should= [] (fsp/unpack-flights nil))
+      (should= [] (fsp/unpack-flights {}))
+      (should= [] (fsp/unpack-flights {:items nil}))
+      (should= [] (fsp/unpack-flights {:items []})))
+
+    (it "unpacks a single flight"
+      (should= [{
+                 :reservation-id "reservation-id"
+                 :checked-out-on "checked-out-on"
+                 :checked-in-on "checked-in-on"
+                 }]
+
+               (fsp/unpack-flights
+                 {:items [
+                          {:reservationId "reservation-id"
+                           :checkedOutOn "checked-out-on"
+                           :checkedInOn "checked-in-on"
+                           }
+                          ]})
+               )
+
       )
     )
   )

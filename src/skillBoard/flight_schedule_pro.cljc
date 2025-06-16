@@ -22,8 +22,17 @@
                                 (:lastName pilot)])
                  :instructor-name (when-let [instructor (:instructor reservation)]
                                     [(:firstName instructor) (:lastName instructor)])
-                 :reservationStatus (:name (:reservationStatus reservation))}]))))
+                 :reservation-status (:name (:reservationStatus reservation))}]))))
   )
+
+(defn unpack-flights [{:keys [items]}]
+  (if (empty? items)
+    []
+    (for [flight items]
+      {:reservation-id (:reservationId flight)
+       :checked-out-on (:checkedOutOn flight)
+       :checked-in-on (:checkedInOn flight)})))
+
 
 (let [[fsp-key operator-id] (read-string (slurp "private/fsp-key"))]
   (defn get-reservations []
