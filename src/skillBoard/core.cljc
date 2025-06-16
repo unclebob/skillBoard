@@ -16,6 +16,31 @@
 (def logo (atom nil))
 (def logo-url "https://static.wixstatic.com/media/e1b9b5_ecc3842ca044483daa055d2546ba22cc~mv2.png/v1/crop/x_0,y_0,w_1297,h_762/fill/w_306,h_180,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Skill%20Aviation%20logo.png")
 
+(defn make-status-item [{:keys [tail-number
+                                start-time
+                                pilot-name
+                                instructor-name
+                                checked-out-on]}
+                        flight]
+  (let [item {:aircraft tail-number
+              :time start-time
+              :crew {:pilot pilot-name
+                     :instructor instructor-name}
+              :remarks "Reserved"
+              }]
+    (cond
+      (and (nil? flight) (nil? checked-out-on))
+      item
+
+      (and (nil? flight) (some? checked-out-on))
+      (assoc item
+        :remarks "Checked out"
+        :time checked-out-on)
+      )
+    )
+  )
+
+
 (defn format-name [[first-name last-name]]
   (if (nil? first-name)
     "     "

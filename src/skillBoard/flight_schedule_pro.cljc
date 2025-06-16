@@ -2,15 +2,27 @@
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
+    [clojure.string :as string]
     [java-time.api :as time]
     [skillBoard.sources :as sources]
     ))
 
+(def epoch-str "1753-01-01T00:00:00")
+(def epoch (time/local-date-time epoch-str))
+
 (defn parse-time [time-str]
-  (if (= (count time-str) 22)
+  (cond
+    (or (empty? time-str) (string/starts-with? time-str epoch-str))
+    nil
+
+    (= (count time-str) 22)
     (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss.SS" time-str)
-    (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss" time-str)
-    ))
+
+    :else
+    (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss" time-str)))
+
+(defn format-time [time]
+  (time/format "yyyy-MM-dd'T'HH:mm:ss.SS" time))
 
 (defn get-HHmm [time]
   (time/format "HH:mm" time))
@@ -22,7 +34,7 @@
            (flatten
              (for [reservation items]
                [(:reservationId reservation)
-                {:reservationId (:reservationId reservation)
+                {:reservation-id (:reservationId reservation)
                  :tail-number (:tailNumber (:aircraft reservation))
                  :activity-type (:name (:activityType reservation))
                  :start-time (parse-time (:startTime reservation))
@@ -43,7 +55,7 @@
     (for [flight items]
       {:reservation-id (:reservationId flight)
        :checked-out-on (when-let [checked-out-on (:checkedOutOn flight)]
-                        (parse-time checked-out-on))
+                         (parse-time checked-out-on))
        :checked-in-on (when-let [checked-in-on (:checkedInOn flight)]
                         (parse-time checked-in-on))})))
 

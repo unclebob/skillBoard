@@ -1,4 +1,4 @@
-(ns flight-schedule-pro-spec
+(ns skillBoard.flight-schedule-pro-spec
   (:require [java-time.api :as time]
             [skillBoard.flight-schedule-pro :as fsp]
             [speclj.core :refer :all]))
@@ -19,7 +19,7 @@
 
     (it "unpacks a single reservation"
       (should= {"id"
-                {:reservationId "id"
+                {:reservation-id "id"
                  :tail-number "tail-number"
                  :activity-type "Flight type"
                  :start-time @now
@@ -40,13 +40,13 @@
                            :instructor {:firstName "instructor first name" :lastName "instructor last name"}
                            :reservationStatus {:name "reservation status"}
                            :checkedInOn @now-str
-                            :checkedOutOn @now-str
+                           :checkedOutOn @now-str
                            }]})
                )
       )
 
     (it "unpacks a single reservation with missing names and times"
-      (should= {"id" {:reservationId "id"
+      (should= {"id" {:reservation-id "id"
                       :tail-number "tail-number"
                       :activity-type "Flight type"
                       :start-time @now
@@ -76,38 +76,36 @@
       (should= [] (fsp/unpack-flights {:items []})))
 
     (it "unpacks a single flight"
-      (should= [{
-                 :reservation-id "reservation-id"
-                 :checked-out-on @now
-                 :checked-in-on @now
-                 }]
+      (should=
+        [{
+          :reservation-id "reservation-id"
+          :checked-out-on @now
+          :checked-in-on @now
+          }]
 
-               (fsp/unpack-flights
-                 {:items [
-                          {:reservationId "reservation-id"
-                           :checkedOutOn @now-str
-                           :checkedInOn @now-str
-                           }
-                          ]})
-               )
-
+        (fsp/unpack-flights
+          {:items [
+                   {:reservationId "reservation-id"
+                    :checkedOutOn @now-str
+                    :checkedInOn @now-str
+                    }
+                   ]}))
       )
 
     (it "unpacks a single flight with missing times"
-          (should= [{
-                     :reservation-id "reservation-id"
-                     :checked-out-on nil
-                     :checked-in-on nil
-                     }]
+      (should=
+        [{
+          :reservation-id "reservation-id"
+          :checked-out-on nil
+          :checked-in-on nil
+          }]
 
-                   (fsp/unpack-flights
-                     {:items [
-                              {:reservationId "reservation-id"
-                               }
-                              ]})
-                   )
-
-          )
+        (fsp/unpack-flights
+          {:items [
+                   {:reservationId "reservation-id"
+                    }
+                   ]}))
+      )
     )
 
   (context "utilities"
@@ -120,6 +118,9 @@
     (it "converts time strings to times"
       (should= @now (fsp/parse-time "2025-06-16T09:55:24.00"))
       (should= @now (fsp/parse-time "2025-06-16T09:55:24"))
-      )
+      (should= nil (fsp/parse-time nil))
+      (should= nil (fsp/parse-time ""))
+      (should= nil (fsp/parse-time fsp/epoch-str))
+      (should= nil (fsp/parse-time (str fsp/epoch-str ".000"))))
     )
   )
