@@ -8,6 +8,7 @@
     [skillBoard.sources :as sources]
     [skillBoard.text-util :as text]
     [skillBoard.weather :as weather]
+    [skillBoard.radar-cape :as radar-cape]
     ))
 
 (defn update-state [state]
@@ -64,32 +65,33 @@
   ;(reset! logo (q/load-image "resources/logo.jpg"))
   (reset! logo (q/load-image logo-url))
 
-  #?(:clj
-     (let [metar (sources/get-metar weather/source "KUGN")
-           metar-text (:rawOb (first metar))
-           short-metar (-> metar-text
-                           (str/split #"RMK")
-                           first)
-           reservations-packet (sources/get-reservations fsp/source)
-           unpacked-res (fsp/unpack-reservations reservations-packet)
-           flights-packet (sources/get-flights fsp/source)
-           flights (fsp/unpack-flights flights-packet)
-           flights-summary (map format-flight flights)
-           metar-text (text/wrap short-metar 40)
-           res-summary (for [res (vals unpacked-res)
-                             :let [activity (:activity-type res)]
-                             :when (or (str/starts-with? activity "Flight")
-                                       (= activity "New Customer"))]
-                         res)
-           summary-lines (map format-res res-summary)
-           reservation-statuses (set (map :reservation-status (vals unpacked-res)))
-           ]
-       (doseq [flight-summary flights-summary]
-         (prn flight-summary))
-       (prn 'reservation-statuses reservation-statuses)
-       (concat summary-lines metar-text))
-     :cljs
-     ["HELLO"])
+  (let [metar (sources/get-metar weather/source "KUGN")
+        metar-text (:rawOb (first metar))
+        short-metar (-> metar-text
+                        (str/split #"RMK")
+                        first)
+        reservations-packet (sources/get-reservations fsp/source)
+        unpacked-res (fsp/unpack-reservations reservations-packet)
+        tail-numbers (map :tail-number (vals unpacked-res))
+        flights-packet (sources/get-flights fsp/source)
+        flights (fsp/unpack-flights flights-packet)
+        flights-summary (map format-flight flights)
+        metar-text (text/wrap short-metar 40)
+        ;adsbs (radar-cape/get-adsb radar-cape/source tail-numbers)
+        res-summary (for [res (vals unpacked-res)
+                          :let [activity (:activity-type res)]
+                          :when (or (str/starts-with? activity "Flight")
+                                    (= activity "New Customer"))]
+                      res)
+        summary-lines (map format-res res-summary)
+        reservation-statuses (set (map :reservation-status (vals unpacked-res)))
+        ]
+    (doseq [flight-summary flights-summary]
+      (prn flight-summary))
+    ;(doseq [adsb adsbs]
+    ;  (prn 'adsb adsb))
+    (prn 'reservation-statuses reservation-statuses)
+    (concat summary-lines metar-text))
   )
 
 
