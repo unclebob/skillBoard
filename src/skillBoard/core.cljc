@@ -1,21 +1,16 @@
 (ns skillBoard.core
   (:require
     [clojure.string :as str]
+    [java-time.api :as time]
     [quil.core :as q]
     [quil.middleware :as m]
+    [skillBoard.config :as config]
     [skillBoard.display16 :as display]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.sources :as sources]
     [skillBoard.text-util :as text]
     [skillBoard.weather :as weather]
-    [skillBoard.radar-cape :as radar-cape]
     ))
-
-(defn update-state [state]
-  state)
-
-(def logo (atom nil))
-(def logo-url "https://static.wixstatic.com/media/e1b9b5_ecc3842ca044483daa055d2546ba22cc~mv2.png/v1/crop/x_0,y_0,w_1297,h_762/fill/w_306,h_180,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Skill%20Aviation%20logo.png")
 
 (defn make-status-item [{:keys [tail-number
                                 start-time
@@ -47,10 +42,13 @@
     "     "
     (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
 
-(defn format-res [{:keys [start-time tail-number pilot-name instructor-name]}]
-  (format "%5s %-6s %5s %5s" (fsp/get-HHmm start-time) tail-number
+(defn format-res [{:keys [start-time tail-number pilot-name instructor-name co] :as res}]
+  (format "%5sZ %-6s %5s %5s %6s"
+          (fsp/get-HHmm (fsp/local-to-utc start-time))
+          tail-number
           (format-name pilot-name)
-          (format-name instructor-name)))
+          (format-name instructor-name)
+          (if (nil? co) "" (str (fsp/get-HHmm (fsp/local-to-utc co)) "Z"))))
 
 (defn format-flight [flight]
   (format "CO: %s, CI: %s, %s"
@@ -58,14 +56,15 @@
           (:checked-in-on flight)
           (:reservation-id flight)))
 
+(defn time-stamp []
+  (let [now (fsp/get-HHmm (fsp/local-to-utc (time/local-date-time)))
+        span (apply str (repeat 50 \space))
+        time-stamp (str span now "Z")]
+    time-stamp
+    ))
 
-(defn setup []
-  (q/frame-rate 30)
-  (q/background 255)
-  ;(reset! logo (q/load-image "resources/logo.jpg"))
-  (reset! logo (q/load-image logo-url))
-
-  (let [metar (sources/get-metar weather/source "KUGN")
+(defn generate-summary []
+  (let [metar (sources/get-metar weather/source (:airport @config/config))
         metar-text (:rawOb (first metar))
         short-metar (-> metar-text
                         (str/split #"RMK")
@@ -75,41 +74,49 @@
         tail-numbers (map :tail-number (vals unpacked-res))
         flights-packet (sources/get-flights fsp/source)
         flights (fsp/unpack-flights flights-packet)
-        flights-summary (map format-flight flights)
-        metar-text (text/wrap short-metar 40)
+        ;flights-summary (map format-flight (vals flights))
+        metar-text (text/wrap short-metar 60)
         ;adsbs (radar-cape/get-adsb radar-cape/source tail-numbers)
-        res-summary (for [res (vals unpacked-res)
-                          :let [activity (:activity-type res)]
-                          :when (or (str/starts-with? activity "Flight")
-                                    (= activity "New Customer"))]
-                      res)
-        summary-lines (map format-res res-summary)
-        reservation-statuses (set (map :reservation-status (vals unpacked-res)))
+        filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
+        summary-lines (map format-res filtered-reservations)
         ]
-    (doseq [flight-summary flights-summary]
-      (prn flight-summary))
+    ;(doseq [flight-summary flights-summary]
+    ;  (prn flight-summary))
     ;(doseq [adsb adsbs]
     ;  (prn 'adsb adsb))
-    (prn 'reservation-statuses reservation-statuses)
-    (concat summary-lines metar-text))
+    (concat metar-text [(time-stamp)] summary-lines)))
+
+
+(defn setup []
+  (q/frame-rate 10)
+  (q/background 255)
+  (config/load-config)
+  {:time (System/currentTimeMillis)
+   :lines (generate-summary)}
   )
 
+(defn update-state [{:keys [time] :as state}]
+  (let [now (System/currentTimeMillis)
+        since (- now time)]
+    (if (> since 20000)
+      {:time now :lines (generate-summary)}
+      state)))
 
 (defn draw-state [state]
   (q/background 0 0 0)
-  (q/image @logo 0 0 400 200)
   (q/no-fill)
   (q/stroke 0)
-  (let [display (display/build-character-display 30)]
-    (loop [lines state
+  (let [display (display/build-character-display (/ (q/screen-width) 65))
+        height (get-in display [:context :height])]
+    (loop [lines (:lines state)
            y 10]
       (if (empty? lines)
         nil
         (let [line (first lines)]
           (q/with-translation
-            [400 y]
+            [0 y]
             (display/draw-line display line))
-          (recur (rest lines) (+ y 60)))))))
+          (recur (rest lines) (+ y height 10)))))))
 
 (def size
   #?(

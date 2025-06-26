@@ -2,7 +2,7 @@
   (:require [quil.core :as q]))
 (def aspect-ratio 1.4)
 (def margin-ratio 0.05)
-(def segment-width-ratio 0.07)
+(def segment-width-ratio 0.1)
 (def segment-gap-ratio (* 0.3 segment-width-ratio))
 (def between-chars-ratio 0.1)
 
