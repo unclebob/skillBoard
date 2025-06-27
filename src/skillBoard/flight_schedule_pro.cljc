@@ -83,12 +83,14 @@
                    "?startTime=gte:" start-time
                    "&endTime=lt:" end-time
                    "&limit=200")
-          response (http/get url {:headers {"x-subscription-key" fsp-key}})]
+          response (http/get url {:headers {"x-subscription-key" fsp-key}
+                                  :socket-timeout 1000
+                                  :connection-timeout 1000})]
       (if (= (:status response) 200)
         (json/read-str (:body response) :key-fn keyword)
         (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))
     (catch Exception e
-      (str "Error fetching reservations: " (.getMessage e)))))
+      (prn (str "Error fetching reservations: " (.getMessage e))))))
 
 (defn get-flights []
   (try
@@ -103,7 +105,9 @@
                    "&flightDateRangeEndDate=lt:" end-time
                    "&limit=200"
                    )
-          response (http/get url {:headers {"x-subscription-key" fsp-key}})]
+          response (http/get url {:headers {"x-subscription-key" fsp-key}
+                                  :socket-timeout 1000
+                                  :connection-timeout 1000})]
       (if (= (:status response) 200)
         #?(:clj
            (json/read-str (:body response) :key-fn keyword)
@@ -111,8 +115,8 @@
            (js->clj (js/JSON.parse (:body response)) :keywordize-keys true)
            )
         (throw (ex-info "Failed to fetch flights" {:status (:status response)}))))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (str "Error fetching flights: " (.getMessage e)))))
+    (catch Exception e
+      (prn (str "Error fetching flights: " (.getMessage e))))))
 
 (defn remove-unused [reservations]
   (let [co-tails (set (map :tail-number (filter #(some? (:co %)) reservations)))]

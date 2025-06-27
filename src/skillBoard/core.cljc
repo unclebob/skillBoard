@@ -7,8 +7,9 @@
     [skillBoard.config :as config]
     [skillBoard.display16 :as display]
     [skillBoard.flight-schedule-pro :as fsp]
+    [skillBoard.navigation :as nav]
+    [skillBoard.radar-cape :as radar-cape]
     [skillBoard.sources :as sources]
-    [skillBoard.text-util :as text]
     [skillBoard.weather :as weather]
     ))
 
@@ -42,23 +43,27 @@
     "     "
     (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
 
-(defn format-res [{:keys [start-time tail-number pilot-name instructor-name co] :as res}]
-  (format "%5sZ %-6s %5s %5s %6s"
-          (fsp/get-HHmm (fsp/local-to-utc start-time))
-          tail-number
-          (format-name pilot-name)
-          (format-name instructor-name)
-          (if (nil? co) "" (str (fsp/get-HHmm (fsp/local-to-utc co)) "Z"))))
+(defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
+                          altitude track lat-lon] :as res}]
+  (let [[tower-lat tower-lon] (:tower-lat-lon @config/config)
+        [lat lon] lat-lon
+        {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))]
+    (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s"
+            (fsp/get-HHmm (fsp/local-to-utc start-time))
+            tail-number
+            (format-name pilot-name)
+            (format-name instructor-name)
+            (if (nil? co) "" (str (fsp/get-HHmm (fsp/local-to-utc co)) "Z"))
+            (cond
+              (not (contains? res :altitude)) "  "
+              (nil? altitude) "--"
+              :else (format "%02d" (Math/round (/ altitude 100.0))))
+            (if (nil? distance) "   " (format "%3dNM" (Math/round distance)))
+            (if (nil? bearing) "   " (format "%03d" (Math/round bearing))))))
 
-(defn format-flight [flight]
-  (format "CO: %s, CI: %s, %s"
-          (:checked-out-on flight)
-          (:checked-in-on flight)
-          (:reservation-id flight)))
-
-(defn time-stamp []
+(defn header []
   (let [now (fsp/get-HHmm (fsp/local-to-utc (time/local-date-time)))
-        span (apply str (repeat 50 \space))
+        span " TIME   TAIL     CREW       OUT  AL   DIS BRG    "
         time-stamp (str span now "Z")]
     time-stamp
     ))
@@ -66,29 +71,25 @@
 (defn generate-summary []
   (let [metar (sources/get-metar weather/source (:airport @config/config))
         metar-text (:rawOb (first metar))
-        short-metar (-> metar-text
-                        (str/split #"RMK")
-                        first)
+        short-metar (if (nil? metar-text) "NO-METAR"
+                                          (-> metar-text
+                                              (str/split #"RMK")
+                                              first))
         reservations-packet (sources/get-reservations fsp/source)
         unpacked-res (fsp/unpack-reservations reservations-packet)
-        tail-numbers (map :tail-number (vals unpacked-res))
+        tail-numbers (map :tail-number unpacked-res)
         flights-packet (sources/get-flights fsp/source)
         flights (fsp/unpack-flights flights-packet)
-        ;flights-summary (map format-flight (vals flights))
-        metar-text (text/wrap short-metar 60)
-        ;adsbs (radar-cape/get-adsb radar-cape/source tail-numbers)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
-        summary-lines (map format-res filtered-reservations)
-        report (concat metar-text [(time-stamp)] summary-lines)
+        adsbs (radar-cape/get-adsb radar-cape/source tail-numbers)
+        updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
+        summary-lines (map format-res updated-reservations)
+        report (concat [(header)] summary-lines)
         displayed-items (take 20 report)
         dropped-items (count (drop 20 report))
         footer (if (zero? dropped-items) "" (format "...%d MORE..." dropped-items))
-        final-display (concat displayed-items [footer])
+        final-display (concat displayed-items [footer short-metar])
         ]
-    ;(doseq [flight-summary flights-summary]
-    ;  (prn flight-summary))
-    ;(doseq [adsb adsbs]
-    ;  (prn 'adsb adsb))
     final-display))
 
 
