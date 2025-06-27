@@ -79,12 +79,17 @@
         ;adsbs (radar-cape/get-adsb radar-cape/source tail-numbers)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         summary-lines (map format-res filtered-reservations)
+        report (concat metar-text [(time-stamp)] summary-lines)
+        displayed-items (take 20 report)
+        dropped-items (count (drop 20 report))
+        footer (if (zero? dropped-items) "" (format "...%d MORE..." dropped-items))
+        final-display (concat displayed-items [footer])
         ]
     ;(doseq [flight-summary flights-summary]
     ;  (prn flight-summary))
     ;(doseq [adsb adsbs]
     ;  (prn 'adsb adsb))
-    (concat metar-text [(time-stamp)] summary-lines)))
+    final-display))
 
 
 (defn setup []
@@ -143,7 +148,7 @@
                :setup setup
                :update update-state
                :draw draw-state
-               :features [:keep-on-top]
+               :features []
                :middleware [m/fun-mode]
                :on-close on-close
                :host "skillBoard"))

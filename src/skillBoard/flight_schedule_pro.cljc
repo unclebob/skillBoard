@@ -136,18 +136,21 @@
                    (conj filtered-reservations res))))))))
 
 (defn filter-active-reservations [reservations flights]
-  (for [res reservations
-        :let [res-id (:reservation-id res)
-              flight (get flights res-id)
-              activity (:activity-type res)
-              res-checked-in (:checked-in-on res)
-              flight-checked-in (:checked-in-on flight)
-              ci (or res-checked-in flight-checked-in)
-              co (or (:checked-out-on res) (:checked-out-on flight))]
-        :when (and (or (str/starts-with? activity "Flight")
-                       (= activity "New Customer"))
-                   (nil? ci))]
-    (assoc res :co co)))
+  (let [now (time/local-date-time)]
+    (for [res reservations
+          :let [res-id (:reservation-id res)
+                flight (get flights res-id)
+                activity (:activity-type res)
+                res-checked-in (:checked-in-on res)
+                flight-checked-in (:checked-in-on flight)
+                ci (or res-checked-in flight-checked-in)
+                co (or (:checked-out-on res) (:checked-out-on flight))]
+          :when (and (or (str/starts-with? activity "Flight")
+                         (= activity "New Customer"))
+                     (nil? ci)
+                     (time/after? (:start-time res) (time/minus now (time/hours 6)))
+                     )]
+      (assoc res :co co))))
 
 (defn sort-and-filter-reservations [reservations flights]
   (let [sorted-reservations (sort #(time/before? (:start-time %1) (:start-time %2)) reservations)
