@@ -136,19 +136,19 @@
 
   (context "filtering reservations"
     (it "filters empty and simple lists"
-      (should= [] (fsp/remove-unused []))
+      (should= [] (fsp/remove-superceded-reservations []))
       (should= [{:start-time @now}]
-               (fsp/remove-unused [{:start-time @now}])))
+               (fsp/remove-superceded-reservations [{:start-time @now}])))
 
     (it "filters lists with nothing unused"
       (should= [{:tail-number "t1" :co @now}]
-               (fsp/remove-unused [{:tail-number "t1" :co @now}])))
+               (fsp/remove-superceded-reservations [{:tail-number "t1" :co @now}])))
 
     (it "filters unused reservations"
       (should= [{:id 2 :tail-number "t2"}
                 {:id 3 :tail-number "t1" :co @now}
                 {:id 4 :tail-number "t1"}]
-               (fsp/remove-unused [{:id 1 :tail-number "t1"}
+               (fsp/remove-superceded-reservations [{:id 1 :tail-number "t1"}
                                    {:id 2 :tail-number "t2"}
                                    {:id 3 :tail-number "t1" :co @now}
                                    {:id 4 :tail-number "t1"}]))
@@ -156,7 +156,7 @@
                 {:id 5 :tail-number "t2" :co @now}
                 {:id 6 :tail-number "t1"}
                 {:id 7 :tail-number "t2"}]
-               (fsp/remove-unused
+               (fsp/remove-superceded-reservations
                  [{:id 1 :tail-number "t1"}
                   {:id 2 :tail-number "t2"}
                   {:id 3 :tail-number "t1" :co @now}

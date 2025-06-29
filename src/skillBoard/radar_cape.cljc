@@ -2,7 +2,9 @@
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
+    [clojure.set :as set]
     [clojure.string :as str]
+    [java-time.api :as time]
     [skillBoard.sources :as sources]
     ))
 
@@ -17,11 +19,7 @@
                                   :socket-timeout 1000
                                   :connection-timeout 1000})]
       (if (= (:status response) 200)
-        #?(:clj
-           (json/read-str (:body response) :key-fn keyword)
-           :cljs
-           (js->clj (js/JSON.parse (:body response)) :keywordize-keys true)
-           )
+        (json/read-str (:body response) :key-fn keyword)
         (throw (ex-info "Failed to fetch ADSB" {:status (:status response)}))))
     (catch Exception e
       (prn (str "Error fetching ADSB: " (.getMessage e))))))
@@ -51,10 +49,30 @@
                    (conj updated-reservations
                          (assoc res :altitude (:alt adsb)
                                     :lat-lon [(:lat adsb) (:lon adsb)]
-                                    :track (:trk adsb))))
+                                    :track (:trk adsb)
+                                    :ground-speed (:spd adsb))))
             (recur tails
                    (rest reservations)
                    (conj updated-reservations res))))))))
+
+(defn get-now [] (time/local-date-time))
+
+(defn include-unreserved-flights [reservations adsbs]
+  (let [tails-with-co (set (map :tail-number (filter #(some? (:co %)) reservations)))
+        flying-tails (set (map :reg (vals adsbs)))
+        rogue-tails (set/difference flying-tails tails-with-co)
+        rogue-reservations (for [tail rogue-tails
+                                 :let [adsb (get adsbs tail)]
+                                 :when (some? adsb)]
+                             {:tail-number tail
+                              :altitude (:alt adsb)
+                              :lat-lon [(:lat adsb) (:lon adsb)]
+                              :track (:trk adsb)
+                              :ground-speed (:spd adsb)
+                              :start-time (get-now)
+                              :rogue? true})
+        inclusive-reservations (concat reservations rogue-reservations)]
+    (sort #(time/before? (:start-time %1) (:start-time %2)) inclusive-reservations)))
 
 
 (def source {:type :radar-cape})

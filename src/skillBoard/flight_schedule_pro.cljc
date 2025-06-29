@@ -109,16 +109,12 @@
                                   :socket-timeout 1000
                                   :connection-timeout 1000})]
       (if (= (:status response) 200)
-        #?(:clj
-           (json/read-str (:body response) :key-fn keyword)
-           :cljs
-           (js->clj (js/JSON.parse (:body response)) :keywordize-keys true)
-           )
+        (json/read-str (:body response) :key-fn keyword)
         (throw (ex-info "Failed to fetch flights" {:status (:status response)}))))
     (catch Exception e
       (prn (str "Error fetching flights: " (.getMessage e))))))
 
-(defn remove-unused [reservations]
+(defn remove-superceded-reservations [reservations]
   (let [co-tails (set (map :tail-number (filter #(some? (:co %)) reservations)))]
     (loop [reservations reservations
            co-tails co-tails
@@ -159,8 +155,25 @@
 (defn sort-and-filter-reservations [reservations flights]
   (let [sorted-reservations (sort #(time/before? (:start-time %1) (:start-time %2)) reservations)
         active-reservations (filter-active-reservations sorted-reservations flights)]
-    (remove-unused active-reservations)))
+    (remove-superceded-reservations active-reservations)))
 
+(defn get-aircraft
+  []
+  (try
+    (let [operator-id (:fsp-operator-id @config/config)
+          fsp-key (:fsp-key @config/config)
+          url (str "https://usc-api.flightschedulepro.com/core/v1.0/operators/" operator-id "/aircraft")
+          response (http/get url {:headers {"x-subscription-key" fsp-key}
+                                  :socket-timeout 1000
+                                  :connection-timeout 1000})]
+      (if (= (:status response) 200)
+        (let [response (json/read-str (:body response) :key-fn keyword)
+              aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
+              tail-numbers (map #(get % :tailNumber) aircraft)]
+          tail-numbers)
+        (throw (ex-info "Failed to fetch aircraft" {:status (:status response)}))))
+    (catch Exception e
+      (prn (str "Error fetching aircraft: " (.getMessage e))))))
 
 (def source {:type :fsp})
 
@@ -169,3 +182,6 @@
 
 (defmethod sources/get-flights :fsp [_source]
   (get-flights))
+
+(defmethod sources/get-aircraft :fsp [_source]
+  (get-aircraft))
