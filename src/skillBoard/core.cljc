@@ -48,7 +48,7 @@
   (let [[tower-lat tower-lon] (:tower-lat-lon @config/config)
         [lat lon] lat-lon
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))]
-    (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %3s %s"
+    (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %3s %s         "
             (fsp/get-HHmm (fsp/local-to-utc start-time))
             tail-number
             (format-name pilot-name)
@@ -65,7 +65,7 @@
 
 (defn header []
   (let [now (fsp/get-HHmm (fsp/local-to-utc (time/local-date-time)))
-        span " TIME   TAIL     CREW       OUT   AL DIS   BRG  GS   "
+        span " TIME   TAIL     CREW       OUT  ALT DIS   BRG  GS   "
         time-stamp (str span now "Z")]
     time-stamp
     ))
@@ -98,64 +98,114 @@
         ]
     final-display))
 
-
 (defn setup []
-  (q/frame-rate 10)
-  (q/background 255)
-  (config/load-config)
-  {:time (System/currentTimeMillis)
-   :lines (generate-summary)}
-  )
+  (let [font-width 24
+        sf-font (q/create-font "Split-Flap TV" font-width)
+        _ (q/text-font sf-font)
+        _ (q/text-size font-width)
+        font-height (+ (q/text-ascent) (q/text-descent))]
+    (q/frame-rate 10)
+    (q/background 255)
+    (config/load-config)
+    {:time (System/currentTimeMillis)
+     :lines (generate-summary)
+     :sf-font sf-font
+     :font-width font-width
+     :font-height font-height
+     }))
 
 (defn update-state [{:keys [time] :as state}]
   (let [now (System/currentTimeMillis)
         since (- now time)]
     (if (> since 20000)
-      {:time now :lines (generate-summary)}
+      (assoc state :time now :lines (generate-summary))
       state)))
 
-(defn draw-state [state]
-  (q/background 0 0 0)
-  (q/no-fill)
-  (q/stroke 0)
-  (let [display (display/build-character-display (/ (q/screen-width) 65))
-        height (get-in display [:context :height])]
-    (loop [lines (:lines state)
-           y 10]
+(def backing-rect {:left 4
+                   :right 4
+                   :top 4
+                   :bottom 8})
+
+(defn draw-char [{:keys [sf-font font-width font-height]}
+                 c cx cy]
+  (q/fill 255 255 255)
+  (q/no-stroke)
+  (q/rect (+ cx (:left backing-rect))
+          (+ cy (:top backing-rect))
+          (- font-width (:right backing-rect))
+          (- font-height (:bottom backing-rect)))
+  (q/fill 0 0 0)
+  (q/text-font sf-font)
+  (q/text-align :left :top)
+  (q/text (str c) cx cy))
+
+(defn draw-split-flap [{:keys [lines font-width font-height] :as state}]
+  (let [draw-line (fn [line y]
+                    (loop [x 0
+                           cs line]
+                      (if (empty? cs)
+                        nil
+                        (let [c (first cs)
+                              next-x (+ x font-width 6)]
+                          (draw-char state c x y)
+                          (recur next-x (rest cs))))))]
+    (q/background 50)
+    (loop [lines lines
+           y 0]
       (if (empty? lines)
         nil
         (let [line (first lines)]
-          (q/with-translation
-            [0 y]
-            (display/draw-line display line))
-          (recur (rest lines) (+ y height 10)))))))
+          (draw-line line y)
+          (recur (rest lines) (+ y font-height 10)))))
+    ))
 
-(def size
-  #?(
-     :cljs
-     [(max (- (.-scrollWidth (.-body js/document)) 20) 900)
-      (max (- (.-innerHeight js/window) 25) 700)]
-     :clj
-     [(- (q/screen-width) 10) (- (q/screen-height) 40)]))
+  (defn draw-16-seg [state]
+    (q/background 0 0 0)
+    (q/no-fill)
+    (q/stroke 0)
+    (let [display (display/build-character-display (/ (q/screen-width) 65))
+          height (get-in display [:context :height])]
+      (loop [lines (:lines state)
+             y 10]
+        (if (empty? lines)
+          nil
+          (let [line (first lines)]
+            (q/with-translation
+              [0 y]
+              (display/draw-line display line))
+            (recur (rest lines) (+ y height 10)))))))
 
-(defn on-close [_]
-  (q/no-loop)
-  (q/exit)                                                  ; Exit the sketch
-  (println "Skill Board closed.")
-  (System/exit 0))
+  (defn draw-state [state]
+    ;(draw-16-seg state)
+    (draw-split-flap state)
+    )
+
+  (def size
+    #?(
+       :cljs
+       [(max (- (.-scrollWidth (.-body js/document)) 20) 900)
+        (max (- (.-innerHeight js/window) 25) 700)]
+       :clj
+       [(- (q/screen-width) 10) (- (q/screen-height) 40)]))
+
+  (defn on-close [_]
+    (q/no-loop)
+    (q/exit)                                                ; Exit the sketch
+    (println "Skill Board closed.")
+    (System/exit 0))
 
 
 
 
-(defn -main [& _args]
-  (println "skillBoard has begun.")
-  (q/defsketch skillBoard
-               :title "Skill Board"
-               :size size
-               :setup setup
-               :update update-state
-               :draw draw-state
-               :features []
-               :middleware [m/fun-mode]
-               :on-close on-close
-               :host "skillBoard"))
+  (defn -main [& _args]
+    (println "skillBoard has begun.")
+    (q/defsketch skillBoard
+                 :title "Skill Board"
+                 :size size
+                 :setup setup
+                 :update update-state
+                 :draw draw-state
+                 :features []
+                 :middleware [m/fun-mode]
+                 :on-close on-close
+                 :host "skillBoard"))

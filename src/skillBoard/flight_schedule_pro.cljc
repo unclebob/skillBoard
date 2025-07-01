@@ -106,8 +106,8 @@
                    "&limit=200"
                    )
           response (http/get url {:headers {"x-subscription-key" fsp-key}
-                                  :socket-timeout 1000
-                                  :connection-timeout 1000})]
+                                  :socket-timeout 2000
+                                  :connection-timeout 2000})]
       (if (= (:status response) 200)
         (json/read-str (:body response) :key-fn keyword)
         (throw (ex-info "Failed to fetch flights" {:status (:status response)}))))
@@ -164,8 +164,8 @@
           fsp-key (:fsp-key @config/config)
           url (str "https://usc-api.flightschedulepro.com/core/v1.0/operators/" operator-id "/aircraft")
           response (http/get url {:headers {"x-subscription-key" fsp-key}
-                                  :socket-timeout 1000
-                                  :connection-timeout 1000})]
+                                  :socket-timeout 2000
+                                  :connection-timeout 2000})]
       (if (= (:status response) 200)
         (let [response (json/read-str (:body response) :key-fn keyword)
               aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
