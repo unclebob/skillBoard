@@ -84,8 +84,8 @@
                    "&endTime=lt:" end-time
                    "&limit=200")
           response (http/get url {:headers {"x-subscription-key" fsp-key}
-                                  :socket-timeout 1000
-                                  :connection-timeout 1000})]
+                                  :socket-timeout 2000
+                                  :connection-timeout 2000})]
       (if (= (:status response) 200)
         (json/read-str (:body response) :key-fn keyword)
         (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))

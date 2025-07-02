@@ -104,7 +104,7 @@
         _ (q/text-font sf-font)
         _ (q/text-size font-width)
         font-height (+ (q/text-ascent) (q/text-descent))]
-    (q/frame-rate 10)
+    (q/frame-rate 0.1)
     (q/background 255)
     (config/load-config)
     {:time (System/currentTimeMillis)
@@ -117,7 +117,7 @@
 (defn update-state [{:keys [time] :as state}]
   (let [now (System/currentTimeMillis)
         since (- now time)]
-    (if (> since 20000)
+    (if (> since 30000)
       (assoc state :time now :lines (generate-summary))
       state)))
 
