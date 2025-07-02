@@ -3,7 +3,6 @@
     [quil.core :as q]
     [quil.middleware :as m]
     [skillBoard.config :as config]
-    [skillBoard.display16 :as display16]
     [skillBoard.presenter :as presenter]
     [skillBoard.split-flap :as split-flap]
     ))
@@ -17,9 +16,9 @@
         _ (q/text-size font-width)
         font-height (+ (q/text-ascent) (q/text-descent))
         summary (presenter/generate-summary)
-        flappers (presenter/make-flappers summary [])
+        flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
-    (q/frame-rate 0.1)
+    (q/frame-rate 10)
     (q/background 255)
     {:time now
      :lines summary
@@ -29,15 +28,22 @@
      :font-height font-height
      }))
 
-(defn update-state [{:keys [time] :as state}]
+(defn update-state [{:keys [time flappers lines] :as state}]
   (let [now (System/currentTimeMillis)
-        since (- now time)]
-    (if (> since 30000)
-      (let [summary (presenter/generate-summary)]
-        (assoc state :time now
-                     :lines summary
-                     :flappers (presenter/make-flappers summary (:lines state))))
-      state)))
+        since (- now time)
+        poll? (> since 30000)
+        old-summary lines
+        summary (if poll?
+                  (presenter/generate-summary)
+                  old-summary)
+        flappers (if poll?
+                   (split-flap/make-flappers summary old-summary)
+                   (split-flap/update-flappers flappers))
+        frame-rate (if (empty? flappers) 0.1 10)]
+    (q/frame-rate frame-rate)
+    (assoc state :time (if poll? now time)
+                 :lines summary
+                 :flappers flappers)))
 
 (defn draw-state [state]
   ;(display16/draw-16-seg state)
