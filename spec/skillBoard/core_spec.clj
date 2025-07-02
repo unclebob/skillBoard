@@ -4,6 +4,30 @@
     [skillBoard.core :refer :all]
     [speclj.core :refer :all]))
 
+(defn make-status-item [{:keys [tail-number
+                                start-time
+                                pilot-name
+                                instructor-name
+                                checked-out-on]}
+                        flight]
+  (let [item {:aircraft tail-number
+              :time start-time
+              :crew {:pilot pilot-name
+                     :instructor instructor-name}
+              :remarks "Reserved"
+              }]
+    (cond
+      (and (nil? flight) (nil? checked-out-on))
+      item
+
+      (and (nil? flight) (some? checked-out-on))
+      (assoc item
+        :remarks "Checked out"
+        :time checked-out-on)
+      )
+    )
+  )
+
 (declare now now-str reservation)
 
 (describe "skillBoard"

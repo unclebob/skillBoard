@@ -6,7 +6,6 @@
     [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.config :as config]
-    [skillBoard.config :as config]
     [skillBoard.sources :as sources]
     ))
 
