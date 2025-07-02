@@ -228,3 +228,18 @@
       (draw-character display c)
       (q/pop-matrix))))
 
+(defn draw-16-seg [state]
+  (q/background 0 0 0)
+  (q/no-fill)
+  (q/stroke 0)
+  (let [display (build-character-display (/ (q/screen-width) 65))
+        height (get-in display [:context :height])]
+    (loop [lines (:lines state)
+           y 10]
+      (if (empty? lines)
+        nil
+        (let [line (first lines)]
+          (q/with-translation
+            [0 y]
+            (draw-line display line))
+          (recur (rest lines) (+ y height 10)))))))

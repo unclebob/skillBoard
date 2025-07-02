@@ -3,9 +3,11 @@
     [quil.core :as q]
     [quil.middleware :as m]
     [skillBoard.config :as config]
-    [skillBoard.display16 :as display]
+    [skillBoard.display16 :as display16]
     [skillBoard.presenter :as presenter]
+    [skillBoard.split-flap :as split-flap]
     ))
+
 
 (defn setup []
   (config/load-config)
@@ -37,63 +39,9 @@
                      :flappers (presenter/make-flappers summary (:lines state))))
       state)))
 
-(def backing-rect {:left 4
-                   :right 4
-                   :top 4
-                   :bottom 8})
-
-(defn draw-char [{:keys [sf-font font-width font-height]}
-                 c cx cy]
-  (q/fill 255 255 255)
-  (q/no-stroke)
-  (q/rect (+ cx (:left backing-rect))
-          (+ cy (:top backing-rect))
-          (- font-width (:right backing-rect))
-          (- font-height (:bottom backing-rect)))
-  (q/fill 0 0 0)
-  (q/text-font sf-font)
-  (q/text-align :left :top)
-  (q/text (str c) cx cy))
-
-(defn draw-split-flap [{:keys [lines font-width font-height] :as state}]
-  (let [draw-line (fn [line y]
-                    (loop [x 0
-                           cs line]
-                      (if (empty? cs)
-                        nil
-                        (let [c (first cs)
-                              next-x (+ x font-width 6)]
-                          (draw-char state c x y)
-                          (recur next-x (rest cs))))))]
-    (q/background 50)
-    (loop [lines lines
-           y 0]
-      (if (empty? lines)
-        nil
-        (let [line (first lines)]
-          (draw-line line y)
-          (recur (rest lines) (+ y font-height 10)))))
-    ))
-
-(defn draw-16-seg [state]
-  (q/background 0 0 0)
-  (q/no-fill)
-  (q/stroke 0)
-  (let [display (display/build-character-display (/ (q/screen-width) 65))
-        height (get-in display [:context :height])]
-    (loop [lines (:lines state)
-           y 10]
-      (if (empty? lines)
-        nil
-        (let [line (first lines)]
-          (q/with-translation
-            [0 y]
-            (display/draw-line display line))
-          (recur (rest lines) (+ y height 10)))))))
-
 (defn draw-state [state]
-  ;(draw-16-seg state)
-  (draw-split-flap state)
+  ;(display16/draw-16-seg state)
+  (split-flap/draw-split-flap state)
   )
 
 (def size [(- (q/screen-width) 10) (- (q/screen-height) 40)])
