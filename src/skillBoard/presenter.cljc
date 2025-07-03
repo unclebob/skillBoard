@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as str]
     [java-time.api :as time]
+    [skillBoard.time-util :as time-util]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.navigation :as nav]
@@ -21,11 +22,11 @@
         [lat lon] lat-lon
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))]
     (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %3s %s         "
-            (fsp/get-HHmm (fsp/local-to-utc start-time))
+            (time-util/get-HHmm (time-util/local-to-utc start-time))
             tail-number
             (format-name pilot-name)
             (format-name instructor-name)
-            (if (nil? co) "" (str (fsp/get-HHmm (fsp/local-to-utc co)) "Z"))
+            (if (nil? co) "" (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
             (cond
               (not (contains? res :altitude)) "  "
               (nil? altitude) "--"
@@ -36,7 +37,7 @@
             (if rogue? "ROGUE" ""))))
 
 (defn header []
-  (let [now (fsp/get-HHmm (fsp/local-to-utc (time/local-date-time)))
+  (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         span " TIME   TAIL     CREW       OUT  ALT DIS   BRG  GS   "
         time-stamp (str span now "Z")]
     time-stamp
@@ -61,8 +62,7 @@
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
                              adsbs)
-        summary-lines (map format-res final-reservations)
-        report (concat [(header)] summary-lines)
+        report (map format-res final-reservations)
         displayed-items (take 20 report)
         dropped-items (count (drop 20 report))
         footer (if (zero? dropped-items) "" (format "...%d MORE..." dropped-items))

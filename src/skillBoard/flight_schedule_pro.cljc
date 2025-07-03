@@ -2,38 +2,13 @@
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
-    [clojure.string :as string]
+    [clojure.string]
     [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.config :as config]
     [skillBoard.sources :as sources]
+    [skillBoard.time-util :as time-util]
     ))
-
-(def epoch-str "1753-01-01T00:00:00")
-(def epoch (time/local-date-time epoch-str))
-
-(defn local-to-utc [local-time]
-  (-> local-time
-      (time/zoned-date-time (time/local-date) (time/zone-id (:time-zone @config/config)))
-      (.withZoneSameInstant (time/zone-id "UTC"))
-      (time/local-time)))
-
-(defn parse-time [time-str]
-  (cond
-    (or (empty? time-str) (string/starts-with? time-str epoch-str))
-    nil
-
-    (= (count time-str) 22)
-    (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss.SS" time-str)
-
-    :else
-    (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss" time-str)))
-
-(defn format-time [time]
-  (time/format "yyyy-MM-dd'T'HH:mm:ss.SS" time))
-
-(defn get-HHmm [time]
-  (time/format "HH:mm" time))
 
 (defn unpack-reservations [{:keys [items]}]
   (if (empty? items)
@@ -42,7 +17,7 @@
       {:reservation-id (:reservationId reservation)
        :tail-number (:tailNumber (:aircraft reservation))
        :activity-type (:name (:activityType reservation))
-       :start-time (parse-time (:startTime reservation))
+       :start-time (time-util/parse-time (:startTime reservation))
        :pilot-name (when-let [pilot (first (:pilots reservation))]
                      [(:firstName pilot)
                       (:lastName pilot)])
@@ -50,9 +25,9 @@
                           [(:firstName instructor) (:lastName instructor)])
        :reservation-status (:name (:reservationStatus reservation))
        :checked-in-on (when-let [checked-in (:checkedInOn reservation)]
-                        (parse-time checked-in))
+                        (time-util/parse-time checked-in))
        :checked-out-on (when-let [checked-out (:checkedOutOn reservation)]
-                         (parse-time checked-out))})))
+                         (time-util/parse-time checked-out))})))
 
 (defn unpack-flights [{:keys [items]}]
   (if (empty? items)
@@ -63,9 +38,9 @@
                [(:reservationId flight)
                 {:reservation-id (:reservationId flight)
                  :checked-out-on (when-let [checked-out-on (:checkedOutOn flight)]
-                                   (parse-time checked-out-on))
+                                   (time-util/parse-time checked-out-on))
                  :checked-in-on (when-let [checked-in-on (:checkedInOn flight)]
-                                  (parse-time checked-in-on))}])))))
+                                  (time-util/parse-time checked-in-on))}])))))
 
 
 (defn get-reservations []

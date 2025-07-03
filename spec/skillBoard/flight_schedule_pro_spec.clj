@@ -113,27 +113,6 @@
       )
     )
 
-  (context "utilities"
-    (with now (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss.SS" "2025-06-16T09:55:24.00"))
-
-    (it "gets HH:mm from time"
-      (should= "09:55"
-               (fsp/get-HHmm @now)))
-
-    (it "converts time strings to times"
-      (should= @now (fsp/parse-time "2025-06-16T09:55:24.00"))
-      (should= @now (fsp/parse-time "2025-06-16T09:55:24"))
-      (should= nil (fsp/parse-time nil))
-      (should= nil (fsp/parse-time ""))
-      (should= nil (fsp/parse-time fsp/epoch-str))
-      (should= nil (fsp/parse-time (str fsp/epoch-str ".000"))))
-
-    (it "converts local time to UTC"
-      (reset! config/config {:time-zone "America/Chicago"})
-      (should= "14:55" (fsp/get-HHmm (fsp/local-to-utc @now)))
-      )
-    )
-
   (context "filtering reservations"
     (it "filters empty and simple lists"
       (should= [] (fsp/remove-superceded-reservations []))

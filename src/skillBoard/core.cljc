@@ -12,6 +12,7 @@
   (config/load-config)
   (let [font-width 24
         sf-font (q/create-font "Split-Flap TV" font-width)
+        header-font (q/create-font "Arial Rounded MT Bold" 50)
         _ (q/text-font sf-font)
         _ (q/text-size font-width)
         font-height (+ (q/text-ascent) (q/text-descent))
@@ -26,7 +27,8 @@
      :sf-font sf-font
      :font-width font-width
      :font-height font-height
-     }))
+     :header-font header-font
+     :departure-icon (q/load-image "resources/DepartureIcon.jpg")}))
 
 (defn update-state [{:keys [time flappers lines] :as state}]
   (let [now (System/currentTimeMillis)

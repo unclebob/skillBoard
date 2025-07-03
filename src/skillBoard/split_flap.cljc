@@ -1,6 +1,8 @@
 (ns skillBoard.split-flap
   (:require
+    [java-time.api :as time]
     [quil.core :as q]
+    [skillBoard.time-util :as time-util]
     ))
 
 (def next-char
@@ -56,21 +58,25 @@
                    :top 4
                    :bottom 8})
 
+(def top-margin 100)
+
 (defn draw-char [{:keys [sf-font font-width font-height]}
                  c cx cy]
   (q/fill 255 255 255)
   (q/no-stroke)
   (q/rect (+ cx (:left backing-rect))
-          (+ cy (:top backing-rect))
+          (+ cy (:top backing-rect) top-margin)
           (- font-width (:right backing-rect))
           (- font-height (:bottom backing-rect)))
   (q/fill 0 0 0)
   (q/text-font sf-font)
   (q/text-align :left :top)
-  (q/text (str c) cx cy))
+  (q/text (str c) cx (+ cy top-margin)))
 
 (defn draw-split-flap [{:keys [lines flappers font-width font-height] :as state}]
-  (let [flap-width (+ font-width 6)
+  (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
+        now (str now "Z")
+        flap-width (+ font-width 6)
         flap-height (+ font-height 10)
         draw-line (fn [line y]
                     (loop [x 0
@@ -82,18 +88,46 @@
                           (draw-char state c x y)
                           (recur next-x (rest cs))))))
         draw-lines (fn []
-                     (q/background 50)
                      (loop [lines lines
                             y 0]
                        (if (empty? lines)
                          nil
                          (let [line (first lines)]
                            (draw-line line y)
-                           (recur (rest lines) (+ y flap-height))))))]
+                           (recur (rest lines) (+ y flap-height))))))
+        draw-flappers (fn [] (doseq [{:keys [at from]} flappers]
+                               (let [[col row] at]
+                                 (draw-char state from (* flap-width col) (* flap-height row)))))]
+    (q/background 50)
+    (q/image (:departure-icon state) 0 0 top-margin top-margin)
+    (q/fill 255)
+    (q/text-align :left :top)
+    (q/text-font (:header-font state))
+    (q/text-size 50)
+    (q/text "Skill Aviation Flights" (+ top-margin 10) 10)
+    (q/text-size 25)
+    (q/text (str "TIME"
+                 "          "
+                 "AIRCRAFT"
+                 "               "
+                 "---------- CREW ----------"
+                 "            "
+                 "CHECKED OUT"
+                 "       "
+                 "ALT"
+                 "          "
+                 "DISTANCE"
+                 "        "
+                 "DIR"
+                 "           "
+                 "SPEED")
+            (+ top-margin 5) (- top-margin 25))
+    (q/text-font (:sf-font state))
+    (q/text-size 30)
+    (q/text now (- (q/width) (q/text-width now) 50) 10)
     (draw-lines)
-    (doseq [{:keys [at from]} flappers]
-      (let [[col row] at]
-        (draw-char state from (* flap-width col) (* flap-height row))))))
+    (draw-flappers)
+    ))
 
 
 (defn add-remaining-flappers [flappers remainder col row type]
@@ -101,7 +135,7 @@
     flappers
     (recur (conj flappers {:at [col row]
                            (if (= type :old) :to :from) \space
-                           (if (= type :old ) :from :to) (first remainder)})
+                           (if (= type :old) :from :to) (first remainder)})
            (rest remainder)
            (inc col) row type))
   )
@@ -129,7 +163,7 @@
          row 0
          flappers []]
     (cond
-      (and (empty? new-report) (empty? old-report))  flappers
+      (and (empty? new-report) (empty? old-report)) flappers
       :else
       (recur (rest new-report)
              (rest old-report)
