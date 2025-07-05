@@ -97,34 +97,37 @@
                            (recur (rest lines) (+ y flap-height))))))
         draw-flappers (fn [] (doseq [{:keys [at from]} flappers]
                                (let [[col row] at]
-                                 (draw-char state from (* flap-width col) (* flap-height row)))))]
+                                 (draw-char state from (* flap-width col) (* flap-height row)))))
+        draw-header (fn []
+                      (q/image (:departure-icon state) 0 0 top-margin top-margin)
+                      (q/fill 255)
+                      (q/text-align :left :top)
+                      (q/text-font (:header-font state))
+                      (q/text-size 50)
+                      (q/text "Skill Aviation Flights" (+ top-margin 10) 10)
+                      (q/text-size 25)
+                      (q/text (str "TIME"
+                                   "          "
+                                   "AIRCRAFT"
+                                   "               "
+                                   "---------- CREW ----------"
+                                   "            "
+                                   "CHECKED OUT"
+                                   "       "
+                                   "ALT"
+                                   "          "
+                                   "DISTANCE"
+                                   "        "
+                                   "DIR"
+                                   "           "
+                                   "SPEED")
+                              (+ top-margin 5) (- top-margin 25))
+                      (q/text-font (:sf-font state))
+                      (q/text-size 30)
+                      (q/text now (- (q/width) (q/text-width now) 50) 10)
+                      )]
     (q/background 50)
-    (q/image (:departure-icon state) 0 0 top-margin top-margin)
-    (q/fill 255)
-    (q/text-align :left :top)
-    (q/text-font (:header-font state))
-    (q/text-size 50)
-    (q/text "Skill Aviation Flights" (+ top-margin 10) 10)
-    (q/text-size 25)
-    (q/text (str "TIME"
-                 "          "
-                 "AIRCRAFT"
-                 "               "
-                 "---------- CREW ----------"
-                 "            "
-                 "CHECKED OUT"
-                 "       "
-                 "ALT"
-                 "          "
-                 "DISTANCE"
-                 "        "
-                 "DIR"
-                 "           "
-                 "SPEED")
-            (+ top-margin 5) (- top-margin 25))
-    (q/text-font (:sf-font state))
-    (q/text-size 30)
-    (q/text now (- (q/width) (q/text-width now) 50) 10)
+    (draw-header)
     (draw-lines)
     (draw-flappers)
     ))

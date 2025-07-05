@@ -51,6 +51,7 @@
                                           (-> metar-text
                                               (str/split #"RMK")
                                               first))
+        short-metar (if (> (count short-metar) 59) (subs short-metar 0 59) short-metar)
         reservations-packet (sources/get-reservations fsp/source)
         unpacked-res (fsp/unpack-reservations reservations-packet)
         flights-packet (sources/get-flights fsp/source)
