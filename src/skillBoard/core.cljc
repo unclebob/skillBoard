@@ -41,7 +41,7 @@
         flappers (if poll?
                    (split-flap/make-flappers summary old-summary)
                    (split-flap/update-flappers flappers))
-        frame-rate (if (empty? flappers) 0.1 10)]
+        frame-rate (if (empty? flappers) 0.1 30)]
     (q/frame-rate frame-rate)
     (assoc state :time (if poll? now time)
                  :lines summary

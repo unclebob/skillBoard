@@ -187,12 +187,14 @@
          updated-flappers []]
     (if (empty? flappers)
       updated-flappers
-      (let [{:keys [at from to]} (first flappers)]
+      (let [{:keys [at from to] :as flapper} (first flappers)]
         (if (= from to)
           (recur (rest flappers) updated-flappers)
-          (recur (rest flappers)
-                 (conj updated-flappers
-                       {:at at
-                        :from (get-next-char from)
-                        :to to})))))))
+          (if (< (rand) 0.5)
+            (recur (rest flappers)
+                   (conj updated-flappers
+                         {:at at
+                          :from (get-next-char from)
+                          :to to}))
+            (recur (rest flappers) (conj updated-flappers flapper))))))))
 
