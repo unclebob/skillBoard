@@ -9,6 +9,7 @@
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.sources :as sources]
     [skillBoard.weather :as weather]
+    [skillBoard.config :as config]
     ))
 
 (defn format-name [[first-name last-name]]
@@ -34,7 +35,7 @@
             (if (nil? distance) "   " (format "%3dNM" (Math/round distance)))
             (if (nil? bearing) "   " (format "%03d" (Math/round bearing)))
             (if (nil? ground-speed) "   " (format "%3d" ground-speed))
-            (if rogue? "ROGUE" ""))))
+            (if rogue? "UNSCHED" ""))))
 
 (defn header []
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
@@ -51,7 +52,7 @@
                                           (-> metar-text
                                               (str/split #"RMK")
                                               first))
-        short-metar (if (> (count short-metar) 59) (subs short-metar 0 59) short-metar)
+        short-metar (if (> (count short-metar) config/cols) (subs short-metar 0 config/cols) short-metar)
         reservations-packet (sources/get-reservations fsp/source)
         unpacked-res (fsp/unpack-reservations reservations-packet)
         flights-packet (sources/get-flights fsp/source)
@@ -64,9 +65,12 @@
                              updated-reservations
                              adsbs)
         report (map format-res final-reservations)
-        displayed-items (take 20 report)
-        dropped-items (count (drop 20 report))
-        footer (if (zero? dropped-items) "" (format "...%d MORE..." dropped-items))
+        padded-items (concat report (repeat config/flights (apply str (repeat config/cols " "))))
+        displayed-items (take config/flights padded-items)
+        dropped-items (count (drop config/flights report))
+        footer (if (zero? dropped-items)
+                 "             "
+                 (format "...%2d MORE..." dropped-items))
         final-display (concat displayed-items [footer short-metar])
         ]
     final-display))

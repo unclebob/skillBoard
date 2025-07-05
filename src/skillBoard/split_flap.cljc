@@ -2,6 +2,7 @@
   (:require
     [java-time.api :as time]
     [quil.core :as q]
+    [skillBoard.config :as config]
     [skillBoard.time-util :as time-util]
     ))
 
@@ -50,6 +51,8 @@
    \: \A
    })
 
+(def gaps #{6 13 19 25 32 36 42 46 50})
+
 (defn get-next-char [c]
   (get next-char c \space))
 
@@ -60,33 +63,34 @@
 
 (def top-margin 100)
 
-(defn draw-char [{:keys [sf-font font-width font-height]}
-                 c cx cy]
-  (q/fill 255 255 255)
-  (q/no-stroke)
-  (q/rect (+ cx (:left backing-rect))
-          (+ cy (:top backing-rect) top-margin)
-          (- font-width (:right backing-rect))
-          (- font-height (:bottom backing-rect)))
-  (q/fill 0 0 0)
-  (q/text-font sf-font)
-  (q/text-align :left :top)
-  (q/text (str c) cx (+ cy top-margin)))
-
-(defn draw-split-flap [{:keys [lines flappers font-width font-height] :as state}]
+(defn draw-split-flap [{:keys [sf-font lines flappers font-width font-height] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (str now "Z")
         flap-width (+ font-width 6)
         flap-height (+ font-height 10)
+        draw-char (fn [c x y]
+                    (when (or (> y (dec config/flights))
+                              (nil? (gaps x)))
+                      (let [cx (* x flap-width)
+                            cy (* y flap-height)]
+                        (q/fill 255 255 255)
+                        (q/no-stroke)
+                        (q/rect (+ cx (:left backing-rect))
+                                (+ cy (:top backing-rect) top-margin)
+                                (- font-width (:right backing-rect))
+                                (- font-height (:bottom backing-rect)))
+                        (q/fill 0 0 0)
+                        (q/text-font sf-font)
+                        (q/text-align :left :top)
+                        (q/text (str c) cx (+ cy top-margin)))))
         draw-line (fn [line y]
                     (loop [x 0
                            cs line]
                       (if (empty? cs)
                         nil
-                        (let [c (first cs)
-                              next-x (+ x flap-width)]
-                          (draw-char state c x y)
-                          (recur next-x (rest cs))))))
+                        (let [c (first cs)]
+                          (draw-char c x y)
+                          (recur (inc x) (rest cs))))))
         draw-lines (fn []
                      (loop [lines lines
                             y 0]
@@ -94,10 +98,10 @@
                          nil
                          (let [line (first lines)]
                            (draw-line line y)
-                           (recur (rest lines) (+ y flap-height))))))
+                           (recur (rest lines) (inc y))))))
         draw-flappers (fn [] (doseq [{:keys [at from]} flappers]
                                (let [[col row] at]
-                                 (draw-char state from (* flap-width col) (* flap-height row)))))
+                                 (draw-char from col row))))
         draw-header (fn []
                       (q/image (:departure-icon state) 0 0 top-margin top-margin)
                       (q/fill 255)
@@ -117,10 +121,12 @@
                                    "ALT"
                                    "          "
                                    "DISTANCE"
-                                   "        "
+                                   "          "
                                    "DIR"
-                                   "           "
-                                   "SPEED")
+                                   "         "
+                                   "SPEED"
+                                   "     "
+                                   "REMARK")
                               (+ top-margin 5) (- top-margin 25))
                       (q/text-font (:sf-font state))
                       (q/text-size 30)
