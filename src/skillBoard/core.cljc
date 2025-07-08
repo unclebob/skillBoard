@@ -40,8 +40,12 @@
                   old-summary)
         flappers (if poll?
                    (split-flap/make-flappers summary old-summary)
-                   (split-flap/update-flappers flappers))
-        frame-rate (if (empty? flappers) 0.1 30)]
+                   (-> flappers
+                       split-flap/update-flappers
+                       split-flap/update-flappers
+                       split-flap/update-flappers)
+                   )
+        frame-rate (if (empty? flappers) 0.1 30.0)]
     (q/frame-rate frame-rate)
     (assoc state :time (if poll? now time)
                  :lines summary
@@ -52,7 +56,6 @@
   (split-flap/draw-split-flap state)
   )
 
-(def size [(- (q/screen-width) 10) (- (q/screen-height) 40)])
 
 (defn on-close [_]
   (q/no-loop)
@@ -60,14 +63,13 @@
   (println "Skill Board closed.")
   (System/exit 0))
 
-
 (declare skillBoard)
 
 (defn -main [& _args]
   (println "skillBoard has begun.")
   (q/defsketch skillBoard
                :title "Skill Board"
-               :size size
+               :size [1920 1080]
                :setup setup
                :update update-state
                :draw draw-state

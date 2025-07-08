@@ -47,10 +47,13 @@
             (recur (disj tails tail-number)
                    (rest reservations)
                    (conj updated-reservations
-                         (assoc res :altitude (:alt adsb)
+                         (assoc res :adsb? true
+                                    :altitude (:altg adsb)
                                     :lat-lon [(:lat adsb) (:lon adsb)]
                                     :track (:trk adsb)
-                                    :ground-speed (:spd adsb))))
+                                    :ground-speed (:spd adsb)
+                                    :on-ground? (or (= "g" (:gda adsb))
+                                                    (= "G" (:gda adsb))))))
             (recur tails
                    (rest reservations)
                    (conj updated-reservations res))))))))
@@ -64,8 +67,10 @@
         rogue-reservations (for [tail rogue-tails
                                  :let [adsb (get adsbs tail)]
                                  :when (some? adsb)]
-                             {:tail-number tail
-                              :altitude (:alt adsb)
+                             {
+                              :adsb? true
+                              :tail-number tail
+                              :altitude (:altg adsb)
                               :lat-lon [(:lat adsb) (:lon adsb)]
                               :track (:trk adsb)
                               :ground-speed (:spd adsb)

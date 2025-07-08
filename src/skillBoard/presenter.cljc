@@ -2,14 +2,14 @@
   (:require
     [clojure.string :as str]
     [java-time.api :as time]
-    [skillBoard.time-util :as time-util]
+    [skillBoard.config :as config]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.navigation :as nav]
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.sources :as sources]
+    [skillBoard.time-util :as time-util]
     [skillBoard.weather :as weather]
-    [skillBoard.config :as config]
     ))
 
 (defn format-name [[first-name last-name]]
@@ -17,25 +17,51 @@
     "     "
     (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
 
+
+
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
-                          altitude track ground-speed lat-lon rogue?] :as res}]
+                          altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
   (let [[tower-lat tower-lon] (:tower-lat-lon @config/config)
         [lat lon] lat-lon
-        {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))]
-    (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %3s %s         "
-            (time-util/get-HHmm (time-util/local-to-utc start-time))
-            tail-number
-            (format-name pilot-name)
-            (format-name instructor-name)
-            (if (nil? co) "" (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
-            (cond
-              (not (contains? res :altitude)) "  "
-              (nil? altitude) "--"
-              :else (format "%03d" (Math/round (/ altitude 100.0))))
-            (if (nil? distance) "   " (format "%3dNM" (Math/round distance)))
-            (if (nil? bearing) "   " (format "%03d" (Math/round bearing)))
-            (if (nil? ground-speed) "   " (format "%3d" ground-speed))
-            (if rogue? "UNSCHED" ""))))
+        {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))
+        generate-remark (fn []
+                          (let
+                            [nearby? (< distance 2)
+                             altitude (or altitude 0)
+                             ground-speed (or ground-speed 0)
+                             low (+ (:airport-elevation @config/config) 30)
+                             on-ground? (or on-ground? (< altitude low))
+                             pattern-low (- (:pattern-altitude @config/config) 500)
+                             pattern-high (+ (:pattern-altitude @config/config) 500)
+                             flying-speed? (> ground-speed 50)
+                             position-remark
+                             (cond
+                               (and nearby? on-ground? (< ground-speed 2)) "RAMP"
+                               (and nearby? on-ground? (>= ground-speed 2)) "TAXI"
+                               (and (< low altitude pattern-low) flying-speed?) "LOW "
+                               (and nearby? (< pattern-low altitude pattern-high) flying-speed?) "PATN"
+                               (< distance 6) "NEAR"
+                               :else "    ")
+                              rogue-remark (if rogue? "UNRSV" "     ")
+                             ]
+                            (prn "remark")
+                            (format "%s %s" position-remark rogue-remark)))
+
+        line (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %s %s   "
+                     (time-util/get-HHmm (time-util/local-to-utc start-time))
+                     tail-number
+                     (format-name pilot-name)
+                     (format-name instructor-name)
+                     (if (nil? co) "      " (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
+                     (cond
+                       (not (contains? res :altitude)) "   "
+                       (nil? altitude) "---"
+                       :else (format "%03d" (Math/round (/ altitude 100.0))))
+                     (if (nil? distance) "     " (format "%3dNM" (Math/round distance)))
+                     (if (nil? bearing) "   " (format "%03d" (Math/round bearing)))
+                     (if (nil? ground-speed) "   " (format "%3d" ground-speed))
+                     (if adsb? (generate-remark) "            "))]
+    (subs line 0 config/cols)))
 
 (defn header []
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
@@ -59,7 +85,7 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
-        adsbs {"N345TS" {:reg "N345TS" :lat 38.0 :lon -76.0 :alt 10000 :spd 150 :trk 90}}
+        adsbs {"N345TS" {:reg "N345TS" :lat 42 :lon -87 :altg 730 :spd 1}}
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations

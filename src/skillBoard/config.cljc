@@ -5,6 +5,6 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def cols 59)
+(def cols 63)
 (def flights 19)
 

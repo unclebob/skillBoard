@@ -190,7 +190,7 @@
       (let [{:keys [at from to] :as flapper} (first flappers)]
         (if (= from to)
           (recur (rest flappers) updated-flappers)
-          (if (< (rand) 0.5)
+          (if (< (rand) 0.8)
             (recur (rest flappers)
                    (conj updated-flappers
                          {:at at
