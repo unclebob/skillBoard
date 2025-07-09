@@ -6,5 +6,5 @@
   (reset! config (read-string (slurp "private/config"))))
 
 (def cols 63)
-(def flights 19)
+(def flights 18)
 

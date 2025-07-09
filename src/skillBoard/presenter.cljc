@@ -44,7 +44,6 @@
                                :else "    ")
                               rogue-remark (if rogue? "UNRSV" "     ")
                              ]
-                            (prn "remark")
                             (format "%s %s" position-remark rogue-remark)))
 
         line (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %s %s   "
@@ -85,7 +84,7 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
-        adsbs {"N345TS" {:reg "N345TS" :lat 42 :lon -87 :altg 730 :spd 1}}
+        ;adsbs {"N345TS" {:reg "N345TS" :lat 42 :lon -87 :altg 730 :spd 1}}
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations

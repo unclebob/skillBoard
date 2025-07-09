@@ -65,15 +65,17 @@
 
 (declare skillBoard)
 
-(defn -main [& _args]
+(defn -main [& args]
   (println "skillBoard has begun.")
-  (q/defsketch skillBoard
-               :title "Skill Board"
-               :size [1920 1080]
-               :setup setup
-               :update update-state
-               :draw draw-state
-               :features []
-               :middleware [m/fun-mode]
-               :on-close on-close
-               :host "skillBoard"))
+  (let [args (set args)
+        window? (args "-w")]
+    (q/defsketch skillBoard
+                 :title "Skill Board"
+                 :size [1920 1080]
+                 :setup setup
+                 :update update-state
+                 :draw draw-state
+                 :features (if window? [] [:present])
+                 :middleware [m/fun-mode]
+                 :on-close on-close
+                 :host "skillBoard")))
