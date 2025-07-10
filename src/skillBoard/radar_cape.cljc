@@ -50,7 +50,6 @@
                          (assoc res :adsb? true
                                     :altitude (:altg adsb)
                                     :lat-lon [(:lat adsb) (:lon adsb)]
-                                    :track (:trk adsb)
                                     :ground-speed (:spd adsb)
                                     :on-ground? (or (= "g" (:gda adsb))
                                                     (= "G" (:gda adsb))))))
@@ -72,10 +71,11 @@
                               :tail-number tail
                               :altitude (:altg adsb)
                               :lat-lon [(:lat adsb) (:lon adsb)]
-                              :track (:trk adsb)
                               :ground-speed (:spd adsb)
                               :start-time (get-now)
-                              :rogue? true})
+                              :rogue? true
+                              :on-ground? (or (= "g" (:gda adsb))
+                                              (= "G" (:gda adsb)))})
         inclusive-reservations (concat reservations rogue-reservations)]
     (sort #(time/before? (:start-time %1) (:start-time %2)) inclusive-reservations)))
 

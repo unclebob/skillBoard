@@ -53,6 +53,7 @@
                      (format-name instructor-name)
                      (if (nil? co) "      " (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
                      (cond
+                       on-ground? "GND"
                        (not (contains? res :altitude)) "   "
                        (nil? altitude) "---"
                        :else (format "%03d" (Math/round (/ altitude 100.0))))
@@ -84,7 +85,7 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
-        ;adsbs {"N345TS" {:reg "N345TS" :lat 42 :lon -87 :altg 730 :spd 1}}
+        ;adsbs {"N345TS" {:reg "N345TS" :lat 42 :lon -87 #_:altg #_730 :spd 1 :gda "G"}}
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
