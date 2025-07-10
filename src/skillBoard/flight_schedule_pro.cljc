@@ -42,6 +42,7 @@
                  :checked-in-on (when-let [checked-in-on (:checkedInOn flight)]
                                   (time-util/parse-time checked-in-on))}])))))
 
+(def previous-reservations (atom {}))
 
 (defn get-reservations []
   (try
@@ -61,11 +62,13 @@
                                   :socket-timeout 2000
                                   :connection-timeout 2000})]
       (if (= (:status response) 200)
-        (json/read-str (:body response) :key-fn keyword)
+        (reset! previous-reservations (json/read-str (:body response) :key-fn keyword))
         (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))
     (catch Exception e
-      (prn (str "Error fetching reservations: " (.getMessage e))))))
+      (prn (str "Error fetching reservations: " (.getMessage e)))
+      @previous-reservations)))
 
+(def previous-flights (atom {}))
 (defn get-flights []
   (try
     (let [operator-id (:fsp-operator-id @config/config)
@@ -83,10 +86,11 @@
                                   :socket-timeout 2000
                                   :connection-timeout 2000})]
       (if (= (:status response) 200)
-        (json/read-str (:body response) :key-fn keyword)
+        (reset! previous-flights (json/read-str (:body response) :key-fn keyword))
         (throw (ex-info "Failed to fetch flights" {:status (:status response)}))))
     (catch Exception e
-      (prn (str "Error fetching flights: " (.getMessage e))))))
+      (prn (str "Error fetching flights: " (.getMessage e)))
+      @previous-flights)))
 
 (defn remove-superceded-reservations [reservations]
   (let [co-tails (set (map :tail-number (filter #(some? (:co %)) reservations)))]
@@ -131,6 +135,8 @@
         active-reservations (filter-active-reservations sorted-reservations flights)]
     (remove-superceded-reservations active-reservations)))
 
+(def previous-aircraft (atom {}))
+
 (defn get-aircraft
   []
   (try
@@ -144,10 +150,11 @@
         (let [response (json/read-str (:body response) :key-fn keyword)
               aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
               tail-numbers (map #(get % :tailNumber) aircraft)]
-          tail-numbers)
+          (reset! previous-aircraft tail-numbers))
         (throw (ex-info "Failed to fetch aircraft" {:status (:status response)}))))
     (catch Exception e
-      (prn (str "Error fetching aircraft: " (.getMessage e))))))
+      (prn (str "Error fetching aircraft: " (.getMessage e)))
+      @previous-aircraft)))
 
 (def source {:type :fsp})
 
