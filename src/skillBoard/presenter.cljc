@@ -17,7 +17,16 @@
     "     "
     (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
 
-
+(defn find-location [my-lat my-lon my-alt geofences]
+  (loop [fences geofences]
+    (if (empty? fences)
+    ""
+    (let [{:keys [lat lon radius min-alt max-alt name]} (first fences)
+          {:keys [distance]} (nav/dist-and-bearing lat lon my-lat my-lon)]
+      (if (and (<= distance radius)
+               (<= min-alt my-alt max-alt))
+        name
+        (recur (rest fences)))))))
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
                           altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
@@ -41,12 +50,13 @@
                                (and (< low altitude pattern-low) flying-speed?) "LOW "
                                (and nearby? (< pattern-low altitude pattern-high) flying-speed?) "PATN"
                                (< distance 6) "NEAR"
-                               :else "    ")
+                               :else (find-location lat lon altitude config/geofences))
+
                               rogue-remark (if rogue? "UNRSV" "     ")
                              ]
                             (format "%s %s" position-remark rogue-remark)))
 
-        line (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %s %s   "
+        line (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %s %s               "
                      (time-util/get-HHmm (time-util/local-to-utc start-time))
                      tail-number
                      (format-name pilot-name)
@@ -85,7 +95,7 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
-        ;adsbs {"N345TS" {:reg "N345TS" :lat 42 :lon -87 #_:altg #_730 :spd 1 :gda "G"}}
+        adsbs {"N345TS" {:reg "N345TS" :lat 42 #_42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}}
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
@@ -100,4 +110,6 @@
         final-display (concat displayed-items [footer short-metar])
         ]
     final-display))
+
+
 

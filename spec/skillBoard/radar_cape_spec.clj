@@ -68,19 +68,19 @@
                    :tail-number "t1"
                    :altitude 1000
                    :lat-lon ["lat" "lon"]
-                   :track 100
                    :ground-speed 160
-                   :rogue? true}
+                   :rogue? true
+                   :adsb? true
+                   :on-ground? false}
                   {:start-time @start-time
                    :tail-number "t1"}]
                  (rc/include-unreserved-flights
                    [{:start-time @start-time
                      :tail-number "t1"}]
                    {"t1" {:reg "t1"
-                          :alt 1000
+                          :altg 1000
                           :lat "lat"
                           :lon "lon"
-                          :trk 100
                           :spd 160}}))
         )
 
