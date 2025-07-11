@@ -7,6 +7,12 @@
 
 (def cols 63)
 (def flights 18)
+(def airport "KUGN")
+(def tower-lat-lon [42.4221486 -87.8679161])
+(def time-zone "America/Chicago")
+(def airport-elevation 728.1)
+(def pattern-altitude 1728)
+
 (def geofences [{:name "KUGN"
                  :lat 42.4221486
                  :lon -87.8679161

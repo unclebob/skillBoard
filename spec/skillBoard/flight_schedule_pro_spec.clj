@@ -8,8 +8,6 @@
 (declare now now-str)
 
 (describe "Flight Schedule Pro"
-  (before (reset! config/config {:time-zone "America/Chicago"}))
-
   (with now (time/local-date-time "yyyy-MM-dd'T'HH:mm:ss.SS" "2025-06-16T09:55:24.49"))
   (with now-str (time/format "yyyy-MM-dd'T'HH:mm:ss.SS" @now))
 

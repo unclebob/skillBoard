@@ -30,7 +30,7 @@
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
                           altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
-  (let [[tower-lat tower-lon] (:tower-lat-lon @config/config)
+  (let [[tower-lat tower-lon] config/tower-lat-lon
         [lat lon] lat-lon
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))
         generate-remark (fn []
@@ -38,10 +38,10 @@
                             [altitude (or altitude 0)
                              nearby? (< distance 2)
                              ground-speed (or ground-speed 0)
-                             low (+ (:airport-elevation @config/config) 30)
+                             low (+ config/airport-elevation 30)
                              on-ground? (or on-ground? (< altitude low))
-                             pattern-low (- (:pattern-altitude @config/config) 500)
-                             pattern-high (+ (:pattern-altitude @config/config) 500)
+                             pattern-low (- config/pattern-altitude 500)
+                             pattern-high (+ config/pattern-altitude 500)
                              flying-speed? (> ground-speed 50)
                              max-taxi 25
                              min-taxi 2
@@ -84,7 +84,7 @@
 
 (defn generate-summary []
   (let [active-aircraft (sources/get-aircraft fsp/source)
-        metar (sources/get-metar weather/source (:airport @config/config))
+        metar (sources/get-metar weather/source config/airport)
         metar-text (:rawOb (first metar))
         short-metar (if (nil? metar-text) "NO-METAR"
                                           (-> metar-text

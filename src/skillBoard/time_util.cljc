@@ -11,7 +11,7 @@
 
 (defn local-to-utc [local-time]
   (-> local-time
-      (time/zoned-date-time (time/local-date) (time/zone-id (:time-zone @config/config)))
+      (time/zoned-date-time (time/local-date) (time/zone-id config/time-zone))
       (.withZoneSameInstant (time/zone-id "UTC"))
       (time/local-time)))
 
