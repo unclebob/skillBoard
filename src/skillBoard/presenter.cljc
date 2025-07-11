@@ -30,7 +30,7 @@
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
                           altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
-  (let [[tower-lat tower-lon] config/tower-lat-lon
+  (let [[tower-lat tower-lon] config/airport-lat-lon
         [lat lon] lat-lon
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))
         generate-remark (fn []

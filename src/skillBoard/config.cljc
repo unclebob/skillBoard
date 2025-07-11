@@ -5,14 +5,23 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def cols 63)
-(def flights 18)
+;-- System Configuration
+
+;Display configuration
+(def cols 63) ;The number of columns in the display
+(def flights 18) ; The number of flights to display
+
+;Home airport configuration
 (def airport "KUGN")
-(def tower-lat-lon [42.4221486 -87.8679161])
+(def airport-lat-lon [42.4221486 -87.8679161])
 (def time-zone "America/Chicago")
 (def airport-elevation 728.1)
 (def pattern-altitude 1728)
 
+;Wider area configuration.
+;
+;Named geofences each of which describes a cylinder of airspace.
+;a flight in one of those cylinders will show the name in the remarks.
 (def geofences [{:name "KUGN"
                  :lat 42.4221486
                  :lon -87.8679161
