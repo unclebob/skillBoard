@@ -43,7 +43,7 @@
         (let [res (first reservations)
               tail-number (:tail-number res)
               adsb (get adsbs tail-number)]
-          (if (tails tail-number)
+          (if (and (:co res) (tails tail-number))
             (recur (disj tails tail-number)
                    (rest reservations)
                    (conj updated-reservations

@@ -35,24 +35,26 @@
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))
         generate-remark (fn []
                           (let
-                            [nearby? (< distance 2)
-                             altitude (or altitude 0)
+                            [altitude (or altitude 0)
+                             nearby? (< distance 2)
                              ground-speed (or ground-speed 0)
                              low (+ (:airport-elevation @config/config) 30)
                              on-ground? (or on-ground? (< altitude low))
                              pattern-low (- (:pattern-altitude @config/config) 500)
                              pattern-high (+ (:pattern-altitude @config/config) 500)
                              flying-speed? (> ground-speed 50)
+                             max-taxi 25
+                             min-taxi 2
                              position-remark
                              (cond
                                (and nearby? on-ground? (< ground-speed 2)) "RAMP"
-                               (and nearby? on-ground? (>= ground-speed 2)) "TAXI"
+                               (and nearby? on-ground? (<= min-taxi ground-speed max-taxi)) "TAXI"
                                (and (< low altitude pattern-low) flying-speed?) "LOW "
                                (and nearby? (< pattern-low altitude pattern-high) flying-speed?) "PATN"
                                (< distance 6) "NEAR"
                                :else (find-location lat lon altitude config/geofences))
 
-                              rogue-remark (if rogue? "UNRSV" "     ")
+                             rogue-remark (if rogue? "UNRSV" "     ")
                              ]
                             (format "%s %s" position-remark rogue-remark)))
 
@@ -95,7 +97,9 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
-        adsbs {"N345TS" {:reg "N345TS" :lat 42 #_42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}}
+        ;adsbs {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
+        ;       "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :spd 30 :gda "G"}
+        ;       }
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
