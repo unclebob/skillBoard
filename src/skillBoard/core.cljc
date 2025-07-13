@@ -16,6 +16,7 @@
         _ (q/text-font sf-font)
         _ (q/text-size font-width)
         font-height (+ (q/text-ascent) (q/text-descent))
+        annotation-font (q/create-font "Times New Roman" 9)
         summary (presenter/generate-summary)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
@@ -28,6 +29,7 @@
      :font-width font-width
      :font-height font-height
      :header-font header-font
+     :annotation-font annotation-font
      :departure-icon (q/load-image "resources/DepartureIcon.jpg")}))
 
 (defn update-state [{:keys [time flappers lines] :as state}]

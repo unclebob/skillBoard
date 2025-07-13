@@ -109,6 +109,8 @@
                       (q/text-font (:header-font state))
                       (q/text-size 50)
                       (q/text "Skill Aviation Flights" (+ top-margin 10) 10)
+                      (q/text-size 12)
+                      (q/text config/version 800 0)
                       (q/text-size 25)
                       (q/text (str "TIME"
                                    "          "
