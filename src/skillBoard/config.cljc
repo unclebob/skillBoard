@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20250713")
+(def version "20250721")
 
 ;-- System Configuration
 
