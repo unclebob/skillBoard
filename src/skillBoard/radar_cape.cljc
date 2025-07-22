@@ -13,7 +13,7 @@
   (try
     (let [tails (map #(str "icao=" %) tail-numbers)
           tails (str/join \& (set tails))
-          url (str "http://10.10.30.90/aircraftlist.json?" tails)
+          url (str "http://10.10.40.60/aircraftlist.json?" tails)
           response (http/get url {:accept :text
                                   :with-credentials? false
                                   :socket-timeout 2000
