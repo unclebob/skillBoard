@@ -73,7 +73,7 @@
         window? (args "-w")]
     (q/defsketch skillBoard
                  :title "Skill Board"
-                 :size [1920 1080]
+                 :size #_[1920 1080] :fullscreen
                  :setup setup
                  :update update-state
                  :draw draw-state
