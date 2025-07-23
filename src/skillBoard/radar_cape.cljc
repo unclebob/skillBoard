@@ -6,6 +6,7 @@
     [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.sources :as sources]
+    [skillBoard.config :as config]
     ))
 
 (defn get-adsb-raw
@@ -13,7 +14,8 @@
   (try
     (let [tails (map #(str "icao=" %) tail-numbers)
           tails (str/join \& (set tails))
-          url (str "http://10.10.40.60/aircraftlist.json?" tails)
+          url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
+          _ (prn 'radar-cape-url url)
           response (http/get url {:accept :text
                                   :with-credentials? false
                                   :socket-timeout 2000

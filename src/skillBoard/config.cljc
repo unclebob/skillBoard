@@ -20,6 +20,9 @@
 (def airport-elevation 728.1)
 (def pattern-altitude 1728)
 
+;ip addresses
+(def radar-cape-ip "10.10.40.60")
+
 ;Wider area configuration.
 ;
 ;Named geofences each of which describes a cylinder of airspace.
