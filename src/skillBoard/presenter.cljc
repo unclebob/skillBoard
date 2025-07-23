@@ -105,9 +105,10 @@
                              updated-reservations
                              adsbs)
         report (map format-res final-reservations)
-        padded-items (concat report (repeat config/flights (apply str (repeat config/cols " "))))
-        displayed-items (take config/flights padded-items)
-        dropped-items (count (drop config/flights report))
+        flights (:flights @config/display-info)
+        padded-items (concat report (repeat flights (apply str (repeat config/cols " "))))
+        displayed-items (take flights padded-items)
+        dropped-items (count (drop flights report))
         footer (if (zero? dropped-items)
                  "             "
                  (format "...%2d MORE..." dropped-items))

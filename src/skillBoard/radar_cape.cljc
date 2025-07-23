@@ -15,7 +15,6 @@
     (let [tails (map #(str "icao=" %) tail-numbers)
           tails (str/join \& (set tails))
           url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
-          _ (prn 'radar-cape-url url)
           response (http/get url {:accept :text
                                   :with-credentials? false
                                   :socket-timeout 2000

@@ -7,11 +7,17 @@
 
 (def version "20250721")
 
-;-- System Configuration
-
 ;Display configuration
+(def display-info (atom {})) ;determined after sketch started.
 (def cols 63) ;The number of columns in the display
-(def flights 18) ; The number of flights to display
+(def header-height-fraction 0.1)
+(def label-height-fraction 0.03)
+(def sf-char-gap 0.25)
+(def sf-line-gap 0.25)
+(def font-width-per-point 1.196)
+(def font-height-per-point 1.42)
+
+;-- System Configuration
 
 ;Home airport configuration
 (def airport "KUGN")
