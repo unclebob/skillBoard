@@ -4,6 +4,7 @@
     [quil.core :as q]
     [skillBoard.config :as config]
     [skillBoard.time-util :as time-util]
+    [skillBoard.presenter :as presenter]
     ))
 
 (def next-char
@@ -56,7 +57,86 @@
 (defn get-next-char [c]
   (get next-char c \space))
 
-(defn draw-split-flap [{:keys [sf-font lines flappers font-width font-height flights] :as state}]
+(defn add-remaining-flappers [flappers remainder col row type]
+  (if (empty? remainder)
+    flappers
+    (recur (conj flappers {:at [col row]
+                           (if (= type :old) :to :from) \space
+                           (if (= type :old) :from :to) (first remainder)})
+           (rest remainder)
+           (inc col) row type))
+  )
+
+(defn make-flappers-for-line [new-line old-line row flappers]
+  (loop [new-line new-line
+         old-line old-line
+         col 0
+         flappers flappers]
+    (cond
+      (empty? new-line) (add-remaining-flappers flappers old-line col row :old)
+      (empty? old-line) (add-remaining-flappers flappers new-line col row :new)
+
+      :else
+      (let [char-new (first new-line)
+            char-old (first old-line)]
+        (if (= char-new char-old)
+          (recur (rest new-line) (rest old-line) (inc col) flappers)
+          (recur (rest new-line) (rest old-line) (inc col)
+                 (conj flappers {:at [col row] :from char-old :to char-new})))))))
+
+(defn make-flappers [new-report old-report]
+  (loop [new-report new-report
+         old-report old-report
+         row 0
+         flappers []]
+    (cond
+      (and (empty? new-report) (empty? old-report)) flappers
+      :else
+      (recur (rest new-report)
+             (rest old-report)
+             (inc row)
+             (make-flappers-for-line (first new-report)
+                                     (first old-report)
+                                     row
+                                     flappers)))))
+
+(defn update-flappers [flappers]
+  (loop [flappers flappers
+         updated-flappers []]
+    (if (empty? flappers)
+      updated-flappers
+      (let [{:keys [at from to] :as flapper} (first flappers)]
+        (if (= from to)
+          (recur (rest flappers) updated-flappers)
+          (if (< (rand) 0.8)
+            (recur (rest flappers)
+                   (conj updated-flappers
+                         {:at at
+                          :from (get-next-char from)
+                          :to to}))
+            (recur (rest flappers) (conj updated-flappers flapper))))))))
+
+(defn update [{:keys [time flappers lines] :as state}]
+  (let [now (System/currentTimeMillis)
+        since (- now time)
+        poll? (> since 30000)
+        old-summary lines
+        summary (if poll?
+                  (presenter/generate-summary)
+                  old-summary)
+        flappers (cond
+                   poll? (make-flappers summary old-summary)
+                   (> (- now time) 2500) []
+                   :else (update-flappers flappers)
+                   )
+        frame-rate (if (empty? flappers) 0.1 30.0)]
+    (q/frame-rate frame-rate)
+    (prn 'time-since (- now time) 'flappers (count flappers))
+    (assoc state :time (if poll? now time)
+                 :lines summary
+                 :flappers flappers)))
+
+(defn draw [{:keys [sf-font lines flappers font-width font-height flights] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (str now "Z")
         flap-width (+ font-width (:sf-char-gap @config/display-info))
@@ -140,64 +220,4 @@
     (draw-lines)
     (draw-flappers)
     ))
-
-
-(defn add-remaining-flappers [flappers remainder col row type]
-  (if (empty? remainder)
-    flappers
-    (recur (conj flappers {:at [col row]
-                           (if (= type :old) :to :from) \space
-                           (if (= type :old) :from :to) (first remainder)})
-           (rest remainder)
-           (inc col) row type))
-  )
-
-(defn make-flappers-for-line [new-line old-line row flappers]
-  (loop [new-line new-line
-         old-line old-line
-         col 0
-         flappers flappers]
-    (cond
-      (empty? new-line) (add-remaining-flappers flappers old-line col row :old)
-      (empty? old-line) (add-remaining-flappers flappers new-line col row :new)
-
-      :else
-      (let [char-new (first new-line)
-            char-old (first old-line)]
-        (if (= char-new char-old)
-          (recur (rest new-line) (rest old-line) (inc col) flappers)
-          (recur (rest new-line) (rest old-line) (inc col)
-                 (conj flappers {:at [col row] :from char-old :to char-new})))))))
-
-(defn make-flappers [new-report old-report]
-  (loop [new-report new-report
-         old-report old-report
-         row 0
-         flappers []]
-    (cond
-      (and (empty? new-report) (empty? old-report)) flappers
-      :else
-      (recur (rest new-report)
-             (rest old-report)
-             (inc row)
-             (make-flappers-for-line (first new-report)
-                                     (first old-report)
-                                     row
-                                     flappers)))))
-
-(defn update-flappers [flappers]
-  (loop [flappers flappers
-         updated-flappers []]
-    (if (empty? flappers)
-      updated-flappers
-      (let [{:keys [at from to] :as flapper} (first flappers)]
-        (if (= from to)
-          (recur (rest flappers) updated-flappers)
-          (if (< (rand) 0.8)
-            (recur (rest flappers)
-                   (conj updated-flappers
-                         {:at at
-                          :from (get-next-char from)
-                          :to to}))
-            (recur (rest flappers) (conj updated-flappers flapper))))))))
 

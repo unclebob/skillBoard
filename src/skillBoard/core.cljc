@@ -39,12 +39,12 @@
         flights (- (quot flights-height flight-height) 2)
         annotation-font (q/create-font "Times New Roman" 9)
         _ (swap! config/display-info assoc
-                     :sf-font sf-font
-                     :header-font header-font
-                     :annotation-font annotation-font
-                     :font-width font-width
-                     :font-height font-height
-                     :flights flights)
+                 :sf-font sf-font
+                 :header-font header-font
+                 :annotation-font annotation-font
+                 :font-width font-width
+                 :font-height font-height
+                 :flights flights)
         summary (presenter/generate-summary)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
@@ -61,30 +61,11 @@
      :annotation-font annotation-font
      :departure-icon (q/load-image "resources/DepartureIcon.jpg")}))
 
-(defn update-state [{:keys [time flappers lines] :as state}]
-  (let [now (System/currentTimeMillis)
-        since (- now time)
-        poll? (> since 30000)
-        old-summary lines
-        summary (if poll?
-                  (presenter/generate-summary)
-                  old-summary)
-        flappers (if poll?
-                   (split-flap/make-flappers summary old-summary)
-                   (-> flappers
-                       split-flap/update-flappers
-                       split-flap/update-flappers
-                       split-flap/update-flappers)
-                   )
-        frame-rate (if (empty? flappers) 0.1 30.0)]
-    (q/frame-rate frame-rate)
-    (assoc state :time (if poll? now time)
-                 :lines summary
-                 :flappers flappers)))
+(defn update-state [state]
+  (split-flap/update state))
 
 (defn draw-state [state]
-  ;(display16/draw-16-seg state)
-  (split-flap/draw-split-flap state)
+  (split-flap/draw state)
   )
 
 
