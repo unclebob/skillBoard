@@ -44,7 +44,8 @@
                  :annotation-font annotation-font
                  :font-width font-width
                  :font-height font-height
-                 :flights flights)
+                 :flights flights
+                 :pulse true)
         summary (presenter/generate-summary)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
