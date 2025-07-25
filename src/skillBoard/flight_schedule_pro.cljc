@@ -10,6 +10,8 @@
     [skillBoard.time-util :as time-util]
     ))
 
+(def com-errors (atom 0))
+
 (defn unpack-reservations [{:keys [items]}]
   (if (empty? items)
     []
@@ -62,10 +64,14 @@
                                   :socket-timeout 2000
                                   :connection-timeout 2000})]
       (if (= (:status response) 200)
-        (reset! previous-reservations (json/read-str (:body response) :key-fn keyword))
+        (do
+          (reset! previous-reservations (json/read-str (:body response) :key-fn keyword))
+          (reset! com-errors 0)
+          @previous-reservations)
         (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))
     (catch Exception e
       (prn (str "Error fetching reservations: " (.getMessage e)))
+      (swap! com-errors inc)
       @previous-reservations)))
 
 (def previous-flights (atom {}))
@@ -86,10 +92,14 @@
                                   :socket-timeout 2000
                                   :connection-timeout 2000})]
       (if (= (:status response) 200)
-        (reset! previous-flights (json/read-str (:body response) :key-fn keyword))
+        (do
+          (reset! previous-flights (json/read-str (:body response) :key-fn keyword))
+          (reset! com-errors 0)
+          @previous-flights)
         (throw (ex-info "Failed to fetch flights" {:status (:status response)}))))
     (catch Exception e
       (prn (str "Error fetching flights: " (.getMessage e)))
+      (swap! com-errors inc)
       @previous-flights)))
 
 (defn remove-superceded-reservations [reservations]
@@ -150,10 +160,13 @@
         (let [response (json/read-str (:body response) :key-fn keyword)
               aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
               tail-numbers (map #(get % :tailNumber) aircraft)]
-          (reset! previous-aircraft tail-numbers))
+          (reset! previous-aircraft tail-numbers)
+          (reset! com-errors 0)
+          tail-numbers)
         (throw (ex-info "Failed to fetch aircraft" {:status (:status response)}))))
     (catch Exception e
       (prn (str "Error fetching aircraft: " (.getMessage e)))
+      (swap! com-errors inc)
       @previous-aircraft)))
 
 (def source {:type :fsp})

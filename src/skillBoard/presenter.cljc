@@ -75,13 +75,6 @@
                      (if adsb? (generate-remark) "            "))]
     (subs line 0 config/cols)))
 
-(defn header []
-  (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
-        span " TIME   TAIL     CREW       OUT  ALT DIS   BRG  GS   "
-        time-stamp (str span now "Z")]
-    time-stamp
-    ))
-
 (defn generate-summary []
   (let [active-aircraft (sources/get-aircraft fsp/source)
         metar (sources/get-metar weather/source config/airport)

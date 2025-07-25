@@ -9,6 +9,8 @@
     [skillBoard.config :as config]
     ))
 
+(def com-errors (atom 0))
+
 (defn get-adsb-raw
   [tail-numbers]
   (try
@@ -20,9 +22,12 @@
                                   :socket-timeout 2000
                                   :connection-timeout 2000})]
       (if (= (:status response) 200)
-        (json/read-str (:body response) :key-fn keyword)
+        (do
+          (reset! com-errors 0)
+          (json/read-str (:body response) :key-fn keyword))
         (throw (ex-info "Failed to fetch ADSB" {:status (:status response)}))))
     (catch Exception e
+      (swap! com-errors inc)
       (prn (str "Error fetching ADSB: " (.getMessage e))))))
 
 (defn get-adsb [source tail-numbers]

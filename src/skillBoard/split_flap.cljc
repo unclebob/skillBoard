@@ -1,11 +1,14 @@
 (ns skillBoard.split-flap
   (:require
+    [clojure.string :as string]
     [java-time.api :as time]
     [quil.core :as q]
-    [clojure.string :as string]
     [skillBoard.config :as config]
-    [skillBoard.time-util :as time-util]
+    [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.presenter :as presenter]
+    [skillBoard.time-util :as time-util]
+    [skillBoard.radar-cape :as radar-cape]
+    [skillBoard.weather :as weather]
     ))
 
 (def next-char
@@ -130,9 +133,8 @@
                    (> (- now time) 2500) []
                    :else (update-flappers flappers)
                    )
-        frame-rate (if (empty? flappers) 2 10.0)]
+        frame-rate (if (empty? flappers) 2 10)]
     (q/frame-rate frame-rate)
-    (prn 'time-since (- now time) 'flappers (count flappers))
     (assoc state :time (if poll? now time)
                  :lines summary
                  :flappers flappers
@@ -146,78 +148,115 @@
         flap-height (* font-height (inc config/sf-line-gap))
         top-margin (:top-margin @config/display-info)
         label-margin (+ top-margin (:label-height @config/display-info))
-        draw-char (fn [c x y]
-                    (when (or (> y (dec flights))
-                              (nil? (gaps x)))
-                      (let [cx (* x flap-width)
-                            cy (+ (* y flap-height) label-margin)]
-                        (q/fill 255 255 255)
-                        (q/no-stroke)
-                        (q/rect (+ cx (* font-width 0.2))
-                                (+ cy (* font-height 0.2))
-                                (* font-width 0.6)
-                                (* font-height 0.6))
+        draw-char
+        (fn [c x y]
+          (when (or (> y (dec flights))
+                    (nil? (gaps x)))
+            (let [cx (* x flap-width)
+                  cy (+ (* y flap-height) label-margin)]
+              (q/fill 255 255 255)
+              (q/no-stroke)
+              (q/rect (+ cx (* font-width 0.2))
+                      (+ cy (* font-height 0.2))
+                      (* font-width 0.6)
+                      (* font-height 0.6))
 
-                        (q/fill 0 0 0)
-                        (q/text-font sf-font)
-                        (q/text-align :left :top)
-                        (q/text (str c) cx cy))))
-        draw-line (fn [line y]
-                    (loop [x 0
-                           cs line]
-                      (if (empty? cs)
-                        nil
-                        (let [c (first cs)]
-                          (draw-char c x y)
-                          (recur (inc x) (rest cs))))))
-        draw-lines (fn []
-                     (loop [lines lines
-                            y 0]
-                       (if (empty? lines)
-                         nil
-                         (let [line (first lines)]
-                           (draw-line line y)
-                           (recur (rest lines) (inc y))))))
-        draw-flappers (fn [] (doseq [{:keys [at from]} flappers]
-                               (let [[col row] at]
-                                 (draw-char from col row))))
-        display-column-headers (fn []
-                                 (let [label-height (:label-height @config/display-info)
-                                       label-font-size (/ label-height config/font-height-per-point)
-                                       baseline (- (+ top-margin label-height) (/ label-height 2))
-                                       ]
-                                   (q/text-font (:header-font state))
-                                   (q/text-size label-font-size)
-                                   (q/text-align :left :center)
-                                   (q/fill 255 255 255)
-                                   (q/text "TIME" 0 baseline)
-                                   (q/text "AIRCRAFT" (* flap-width 7) baseline)
-                                   (q/text "PILOT" (* flap-width 14) baseline)
-                                   (q/text "CFI" (* flap-width 20) baseline)
-                                   (q/text "CHECKOUT" (* flap-width 26) baseline)
-                                   (q/text "ALT" (* flap-width 33) baseline)
-                                   (q/text "DISTANCE" (* flap-width 37) baseline)
-                                   (q/text "DIR" (* flap-width 43) baseline)
-                                   (q/text "SPEED" (* flap-width 47) baseline)
-                                   (q/text "REMARKS" (* flap-width 51) baseline)
-                                   )
-                                 )
-        draw-header (fn []
-                      (q/image (:departure-icon state) 0 0 top-margin top-margin)
-                      (q/fill 255)
-                      (q/text-font (:header-font state))
-                      (q/text-size (* (:top-margin @config/display-info) 0.7))
-                      (q/text-align :left :center)
-                      (q/text "Skill Aviation Flights" (+ top-margin 10) (/ top-margin 2))
-                      (q/text-align :center :top)
-                      (q/text-size 12)
-                      (q/text config/version (/ (q/width) 2) 5)
-                      (display-column-headers)
-                      (q/text-font (:sf-font state))
-                      (q/text-size (* (:top-margin @config/display-info) 0.3))
-                      (q/text-align :left :top)
-                      (q/text now (- (q/width) (q/text-width now) 50) 10)
-                      )]
+              (q/fill 0 0 0)
+              (q/text-font sf-font)
+              (q/text-align :left :top)
+              (q/text (str c) cx cy))))
+
+        draw-line
+        (fn [line y]
+          (loop [x 0
+                 cs line]
+            (if (empty? cs)
+              nil
+              (let [c (first cs)]
+                (draw-char c x y)
+                (recur (inc x) (rest cs))))))
+        draw-lines
+        (fn []
+          (loop [lines lines
+                 y 0]
+            (if (empty? lines)
+              nil
+              (let [line (first lines)]
+                (draw-line line y)
+                (recur (rest lines) (inc y))))))
+        draw-flappers
+        (fn [] (doseq [{:keys [at from]} flappers]
+                 (let [[col row] at]
+                   (draw-char from col row))))
+        display-column-headers
+        (fn []
+          (let [label-height (:label-height @config/display-info)
+                label-font-size (/ label-height config/font-height-per-point)
+                baseline (- (+ top-margin label-height) (/ label-height 2))
+                ]
+            (q/text-font (:header-font state))
+            (q/text-size label-font-size)
+            (q/text-align :left :center)
+            (q/fill 255 255 255)
+            (q/text "TIME" 0 baseline)
+            (q/text "AIRCRAFT" (* flap-width 7) baseline)
+            (q/text "PILOT" (* flap-width 14) baseline)
+            (q/text "CFI" (* flap-width 20) baseline)
+            (q/text "CHECKOUT" (* flap-width 26) baseline)
+            (q/text "ALT" (* flap-width 33) baseline)
+            (q/text "DISTANCE" (* flap-width 37) baseline)
+            (q/text "DIR" (* flap-width 43) baseline)
+            (q/text "SPEED" (* flap-width 47) baseline)
+            (q/text "REMARKS" (* flap-width 51) baseline)
+            )
+          )
+
+        display-com-errors
+        (fn [pos]
+          (cond
+            (> @fsp/com-errors 6) (q/fill 255 0 0)
+            (> @fsp/com-errors 3) (q/fill 255 165 0)
+            :else (q/fill 0 255 0))
+          (q/ellipse pos 20 10 10)
+
+          (cond
+            (> @radar-cape/com-errors 3) (q/fill 255 0 0)
+            (> @radar-cape/com-errors 1) (q/fill 255 165 0)
+            :else (q/fill 0 255 0))
+          (q/ellipse pos 35 10 10)
+
+          (cond
+            (> @weather/com-errors 3) (q/fill 255 0 0)
+            (> @weather/com-errors 1) (q/fill 255 165 0)
+            :else (q/fill 0 255 0))
+          (q/ellipse pos 50 10 10)
+          )
+
+        display-time
+        (fn []
+          (q/text-font (:sf-font state))
+          (q/text-size (* (:top-margin @config/display-info) 0.3))
+          (let [time-pos (- (q/width) (q/text-width now) 50)]
+            (display-com-errors (- time-pos 10))
+            (q/text-align :left :top)
+            (q/fill 255 255 255)
+            (q/text now (- (q/width) (q/text-width now) 50) 10)))
+
+        draw-header
+        (fn []
+          (q/image (:departure-icon state) 0 0 top-margin top-margin)
+          (q/fill 255)
+          (q/text-font (:header-font state))
+          (q/text-size (* (:top-margin @config/display-info) 0.7))
+          (q/text-align :left :center)
+          (q/text "Skill Aviation Flights" (+ top-margin 10) (/ top-margin 2))
+          (q/text-align :center :top)
+          (q/text-size 12)
+          (q/text config/version (/ (q/width) 2) 5)
+          (display-column-headers)
+          (display-time)
+          )]
+
     (q/background 50)
     (draw-header)
     (draw-lines)
