@@ -130,7 +130,7 @@
                   old-summary)
         flappers (cond
                    poll? (make-flappers summary old-summary)
-                   (> (- now time) 2500) []
+                   (> (- now time) config/flap-duration) []
                    :else (update-flappers flappers)
                    )
         frame-rate (if (empty? flappers) 2 10)]
