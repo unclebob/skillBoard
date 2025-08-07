@@ -6,8 +6,8 @@
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.presenter :as presenter]
-    [skillBoard.time-util :as time-util]
     [skillBoard.radar-cape :as radar-cape]
+    [skillBoard.time-util :as time-util]
     [skillBoard.weather :as weather]
     ))
 
@@ -182,7 +182,8 @@
             (if (empty? lines)
               nil
               (let [line (first lines)]
-                (draw-line line y)
+                (when (not (string/blank? line))
+                  (draw-line line y))
                 (recur (rest lines) (inc y))))))
         draw-flappers
         (fn [] (doseq [{:keys [at from]} flappers]
