@@ -33,6 +33,12 @@
   (let [[tower-lat tower-lon] config/airport-lat-lon
         [lat lon] lat-lon
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))
+        tail-number (if (or (nil? tail-number)
+                            (str/blank? tail-number)
+                            (= tail-number "NULL"))
+                      "------"
+                      tail-number)
+
         generate-remark (fn []
                           (let
                             [altitude (or altitude 0)
