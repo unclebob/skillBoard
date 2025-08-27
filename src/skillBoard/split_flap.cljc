@@ -156,10 +156,10 @@
                   cy (+ (* y flap-height) label-margin)]
               (q/fill 255 255 255)
               (q/no-stroke)
-              (q/rect (+ cx (* font-width 0.2))
-                      (+ cy (* font-height 0.2))
-                      (* font-width 0.6)
-                      (* font-height 0.6))
+              (q/rect (+ cx (* font-width 0.1))
+                      (+ cy (* font-height 0.1))
+                      (* font-width 0.8)
+                      (* font-height 0.8))
 
               (q/fill 0 0 0)
               (q/text-font sf-font)
@@ -236,7 +236,7 @@
         display-time
         (fn []
           (q/text-font (:sf-font state))
-          (q/text-size (* (:top-margin @config/display-info) 0.3))
+          (q/text-size (* (:top-margin @config/display-info) 0.6))
           (let [time-pos (- (q/width) (q/text-width now) 50)]
             (display-com-errors (- time-pos 10))
             (q/text-align :left :top)

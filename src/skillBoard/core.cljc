@@ -14,6 +14,7 @@
         sf-char-gap (* char-width config/sf-char-gap)
         sf-font-size (/ (- char-width sf-char-gap) config/font-width-per-point)
         ]
+    (prn 'screen-width screen-width 'screen-height screen-height 'char-width char-width 'sf-char-gap sf-char-gap 'sf-font-size sf-font-size)
     (reset! config/display-info
             {:size [screen-width screen-height]
              :top-margin (* screen-height config/header-height-fraction)
@@ -26,7 +27,7 @@
   (config/load-config)
   (load-display-info)
   (let [font-size (:sf-font-size @config/display-info)
-        sf-font (q/create-font "Split-Flap TV" font-size)
+        sf-font (q/create-font "Skyfont" font-size)
         header-font (q/create-font "Arial Rounded MT Bold" 50)
         _ (q/text-font sf-font)
         _ (q/text-size font-size)

@@ -14,7 +14,9 @@
 (def label-height-fraction 0.03)
 (def sf-char-gap 0.25)
 (def sf-line-gap 0.25)
-(def font-width-per-point 1.196)
+;(def font-width-per-point 1.196)
+(def font-width-per-point (* 0.4 1.196))
+
 (def font-height-per-point 1.42)
 (def flap-duration 3000)
 
