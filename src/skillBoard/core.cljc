@@ -5,6 +5,7 @@
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
     [skillBoard.split-flap :as split-flap]
+    [skillBoard.text-util :as text]
     ))
 
 (defn load-display-info []
@@ -12,9 +13,9 @@
         screen-height (q/height)
         char-width (/ screen-width config/cols)
         sf-char-gap (* char-width config/sf-char-gap)
-        sf-font-size (/ (- char-width sf-char-gap) config/font-width-per-point)
+        font-width (- char-width sf-char-gap)
+        sf-font-size (text/compute-font-size "Skyfont" font-width)
         ]
-    (prn 'screen-width screen-width 'screen-height screen-height 'char-width char-width 'sf-char-gap sf-char-gap 'sf-font-size sf-font-size)
     (reset! config/display-info
             {:size [screen-width screen-height]
              :top-margin (* screen-height config/header-height-fraction)
