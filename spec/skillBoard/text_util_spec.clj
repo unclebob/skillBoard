@@ -25,7 +25,6 @@
   (context "compute-font-size"
     (it "computes font size for a given width"
       (doseq [size (range 1 1001)]
-        (prn "Testing size " size)
         (should= size (text/compute-font-size-for "AnyFont" size mock-get-width)))
       )
     (it "fails for font sizes greater than 1000"
