@@ -20,30 +20,35 @@
         (recur tail (conj wrapped head))))))
 
 
-(defn compute-font-size
-  "Compute the font size such that the width of character 'X' is approximately the desired-character-width.
+(defn get-width [font-name font-size]
+  (q/text-font (q/create-font font-name font-size) font-size)
+  (q/text-width "X"))
+
+(defn compute-font-size-for
+  "Find the font size such that the target dimension of character 'X' meets the demand.
   works best for monospaced fonts."
-  [font-name desired-character-width]
+  [font-name demand target-fn]
   (let [max-size 1000
         min-size 1
         tolerance 0.5
-        max-iterations 20
-        font (q/create-font font-name 64)]
+        max-iterations 10]
     (loop [low min-size
            high max-size
            iteration 0]
       (let [mid (int (/ (+ low high) 2))
-            _ (q/text-font font mid)
-            text-width (q/text-width "X")]
+            dimension (target-fn font-name mid)]
         (cond
           (or (>= iteration max-iterations) (= low high))
           mid
 
-          (<= (Math/abs (- text-width desired-character-width)) tolerance)
+          (<= (Math/abs (- dimension demand)) tolerance)
           mid
 
-          (> text-width desired-character-width)
+          (> dimension demand)
           (recur low (dec mid) (inc iteration))
 
-          (< text-width desired-character-width)
+          (< dimension demand)
           (recur (inc mid) high (inc iteration)))))))
+
+(defn compute-font-size-for-width [font-name desired-width]
+  (compute-font-size-for font-name desired-width get-width))

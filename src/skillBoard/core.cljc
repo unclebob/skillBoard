@@ -14,8 +14,7 @@
         char-width (/ screen-width config/cols)
         sf-char-gap (* char-width config/sf-char-gap)
         font-width (- char-width sf-char-gap)
-        sf-font-size (text/compute-font-size "Skyfont" font-width)
-        ]
+        sf-font-size (text/compute-font-size-for-width "Skyfont" font-width)]
     (reset! config/display-info
             {:size [screen-width screen-height]
              :top-margin (* screen-height config/header-height-fraction)
