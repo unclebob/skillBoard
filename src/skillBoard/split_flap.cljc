@@ -7,6 +7,7 @@
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.presenter :as presenter]
     [skillBoard.radar-cape :as radar-cape]
+    [skillBoard.text-util :as text]
     [skillBoard.time-util :as time-util]
     [skillBoard.weather :as weather]
     ))
@@ -140,7 +141,7 @@
                  :flappers flappers
                  :pulse (not pulse))))
 
-(defn draw [{:keys [sf-font lines flappers font-width font-height flights pulse] :as state}]
+(defn draw [{:keys [sf-font sf-font-size lines flappers font-width font-height flights pulse header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (str now "Z")
         now (if pulse now (string/replace now ":" " "))
@@ -163,6 +164,7 @@
 
               (q/fill 0 0 0)
               (q/text-font sf-font)
+              (q/text-size sf-font-size)
               (q/text-align :left :top)
               (q/text (str c) cx cy))))
 
@@ -191,11 +193,11 @@
                    (draw-char from col row))))
         display-column-headers
         (fn []
-          (let [label-height (:label-height @config/display-info)
-                label-font-size (/ label-height config/font-height-per-point)
+          (let [label-height (* 0.8 (:label-height @config/display-info))
+                label-font-size (text/find-font-size-for-height header-font label-height)
                 baseline (- (+ top-margin label-height) (/ label-height 2))
                 ]
-            (q/text-font (:header-font state))
+            (q/text-font header-font)
             (q/text-size label-font-size)
             (q/text-align :left :center)
             (q/fill 255 255 255)
@@ -204,10 +206,10 @@
             (q/text "PILOT" (* flap-width 14) baseline)
             (q/text "CFI" (* flap-width 20) baseline)
             (q/text "CHECKOUT" (* flap-width 26) baseline)
-            (q/text "ALT" (* flap-width 33) baseline)
-            (q/text "DISTANCE" (* flap-width 37) baseline)
-            (q/text "DIR" (* flap-width 43) baseline)
-            (q/text "SPEED" (* flap-width 47) baseline)
+            (q/text "AMSL" (* flap-width 33) baseline)
+            (q/text "DIST" (* flap-width 37) baseline)
+            (q/text "BRG" (* flap-width 43) baseline)
+            (q/text "KTS" (* flap-width 47) baseline)
             (q/text "REMARKS" (* flap-width 51) baseline)
             )
           )
@@ -235,9 +237,13 @@
 
         display-time
         (fn []
-          (q/text-font (:sf-font state))
-          (q/text-size (* (:top-margin @config/display-info) 0.6))
-          (let [time-pos (- (q/width) (q/text-width now) 50)]
+          (q/text-font sf-font)
+          (let [
+                time-height (* 0.5 (:top-margin @config/display-info))
+                time-font-size (text/find-font-size-for-height sf-font time-height)
+                _ (q/text-size time-font-size)
+                time-pos (- (q/width) (q/text-width now) 50)
+                ]
             (display-com-errors (- time-pos 10))
             (q/text-align :left :top)
             (q/fill 255 255 255)
@@ -247,16 +253,15 @@
         (fn []
           (q/image (:departure-icon state) 0 0 top-margin top-margin)
           (q/fill 255)
-          (q/text-font (:header-font state))
-          (q/text-size (* (:top-margin @config/display-info) 0.7))
+          (q/text-font header-font)
+          (q/text-size (text/find-font-size-for-height header-font (* 0.7 top-margin)))
           (q/text-align :left :center)
           (q/text "Skill Aviation Flights" (+ top-margin 10) (/ top-margin 2))
           (q/text-align :center :top)
           (q/text-size 12)
           (q/text config/version (/ (q/width) 2) 5)
           (display-column-headers)
-          (display-time)
-          )]
+          (display-time))]
 
     (q/background 50)
     (draw-header)

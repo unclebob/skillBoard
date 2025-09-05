@@ -1,7 +1,7 @@
 (ns skillBoard.text-util
   (:require
-    [quil.core :as q]
     [clojure.string :as string]
+    [quil.core :as q]
 
     ))
 
@@ -20,11 +20,15 @@
         (recur tail (conj wrapped head))))))
 
 
-(defn get-width [font-name font-size]
-  (q/text-font (q/create-font font-name font-size) font-size)
+(defn- get-width [font font-size]
+  (q/text-font font font-size)
   (q/text-width "X"))
 
-(defn compute-font-size-for
+(defn- get-height [font font-size]
+  (q/text-font font font-size)
+  (+ (q/text-ascent) (q/text-descent)))
+
+(defn find-font-size-for
   "Find the font size such that the target dimension of character 'X' meets the demand.
   works best for monospaced fonts."
   [font-name demand target-fn]
@@ -50,5 +54,8 @@
           (< dimension demand)
           (recur (inc mid) high (inc iteration)))))))
 
-(defn compute-font-size-for-width [font-name desired-width]
-  (compute-font-size-for font-name desired-width get-width))
+(defn find-font-size-for-width [font desired-width]
+  (find-font-size-for font desired-width get-width))
+
+(defn find-font-size-for-height [font desired-height]
+  (find-font-size-for font desired-height get-height))

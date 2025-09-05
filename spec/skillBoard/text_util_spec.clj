@@ -25,10 +25,10 @@
   (context "compute-font-size"
     (it "computes font size for a given width"
       (doseq [size (range 1 1001)]
-        (should= size (text/compute-font-size-for "AnyFont" size mock-get-width)))
+        (should= size (text/find-font-size-for "AnyFont" size mock-get-width)))
       )
     (it "fails for font sizes greater than 1000"
-      (should-not= 1001 (text/compute-font-size-for "AnyFont" 1001 mock-get-width)))
+      (should-not= 1001 (text/find-font-size-for "AnyFont" 1001 mock-get-width)))
     )
   )
 

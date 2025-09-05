@@ -14,35 +14,39 @@
         char-width (/ screen-width config/cols)
         sf-char-gap (* char-width config/sf-char-gap)
         font-width (- char-width sf-char-gap)
-        sf-font-size (text/compute-font-size-for-width "Skyfont" font-width)]
-    (reset! config/display-info
-            {:size [screen-width screen-height]
-             :top-margin (* screen-height config/header-height-fraction)
-             :label-height (* screen-height config/label-height-fraction)
-             :sf-font-size sf-font-size
-             :sf-char-gap sf-char-gap
-             })))
+        sf-font-size (text/find-font-size-for-width (:sf-font @config/display-info) font-width)]
+    (swap! config/display-info
+           assoc
+           :size [screen-width screen-height]
+           :top-margin (* screen-height config/header-height-fraction)
+           :label-height (* screen-height config/label-height-fraction)
+           :sf-font-size sf-font-size
+           :sf-char-gap sf-char-gap
+           )))
+
+(defn- load-fonts []
+  (let [sf-font (q/create-font "Skyfont" 32)
+        header-font (q/create-font "Arial Rounded MT Bold" 50)
+        annotation-font (q/create-font "Times New Roman" 9)]
+    (swap! config/display-info assoc
+           :sf-font sf-font
+           :header-font header-font
+           :annotation-font annotation-font)))
 
 (defn setup []
+  (load-fonts)
   (config/load-config)
   (load-display-info)
-  (let [font-size (:sf-font-size @config/display-info)
-        sf-font (q/create-font "Skyfont" font-size)
-        header-font (q/create-font "Arial Rounded MT Bold" 50)
+  (let [{:keys [sf-font-size sf-font header-font annotation-font
+                size top-margin label-height]} @config/display-info
         _ (q/text-font sf-font)
-        _ (q/text-size font-size)
-        font-width (q/text-width " ")
+        _ (q/text-size sf-font-size)
+        font-width (q/text-width "X")
         font-height (+ (q/text-ascent) (q/text-descent))
-        flights-height (- (second (:size @config/display-info))
-                          (:top-margin @config/display-info)
-                          (:label-height @config/display-info))
+        flights-height (- (second size) top-margin label-height)
         flight-height (* font-height (+ 1 config/sf-line-gap))
         flights (- (quot flights-height flight-height) 2)
-        annotation-font (q/create-font "Times New Roman" 9)
         _ (swap! config/display-info assoc
-                 :sf-font sf-font
-                 :header-font header-font
-                 :annotation-font annotation-font
                  :font-width font-width
                  :font-height font-height
                  :flights flights
@@ -56,6 +60,7 @@
      :lines summary
      :flappers flappers
      :sf-font sf-font
+     :sf-font-size sf-font-size
      :font-width font-width
      :font-height font-height
      :flights flights
@@ -69,7 +74,6 @@
 (defn draw-state [state]
   (split-flap/draw state)
   )
-
 
 (defn on-close [_]
   (q/no-loop)
@@ -85,7 +89,7 @@
         window? (args "-w")]
     (q/defsketch skillBoard
                  :title "Skill Board"
-                 :size #_[1920 1080] :fullscreen
+                 :size :fullscreen
                  :setup setup
                  :update update-state
                  :draw draw-state

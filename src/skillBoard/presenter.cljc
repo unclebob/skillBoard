@@ -1,7 +1,6 @@
 (ns skillBoard.presenter
   (:require
     [clojure.string :as str]
-    [java-time.api :as time]
     [skillBoard.config :as config]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
@@ -88,7 +87,8 @@
         short-metar (if (nil? metar-text) "NO-METAR"
                                           (-> metar-text
                                               (str/split #"RMK")
-                                              first))
+                                              first
+                                              (subs 6)))
         short-metar (if (> (count short-metar) config/cols) (subs short-metar 0 config/cols) short-metar)
         reservations-packet (sources/get-reservations fsp/source)
         unpacked-res (fsp/unpack-reservations reservations-packet)
@@ -96,9 +96,6 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
-        ;adsbs {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
-        ;       "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :spd 30 :gda "G"}
-        ;       }
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
@@ -114,6 +111,3 @@
         final-display (concat displayed-items [footer short-metar])
         ]
     final-display))
-
-
-

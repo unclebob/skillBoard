@@ -5,8 +5,8 @@
     [clojure.set :as set]
     [clojure.string :as str]
     [java-time.api :as time]
-    [skillBoard.sources :as sources]
     [skillBoard.config :as config]
+    [skillBoard.sources :as sources]
     ))
 
 (def com-errors (atom 0))

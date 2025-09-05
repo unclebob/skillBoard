@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20250828")
+(def version "20250905")
 
 ;Display configuration
 (def display-info (atom {})) ;determined after sketch started.
@@ -14,7 +14,6 @@
 (def label-height-fraction 0.03)
 (def sf-char-gap 0.25)
 (def sf-line-gap 0.25)
-(def font-height-per-point 1.42)
 (def flap-duration 3000)
 
 ;-- System Configuration
