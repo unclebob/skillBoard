@@ -1,0 +1,60 @@
+RC GRAPHICS
+
+Font End User Licence Agreement - Non-Profit
+
+
+By downloading and/or installing font software (“Font”) offered by RC graphics or his distributors, you agree to be bound by the following terms and conditions of this End User Licencing Agreement (“EULA”):
+
+1. Definition of terms
+
+«the Agreement» refers to this agreement and all of the text herein.
+«Font Software» means software or instructions which generate a typeface on screen or in print.
+«the Product» refers to the single instance of Font Software supplied with this license.
+«Licensed Unit» means a PC, Tablet, Printer or other device, owned by the individual or company engaging in the Agreement, that can reasonably make use of the Product.
+«Personal, Non-Commercial use» means any use that is not intended to generate money, to aid in the generation of money, or to aid a person, organisation or product with the aim of commercial success.
+«License Payment» means a payment made to RC graphics by the individual or company engaging in the Agreement with the intention of becoming eligible to use the Product.
+
+2. Eligibility and the agreement
+
+You are eligible to use the Product under these terms only if you are an individual or non-profit organisation using the product for Personal, Non-Commercial use.
+You are not eligible to use the Product if you are excluded from doing so by the laws of France, the laws of the jurisdiction where you are making use of the Product, or by international law, you intend to use the Product for criminal activity, you fail to meet the eligibility criteria above, or the Agreement has been previously terminated by RC graphics.
+Retention of the text of the Agreement is not proof of eligibility.
+
+3. Scope and use
+
+You are hereby granted a non-exclusive, non-assignable, non-transferable license to access the Product
+only in a single Licensed Unit, only for Personal, Non-Commercial use, and subject to the terms and conditions of the Agreement.
+You may embed the Product only into an electronic document that is for Personal, Non-Commercial use, distributed in a secure format that protects the Product from extraction, not designed to serve the same function as the product, i.e. the document must not allow end-users to use glyphs from the Product for use in their own documents.
+You may not install the Product on a server unless all devices capable of accessing the Product are Licensed Units.
+You may not use the Font to create alphabet or letterform products for resale where the product consists of individual letterforms, including rubber stamps, die-cut products, stencil products, or adhesive sticker alphabet products where the likeness of the Font can be reproduced and the end-user of said products can create their own typesetting.
+You may embed the Product in an electronic document for printing and viewing use, and provide the document to a third-party for printing use only.
+You may use the product in graphics, videos, video games and other visual media as long as they meet the criteria defined above for electronic documents.
+You may not lend, rent, sublicense, sell, redistribute, disassemble, reverse-engineer, decompile, modify, adapt or merge the Product.
+You may not alter Font Software in any manner whatsoever.
+You may not use the product for activity considered illegal in France, in the jurisdiction where you are making use of the Product or by international law. 
+You may not remove watermarks, materials, restrictions or copyright notices from the Product.
+
+
+4. Intellectual property
+
+The Font is protected by copyright law. RC graphics is the sole, exclusive owner of all intellectual property rights, including rights under copyright and trademark law.  You agrees not to use the Font in any manner that infringes the intellectual property rights of RC graphics or violates the terms of this EULA.
+You will be held legally responsible, for any infringements on RC graphics rights caused by failure to abide by the terms of this EULA.
+You agree that the Product is the intellectual property of RC graphics and protected by copyright law and intellectual property rights of France, by the copyright law and intellectual property rights of other nations and by international treaties.
+This license does not grant you any intellectual property rights over the Product.
+
+5. Liability
+
+You agree that you are liable for the content of electronic documents and print materials you create using the Product, and to exempt RC graphics from any blame following your own illegal use of the Product.
+In no event will RC graphics be liable to you for consequential or incidental damage (including damage from loss of business profits or savings, business interruption, loss of business information, and the like).
+RC graphics may not be held responsible for damages caused by improper use of the product, including any use that breaches the terms of the Agreement.
+RC graphics extends a guarantee that the Product will work as described for up to 30 (thirty) days, and will provide a replacement in the event that the Product demonstrably ceases to function.
+
+6. Termination
+
+Upon failure by you (or any other person given authorised access to a Licensed Unit) to comply with the terms of the Agreement, RC graphics reserves the right to terminate the Agreement.
+If the Agreement has been terminated by either party you will cease to use the Product and destroy all copies of the Product you possess.
+Termination of the Agreement shall not preclude RC graphics from taking legal action to recover damages resulting from breaching of the Agreement.
+This EULA is effective until terminated. If Licencee fails to comply with any term of this EULA, RC graphics may terminate the EULA with 30 days notice. This EULA will terminate automatically 30 days after the issuance of such notice.
+
+
+https://rcgraphics.fr/

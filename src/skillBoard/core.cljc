@@ -27,7 +27,7 @@
 
 (defn- load-fonts []
   (let [sf-font (q/create-font "Skyfont" 32)
-        header-font (q/create-font "Arial Rounded MT Bold" 50)
+        header-font (q/create-font "Bahnschrift" 50)
         annotation-font (q/create-font "Times New Roman" 9)
         clock-font (q/create-font "DSEG7 Modern" 32)]
     (swap! config/display-info assoc
