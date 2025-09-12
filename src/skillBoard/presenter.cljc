@@ -19,13 +19,13 @@
 (defn find-location [my-lat my-lon my-alt geofences]
   (loop [fences geofences]
     (if (empty? fences)
-    ""
-    (let [{:keys [lat lon radius min-alt max-alt name]} (first fences)
-          {:keys [distance]} (nav/dist-and-bearing lat lon my-lat my-lon)]
-      (if (and (<= distance radius)
-               (<= min-alt my-alt max-alt))
-        name
-        (recur (rest fences)))))))
+      ""
+      (let [{:keys [lat lon radius min-alt max-alt name]} (first fences)
+            {:keys [distance]} (nav/dist-and-bearing lat lon my-lat my-lon)]
+        (if (and (<= distance radius)
+                 (<= min-alt my-alt max-alt))
+          name
+          (recur (rest fences)))))))
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
                           altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
@@ -63,20 +63,28 @@
                              ]
                             (format "%s %s" position-remark rogue-remark)))
 
-        line (format "%5sZ %-6s %5s %5s %6s %2s %5s %3s %s %s               "
+        alt (cond
+              on-ground? "GND"
+              (not (contains? res :altitude)) "   "
+              (nil? altitude) "---"
+              :else (format "%03d" (Math/round (/ altitude 100.0))))
+        check-out-time (if (nil? co)
+                         "      "
+                         (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
+        brg-alt-gs (if (nil? bearing)
+                     "                "
+                     (format "UGN%03d%02d/%s/%03d"
+                             (Math/round bearing)
+                             (Math/round distance)
+                             alt
+                             ground-speed))
+        line (format "%5sZ %-6s %5s %5s %6s %s %s               "
                      (time-util/get-HHmm (time-util/local-to-utc start-time))
                      tail-number
                      (format-name pilot-name)
                      (format-name instructor-name)
-                     (if (nil? co) "      " (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
-                     (cond
-                       on-ground? "GND"
-                       (not (contains? res :altitude)) "   "
-                       (nil? altitude) "---"
-                       :else (format "%03d" (Math/round (/ altitude 100.0))))
-                     (if (nil? distance) "     " (format "%3dNM" (Math/round distance)))
-                     (if (nil? bearing) "   " (format "%03d" (Math/round bearing)))
-                     (if (nil? ground-speed) "   " (format "%3d" ground-speed))
+                     check-out-time
+                     brg-alt-gs
                      (if adsb? (generate-remark) "            "))]
     (subs line 0 config/cols)))
 
@@ -96,6 +104,8 @@
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
+        ;adsbs {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
+        ;       "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :spd 30 :gda "G"}}
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations

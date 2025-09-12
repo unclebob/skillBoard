@@ -202,11 +202,8 @@
             (q/text "PILOT" (* flap-width 14) baseline)
             (q/text "CFI" (* flap-width 20) baseline)
             (q/text "CHECKOUT" (* flap-width 26) baseline)
-            (q/text "AMSL" (* flap-width 33) baseline)
-            (q/text "DIST" (* flap-width 37) baseline)
-            (q/text "BRG" (* flap-width 43) baseline)
-            (q/text "KTS" (* flap-width 47) baseline)
-            (q/text "REMARKS" (* flap-width 51) baseline)
+            (q/text "BRG/ALT/GS" (* flap-width 33) baseline)
+            (q/text "REMARKS" (* flap-width 50) baseline)
             )
           )
 
