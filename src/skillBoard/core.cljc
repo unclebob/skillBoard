@@ -10,8 +10,9 @@
 
 (defn load-display-info []
   (let [screen-width (q/width)
+        useful-width (- screen-width 10)
         screen-height (q/height)
-        char-width (/ screen-width config/cols)
+        char-width (/ useful-width config/cols)
         sf-char-gap (* char-width config/sf-char-gap)
         font-width (- char-width sf-char-gap)
         sf-font-size (text/find-font-size-for-width (:sf-font @config/display-info) font-width)]
@@ -27,17 +28,19 @@
 (defn- load-fonts []
   (let [sf-font (q/create-font "Skyfont" 32)
         header-font (q/create-font "Arial Rounded MT Bold" 50)
-        annotation-font (q/create-font "Times New Roman" 9)]
+        annotation-font (q/create-font "Times New Roman" 9)
+        clock-font (q/create-font "DSEG7 Modern" 32)]
     (swap! config/display-info assoc
            :sf-font sf-font
            :header-font header-font
-           :annotation-font annotation-font)))
+           :annotation-font annotation-font
+           :clock-font clock-font)))
 
 (defn setup []
   (load-fonts)
   (config/load-config)
   (load-display-info)
-  (let [{:keys [sf-font-size sf-font header-font annotation-font
+  (let [{:keys [sf-font-size sf-font header-font annotation-font clock-font
                 size top-margin label-height]} @config/display-info
         _ (q/text-font sf-font)
         _ (q/text-size sf-font-size)
@@ -61,6 +64,7 @@
      :flappers flappers
      :sf-font sf-font
      :sf-font-size sf-font-size
+     :clock-font clock-font
      :font-width font-width
      :font-height font-height
      :flights flights

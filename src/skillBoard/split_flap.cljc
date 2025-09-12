@@ -57,8 +57,6 @@
    \: \A
    })
 
-(def gaps #{6 13 19 25 32 36 42 46 50})
-
 (defn get-next-char [c]
   (get next-char c \space))
 
@@ -141,9 +139,8 @@
                  :flappers flappers
                  :pulse (not pulse))))
 
-(defn draw [{:keys [sf-font sf-font-size lines flappers font-width font-height pulse header-font] :as state}]
+(defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height pulse header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
-        now (str now "Z")
         now (if pulse now (string/replace now ":" " "))
         flap-width (+ font-width (:sf-char-gap @config/display-info))
         flap-height (* font-height (inc config/sf-line-gap))
@@ -236,17 +233,18 @@
 
         display-time
         (fn []
-          (q/text-font sf-font)
+          (q/text-font clock-font)
           (let [
                 time-height (* 0.5 (:top-margin @config/display-info))
-                time-font-size (text/find-font-size-for-height sf-font time-height)
+                time-font-size (text/find-font-size-for-height clock-font time-height)
                 _ (q/text-size time-font-size)
                 time-pos (- (q/width) (q/text-width now) 50)
                 ]
             (display-com-errors (- time-pos 10))
             (q/text-align :left :top)
             (q/fill 255 255 255)
-            (q/text now (- (q/width) (q/text-width now) 50) 10)))
+            (q/text now (- (q/width) (q/text-width now) 50) 10)
+            ))
 
         draw-header
         (fn []

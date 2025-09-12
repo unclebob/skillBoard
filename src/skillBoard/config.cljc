@@ -9,10 +9,10 @@
 
 ;Display configuration
 (def display-info (atom {})) ;determined after sketch started.
-(def cols 63) ;The number of columns in the display
+(def cols 64) ;The number of columns in the display
 (def header-height-fraction 0.1)
 (def label-height-fraction 0.03)
-(def sf-char-gap 0.25)
+(def sf-char-gap 0.08)
 (def sf-line-gap 0.25)
 (def flap-duration 3000)
 
