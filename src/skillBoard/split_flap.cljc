@@ -141,7 +141,7 @@
                  :flappers flappers
                  :pulse (not pulse))))
 
-(defn draw [{:keys [sf-font sf-font-size lines flappers font-width font-height flights pulse header-font] :as state}]
+(defn draw [{:keys [sf-font sf-font-size lines flappers font-width font-height pulse header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (str now "Z")
         now (if pulse now (string/replace now ":" " "))
@@ -151,22 +151,21 @@
         label-margin (+ top-margin (:label-height @config/display-info))
         draw-char
         (fn [c x y]
-          (when (or (> y (dec flights))
-                    (nil? (gaps x)))
-            (let [cx (* x flap-width)
-                  cy (+ (* y flap-height) label-margin)]
-              (q/fill 255 255 255)
-              (q/no-stroke)
-              (q/rect (+ cx (* font-width 0.1))
-                      (+ cy (* font-height 0.1))
-                      (* font-width 0.8)
-                      (* font-height 0.8))
+          (let [cx (* x flap-width)
+                cy (+ (* y flap-height) label-margin)]
+            (q/fill 255 255 255)
+            (q/no-stroke)
+            (q/rect (+ cx (* font-width 0.1))
+                    (+ cy (* font-height 0.1))
+                    (* font-width 0.8)
+                    (* font-height 0.8))
 
-              (q/fill 0 0 0)
-              (q/text-font sf-font)
-              (q/text-size sf-font-size)
-              (q/text-align :left :top)
-              (q/text (str c) cx cy))))
+            (q/fill 0 0 0)
+            (q/text-font sf-font)
+            (q/text-size sf-font-size)
+            (q/text-align :left :top)
+            (q/text (str c) cx cy))
+          )
 
         draw-line
         (fn [line y]
