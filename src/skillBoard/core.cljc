@@ -1,12 +1,13 @@
 (ns skillBoard.core
   (:require
+    [java-time.api :as time]
     [quil.core :as q]
     [quil.middleware :as m]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
     [skillBoard.split-flap :as split-flap]
     [skillBoard.text-util :as text]
-    ))
+    [skillBoard.time-util :as time-util]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -37,6 +38,7 @@
            :clock-font clock-font)))
 
 (defn setup []
+  (prn "Setup..." (time-util/format-time (time/local-date-time)))
   (load-fonts)
   (config/load-config)
   (load-display-info)
