@@ -59,7 +59,7 @@
                                (< distance 6) "NEAR"
                                :else (find-location lat lon altitude config/geofences))
 
-                             rogue-remark (if rogue? "UNRSV" "     ")
+                             rogue-remark (if rogue? "NO-CO" "     ")
                              ]
                             (format "%s %s" position-remark rogue-remark)))
 
