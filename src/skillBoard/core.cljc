@@ -73,7 +73,7 @@
      :departure-icon (q/load-image "resources/DepartureIcon.jpg")}))
 
 (defn update-state [state]
-  (split-flap/update state))
+  (split-flap/do-update state))
 
 (defn draw-state [state]
   (split-flap/draw state)

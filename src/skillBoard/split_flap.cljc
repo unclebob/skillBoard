@@ -119,7 +119,7 @@
                           :to to}))
             (recur (rest flappers) (conj updated-flappers flapper))))))))
 
-(defn update [{:keys [time flappers lines pulse] :as state}]
+(defn do-update [{:keys [time flappers lines pulse] :as state}]
   (let [now (System/currentTimeMillis)
         since (- now time)
         poll? (> since 30000)
