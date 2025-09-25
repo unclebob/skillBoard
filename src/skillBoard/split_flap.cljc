@@ -203,7 +203,7 @@
             ;(q/text "CFI" (* flap-width 20) baseline)
             (q/text "OUT" (* flap-width 26) baseline)
             (q/text "BRG/ALT/GS" (* flap-width 33) baseline)
-            (q/text "REMARKS" (* flap-width 50) baseline)
+            (q/text "REMARKS" (* flap-width 51) baseline)
             )
           )
 

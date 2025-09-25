@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20250914")
+(def version "20250925")
 
 ;Display configuration
 (def display-info (atom {})) ;determined after sketch started.

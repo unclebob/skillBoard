@@ -73,7 +73,7 @@
                          (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
         brg-alt-gs (if (nil? bearing)
                      "                "
-                     (format "UGN%03d%02d/%s/%03d"
+                     (format "UGN%03d%03d/%s/%03d"
                              (Math/round bearing)
                              (Math/round distance)
                              alt
