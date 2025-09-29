@@ -68,16 +68,17 @@
               (not (contains? res :altitude)) "   "
               (nil? altitude) "---"
               :else (format "%03d" (Math/round (/ altitude 100.0))))
+        ground-speed (if (nil? ground-speed) "   " (format "%03d" ground-speed))
+        bearing (if (nil? bearing) "   " (format "%03d" (Math/round bearing)))
+        distance (if (nil? distance) "  " (format "%02d" (Math/round distance)))
         check-out-time (if (nil? co)
                          "      "
                          (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
-        brg-alt-gs (if (nil? bearing)
-                     "                "
-                     (format "UGN%03d%02d/%s/%03d"
-                             (Math/round bearing)
-                             (Math/round distance)
-                             alt
-                             ground-speed))
+        brg-alt-gs (format "UGN%s%s/%s/%s"
+                           bearing
+                           distance
+                           alt
+                           ground-speed)
         line (format "%5sZ %-6s %5s %5s %6s %s %s               "
                      (time-util/get-HHmm (time-util/local-to-utc start-time))
                      tail-number
@@ -105,7 +106,7 @@
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (radar-cape/get-adsb radar-cape/source active-aircraft)
         ;adsbs {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
-        ;       "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :spd 30 :gda "G"}}
+        ;       "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
