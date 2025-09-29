@@ -72,7 +72,7 @@
      :flights flights
      :header-font header-font
      :annotation-font annotation-font
-     :departure-icon (q/load-image "resources/DepartureIcon.jpg")}))
+     :departure-icon (q/load-image "resources/flightlogo.png")}))
 
 (defn update-state [state]
   (split-flap/do-update state))
