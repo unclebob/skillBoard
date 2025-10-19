@@ -61,11 +61,10 @@
 
 (describe "flappers"
   (it "increments the flappers"
-    (should= [{:at [0 0] :from \C :to \A}]
-             (split-flap/update-flappers [{:at [0 0] :from \B :to \A}]))
-    )
+    (with-redefs [rand (fn [] 0)]
+      (should= [{:at [0 0] :from \C :to \A}]
+               (split-flap/update-flappers [{:at [0 0] :from \B :to \A}]))))
 
   (it "deletes a finished flapper"
     (should= []
-             (split-flap/update-flappers [{:at [0 0] :from \A :to \A}])))
-  )
+             (split-flap/update-flappers [{:at [0 0] :from \A :to \A}]))))
