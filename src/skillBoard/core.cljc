@@ -56,7 +56,7 @@
                  :font-height font-height
                  :flights flights
                  :pulse true)
-        summary (presenter/generate-summary)
+        summary (presenter/make-screen)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
     (q/frame-rate 10)

@@ -98,16 +98,35 @@
                      (if adsb? (generate-remark) "            "))]
     (subs line 0 config/cols)))
 
-(defn generate-summary []
-  (let [active-aircraft (sources/get-aircraft fsp/source)
-        metar (sources/get-metar weather/source config/airport)
+(defn make-short-metar []
+  (let [metar (sources/get-metar weather/source config/airport)
         metar-text (:rawOb (first metar))
-        short-metar (if (nil? metar-text) "NO-METAR"
-                                          (-> metar-text
-                                              (str/split #"RMK")
-                                              first
-                                              (subs 6)))
-        short-metar (if (> (count short-metar) config/cols) (subs short-metar 0 config/cols) short-metar)
+        short-metar (if (nil? metar-text)
+                      "NO-METAR"
+                      (-> metar-text
+                          (str/split #"RMK")
+                          first
+                          (subs 6)))]
+    (if (> (count short-metar) config/cols)
+      (subs short-metar 0 config/cols)
+      short-metar)))
+
+(defn split-taf [raw-taf]
+  (let [taf-name (subs raw-taf 0 8)
+        tafs (subs raw-taf 9)
+        taf-items (str/split tafs #"(?=FM|BECMG)")]
+    (concat [taf-name] taf-items)))
+
+(defn make-taf-screen []
+  (let [taf (sources/get-taf weather/source config/taf-airport)
+        short-metar (make-short-metar)
+        raw-taf (:rawTAF (first taf))
+        tafs (split-taf raw-taf)]
+    (concat tafs ["" "" "" short-metar])))
+
+(defn make-flight-screen []
+  (let [active-aircraft (sources/get-aircraft fsp/source)
+        short-metar (make-short-metar)
         reservations-packet (sources/get-reservations fsp/source)
         unpacked-res (fsp/unpack-reservations reservations-packet)
         flights-packet (sources/get-flights fsp/source)
@@ -130,6 +149,19 @@
         footer (if (zero? dropped-items)
                  "             "
                  (format "...%2d MORE..." dropped-items))
-        final-display (concat displayed-items [footer short-metar])
+        final-screen (concat displayed-items [footer short-metar])
         ]
-    final-display))
+    final-screen))
+
+(def screen-type (atom :flights))
+
+(defn make-screen []
+  (let [time (System/currentTimeMillis)
+        seconds (mod (quot time 1000) 60)]
+    (if (< seconds 30)
+      (reset! screen-type :flights)
+      (reset! screen-type :taf))
+    (condp = @screen-type
+      :flights (make-flight-screen)
+      :taf (make-taf-screen))))
+

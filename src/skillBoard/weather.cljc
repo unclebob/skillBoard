@@ -23,7 +23,25 @@
       (swap! com-errors inc)
       nil)))
 
+(defn get-taf
+  [icao]
+  (try
+    (let [url (str "https://aviationweather.gov/api/data/taf?ids=" (str/upper-case icao) "&format=json")
+          response (http/get url {:accept :text :with-credentials? false})]
+      (if (= (:status response) 200)
+        (do
+          (reset! com-errors 0)
+          (json/read-str (:body response) :key-fn keyword))
+        (throw (ex-info "Failed to fetch TAF" {:status (:status response)}))))
+    (catch Exception e
+      (prn "Error fetching TAF: " (.getMessage e))
+      (swap! com-errors inc)
+      nil)))
+
 (def source {:type :aviation-weather})
 
 (defmethod sources/get-metar :aviation-weather [_source icao]
   (get-metar icao))
+
+(defmethod sources/get-taf :aviation-weather [_source icao]
+  (get-taf icao))

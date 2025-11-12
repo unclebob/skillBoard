@@ -125,7 +125,7 @@
         poll? (> since 30000)
         old-summary lines
         summary (if poll?
-                  (presenter/generate-summary)
+                  (presenter/make-screen)
                   old-summary)
         flappers (cond
                    poll? (make-flappers summary old-summary)
@@ -138,6 +138,12 @@
                  :lines summary
                  :flappers flappers
                  :pulse (not pulse))))
+
+(defn header-text []
+  (condp = @presenter/screen-type
+    :flights "FLIGHT OPERATIONS"
+    :taf "WEATHER"
+    "TILT"))
 
 (defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height pulse header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
@@ -187,7 +193,8 @@
         (fn [] (doseq [{:keys [at from]} flappers]
                  (let [[col row] at]
                    (draw-char from col row))))
-        display-column-headers
+
+        display-flight-operation-headers
         (fn []
           (let [label-height (* 0.8 (:label-height @config/display-info))
                 label-font-size (text/find-font-size-for-height header-font label-height)
@@ -206,6 +213,12 @@
             (q/text "REMARKS" (* flap-width 51) baseline)
             )
           )
+
+        display-column-headers
+        (fn []
+          (condp = @presenter/screen-type
+            :flights (display-flight-operation-headers)
+            :taf nil))
 
         display-com-errors
         (fn [pos]
@@ -250,7 +263,7 @@
           (q/text-font header-font)
           (q/text-size (text/find-font-size-for-height header-font (* 0.7 top-margin)))
           (q/text-align :left :center)
-          (q/text "FLIGHT OPERATIONS" (+ top-margin 10) (/ top-margin 2))
+          (q/text (header-text) (+ top-margin 10) (/ top-margin 2))
           (q/text-align :center :top)
           (q/text-size 12)
           (q/text config/version (/ (q/width) 2) 5)

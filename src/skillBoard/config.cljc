@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20251019")
+(def version "20251112")
 
 ;Display configuration
 (def display-info (atom {})) ;determined after sketch started.
@@ -21,6 +21,7 @@
 ;Home airport configuration
 (def airport "KUGN")
 (def bearing-center "UGN")
+(def taf-airport "KENW")
 (def airport-lat-lon [42.4221486 -87.8679161])
 (def time-zone "America/Chicago")
 (def airport-elevation 728.1)
