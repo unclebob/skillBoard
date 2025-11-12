@@ -92,8 +92,9 @@
 (defn -main [& args]
   (println "skillBoard has begun.")
   (let [args (set args)
-        window? (args "-w")
-        _ (reset! presenter/test? (args "-t"))
+        window? (some? (args "-w"))
+        _ (reset! presenter/test? (some? (args "-t")))
+        _ (prn 'args args 'window? window? 'test? @presenter/test?)
         ]
     (q/defsketch skillBoard
                  :title "Skill Board"
