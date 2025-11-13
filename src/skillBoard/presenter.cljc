@@ -112,9 +112,11 @@
       short-metar)))
 
 (defn split-taf [raw-taf]
-  (let [taf-name (subs raw-taf 0 8)
-        tafs (subs raw-taf 9)
-        taf-items (str/split tafs #"(?=FM|BECMG)")]
+  (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
+        tafs (str/replace tafs #"PROB30 TEMPO" "PROB30 TEMPX")
+        tafs (str/replace tafs #"PROB40 TEMPO" "PROB40 TEMPX")
+        taf-items (map str/trim (str/split tafs #"(?=FM|BECMG|PROB[34]0 TEMPX|PROB[34]0 \d|TEMPO)"))
+        taf-items (map #(str/replace % "TEMPX" "TEMPO") taf-items)]
     (concat [taf-name] taf-items)))
 
 (defn make-taf-screen []
