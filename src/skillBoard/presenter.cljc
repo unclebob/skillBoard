@@ -120,11 +120,11 @@
     (concat [taf-name] taf-items)))
 
 (defn make-taf-screen []
-  (let [taf (sources/get-taf weather/source config/taf-airport)
+  (let [taf-response (sources/get-taf weather/source config/taf-airports)
         short-metar (make-short-metar)
-        raw-taf (:rawTAF (first taf))
-        tafs (split-taf raw-taf)]
-    (concat tafs ["" "" "" short-metar])))
+        raw-tafs (map :rawTAF taf-response)
+        tafs (flatten (map split-taf raw-tafs))]
+    (concat tafs ["" short-metar])))
 
 (defn make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)

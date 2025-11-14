@@ -92,8 +92,7 @@
                    "TEMPO 1212/1216 5SM -RA BR OVC015 PROB30 121600 25012KT P6SM BKN020 "
                    "PROB40 TEMPO 130000 24008KT P6SM SCT030 BKN200 "
                    "BECMG131200 22005KT P6SM SCT250 "
-                   "FM141200 22005KT P6SM SCT250"))
-               ))
+                   "FM141200 22005KT P6SM SCT250"))))
     (it "handles amended TAFs correctly"
       (should= ["TAF AMD KORD"
                 "121130Z 1212/1318 27015G25KT P6SM SCT020 BKN250"
@@ -101,8 +100,6 @@
                (p/split-taf
                  (str
                    "TAF AMD KORD 121130Z 1212/1318 27015G25KT P6SM SCT020 BKN250 "
-                   "FM141200 22005KT P6SM SCT250"))
-               )
-      )
+                   "FM141200 22005KT P6SM SCT250"))))
     )
   )
