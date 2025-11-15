@@ -1,6 +1,7 @@
 (ns skillBoard.presenter
   (:require
     [clojure.string :as str]
+    [quil.core :as q]
     [skillBoard.config :as config]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
@@ -156,11 +157,12 @@
     final-screen))
 
 (defn make-flight-category-line [metar]
-  (let [{:keys [fltCat icaoId visib cover clouds]} metar
+  (let [{:keys [fltCat icaoId visib cover clouds wspd wgst]} metar
         base (if (= cover "CLR")
                "    "
-               (:base (first clouds)))]
-    (format "%4s %4s %3s %5s %3s" icaoId fltCat cover base visib)))
+               (:base (first clouds)))
+        wgst (if (nil? wgst) "   " (str "G" wgst))]
+    (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)))
 
 (defn make-flight-category-screen []
   (let [metars (sources/get-metar weather/source config/flight-category-airports)
@@ -175,7 +177,7 @@
 (defn make-screen []
   (let [time (System/currentTimeMillis)
         current-screen-seconds (quot (- time @screen-start-time) 1000)]
-    (when (> current-screen-seconds @screen-duration)
+    (when (or (q/mouse-pressed?) (> current-screen-seconds @screen-duration))
       (reset! screen-type (:screen (first @config/screens)))
       (reset! screen-duration (:duration (first @config/screens)))
       (reset! screen-start-time time)

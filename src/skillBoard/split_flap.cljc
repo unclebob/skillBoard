@@ -124,7 +124,7 @@
         since (quot (- now time) 1000)
         poll? (> since config/seconds-between-internet-polls)
         old-summary lines
-        summary (if poll?
+        summary (if (or poll? (q/mouse-pressed?))
                   (presenter/make-screen)
                   old-summary)
         flappers (cond
@@ -195,7 +195,7 @@
                  (let [[col row] at]
                    (draw-char from col row))))
 
-        display-flight-operation-headers
+        setup-headers
         (fn []
           (let [label-height (* 0.8 (:label-height @config/display-info))
                 label-font-size (text/find-font-size-for-height header-font label-height)
@@ -205,6 +205,12 @@
             (q/text-size label-font-size)
             (q/text-align :left :center)
             (q/fill 255 255 255)
+          baseline
+          ))
+
+        display-flight-operation-headers
+        (fn []
+          (let [baseline (setup-headers)]
             (q/text "TIME" 0 baseline)
             (q/text "AIRCRAFT" (* flap-width 7) baseline)
             (q/text "CREW" (* flap-width 14) baseline)
@@ -214,12 +220,24 @@
             )
           )
 
+        display-flight-category-headers
+        (fn []
+          (let [baseline (setup-headers)]
+            (q/text "AIRPORT" 0 baseline)
+            (q/text "CATGRY" (* flap-width 6) baseline)
+            (q/text "SKY" (* flap-width 10) baseline)
+            (q/text "BASE" (* flap-width 14) baseline)
+            (q/text "VIS" (* flap-width 20) baseline)
+            (q/text "WIND" (* flap-width 24) baseline)
+            )
+          )
+
         display-column-headers
         (fn []
           (condp = @presenter/screen-type
             :flights (display-flight-operation-headers)
             :taf nil
-            :flight-category nil))
+            :flight-category (display-flight-category-headers)))
 
         display-com-errors
         (fn [pos]
