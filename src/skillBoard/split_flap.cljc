@@ -121,8 +121,8 @@
 
 (defn do-update [{:keys [time flappers lines pulse] :as state}]
   (let [now (System/currentTimeMillis)
-        since (- now time)
-        poll? (> since 30000)
+        since (quot (- now time) 1000)
+        poll? (> since config/seconds-between-internet-polls)
         old-summary lines
         summary (if poll?
                   (presenter/make-screen)
@@ -143,6 +143,7 @@
   (condp = @presenter/screen-type
     :flights "FLIGHT OPERATIONS"
     :taf "WEATHER"
+    :flight-category "FLIGHT CATEGORY"
     "TILT"))
 
 (defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height pulse header-font] :as state}]
@@ -207,7 +208,6 @@
             (q/text "TIME" 0 baseline)
             (q/text "AIRCRAFT" (* flap-width 7) baseline)
             (q/text "CREW" (* flap-width 14) baseline)
-            ;(q/text "CFI" (* flap-width 20) baseline)
             (q/text "OUT" (* flap-width 26) baseline)
             (q/text "BRG/ALT/GS" (* flap-width 33) baseline)
             (q/text "REMARKS" (* flap-width 51) baseline)
@@ -218,7 +218,8 @@
         (fn []
           (condp = @presenter/screen-type
             :flights (display-flight-operation-headers)
-            :taf nil))
+            :taf nil
+            :flight-category nil))
 
         display-com-errors
         (fn [pos]

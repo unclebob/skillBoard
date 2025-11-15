@@ -126,7 +126,7 @@
         tafs (flatten (map split-taf raw-tafs))]
     (concat tafs ["" short-metar])))
 
-(defn make-flight-screen []
+(defn- make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)
         short-metar (make-short-metar)
         reservations-packet (sources/get-reservations fsp/source)
@@ -155,15 +155,34 @@
         ]
     final-screen))
 
-(def screen-type (atom :flights))
+(defn make-flight-category-line [metar]
+  (let [{:keys [fltCat icaoId visib cover clouds]} metar
+        base (if (= cover "CLR")
+               "    "
+               (:base (first clouds)))]
+    (format "%4s %4s %3s %5s %3s" icaoId fltCat cover base visib)))
+
+(defn make-flight-category-screen []
+  (let [metars (sources/get-metar weather/source config/flight-category-airports)
+        fc-lines (map make-flight-category-line metars)]
+    fc-lines)
+  )
+
+(def screen-type (atom nil))
+(def screen-duration (atom 0))
+(def screen-start-time (atom 0))
 
 (defn make-screen []
   (let [time (System/currentTimeMillis)
-        seconds (mod (quot time 1000) 60)]
-    (if (< seconds 30)
-      (reset! screen-type :flights)
-      (reset! screen-type :taf))
+        current-screen-seconds (quot (- time @screen-start-time) 1000)]
+    (when (> current-screen-seconds @screen-duration)
+      (reset! screen-type (:screen (first @config/screens)))
+      (reset! screen-duration (:duration (first @config/screens)))
+      (reset! screen-start-time time)
+      (swap! config/screens rest))
     (condp = @screen-type
       :flights (make-flight-screen)
-      :taf (make-taf-screen))))
+      :taf (make-taf-screen)
+      :flight-category (make-flight-category-screen))
+    ))
 

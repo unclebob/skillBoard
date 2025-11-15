@@ -8,27 +8,35 @@
 (def version "20251113")
 
 ;Display configuration
-(def display-info (atom {})) ;determined after sketch started.
-(def cols 64) ;The number of columns in the display
+(def display-info (atom {}))                                ;determined after sketch started.
+(def cols 64)                                               ;The number of columns in the display
 (def header-height-fraction 0.1)
 (def label-height-fraction 0.03)
 (def sf-char-gap 0.08)
 (def sf-line-gap 0.25)
-(def flap-duration 3000)
+(def flap-duration 3000)                                    ;miliseconds
 
-;-- System Configuration
+;screens
+(def screens
+  (atom (cycle
+          [{:duration 30 :screen :flights}
+           {:duration 30 :screen :taf}
+           {:duration 30 :screen :flight-category}])))
+
 
 ;Home airport configuration
 (def airport "KUGN")
 (def bearing-center "UGN")
 (def taf-airports "KSBN,KMSN,KMDW,KENW")
+(def flight-category-airports "KUGN,KMKE,KUES,KBUU,KJVL,KPIA,KFWA,KSBN,KMSN,KMDW,KENW,KRFD,KDKB,KARR")
 (def airport-lat-lon [42.4221486 -87.8679161])
 (def time-zone "America/Chicago")
 (def airport-elevation 728.1)
 (def pattern-altitude 1728)
 
-;ip addresses
+;Internet configuration
 (def radar-cape-ip "10.10.40.60")
+(def seconds-between-internet-polls 30)
 
 ;Wider area configuration.
 ;
