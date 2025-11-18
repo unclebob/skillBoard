@@ -124,7 +124,7 @@
   (let [taf-response (sources/get-taf weather/source config/taf-airports)
         short-metar (make-short-metar)
         raw-tafs (map :rawTAF taf-response)
-        tafs (flatten (map split-taf raw-tafs))]
+        tafs (flatten (map #(->> % split-taf (take 4)) raw-tafs))]
     (concat tafs ["" short-metar])))
 
 (defn- make-flight-screen []
@@ -145,10 +145,10 @@
                              updated-reservations
                              adsbs)
         report (map format-res final-reservations)
-        flights (:flights @config/display-info)
-        padded-items (concat report (repeat flights (apply str (repeat config/cols " "))))
-        displayed-items (take flights padded-items)
-        dropped-items (count (drop flights report))
+        flight-count (- (:line-count @config/display-info) 2)
+        padded-items (concat report (repeat flight-count (apply str (repeat config/cols " "))))
+        displayed-items (take flight-count padded-items)
+        dropped-items (count (drop flight-count report))
         footer (if (zero? dropped-items)
                  "             "
                  (format "...%2d MORE..." dropped-items))
@@ -161,6 +161,9 @@
         base (if (= cover "CLR")
                "    "
                (:base (first clouds)))
+        fltCat (if (nil? fltCat) "    " fltCat)
+        cover (if (nil? cover) "   " cover)
+        base (if (nil? base) "     " base)
         wgst (if (nil? wgst) "   " (str "G" wgst))]
     (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)))
 

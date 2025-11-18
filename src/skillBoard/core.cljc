@@ -48,13 +48,13 @@
         _ (q/text-size sf-font-size)
         font-width (q/text-width "X")
         font-height (+ (q/text-ascent) (q/text-descent))
-        flights-height (- (second size) top-margin label-height)
-        flight-height (* font-height (+ 1 config/sf-line-gap))
-        flights (- (quot flights-height flight-height) 2)
+        text-area-height (- (second size) top-margin label-height)
+        line-height (* font-height (+ 1 config/sf-line-gap))
+        lines-count (quot text-area-height line-height)
         _ (swap! config/display-info assoc
                  :font-width font-width
                  :font-height font-height
-                 :flights flights
+                 :line-count lines-count
                  :pulse true)
         summary (presenter/make-screen)
         flappers (split-flap/make-flappers summary [])
@@ -69,7 +69,7 @@
      :clock-font clock-font
      :font-width font-width
      :font-height font-height
-     :flights flights
+     :line-count lines-count
      :header-font header-font
      :annotation-font annotation-font
      :departure-icon (q/load-image "resources/flightlogo.png")}))
