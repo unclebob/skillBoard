@@ -41,30 +41,32 @@
                       "------"
                       tail-number)
 
-        generate-remark (fn []
-                          (let
-                            [altitude (or altitude 0)
-                             nearby? (< distance 2)
-                             ground-speed (or ground-speed 0)
-                             low (+ config/airport-elevation 30)
-                             on-ground? (or on-ground? (< altitude low))
-                             pattern-low (- config/pattern-altitude 500)
-                             pattern-high (+ config/pattern-altitude 500)
-                             flying-speed? (> ground-speed 50)
-                             max-taxi 25
-                             min-taxi 2
-                             position-remark
-                             (cond
-                               (and nearby? on-ground? (< ground-speed 2)) "RAMP"
-                               (and nearby? on-ground? (<= min-taxi ground-speed max-taxi)) "TAXI"
-                               (and (< low altitude pattern-low) flying-speed?) "LOW "
-                               (and nearby? (< pattern-low altitude pattern-high) flying-speed?) "PATN"
-                               (< distance 6) "NEAR"
-                               :else (find-location lat lon altitude config/geofences))
+        generate-remark
+        (fn []
+          (let
+            [altitude (or altitude 0)
+             nearby? (< distance 2)
+             ground-speed (or ground-speed 0)
+             low (+ config/airport-elevation 30)
+             on-ground? (or on-ground? (< altitude low))
+             pattern-low (- config/pattern-altitude 500)
+             pattern-high (+ config/pattern-altitude 500)
+             flying-speed? (> ground-speed 50)
+             max-taxi 25
+             min-taxi 2
+             [position-remark color]
+             (cond
+               (and nearby? on-ground? (< ground-speed 2)) ["RAMP" :green]
+               (and nearby? on-ground? (<= min-taxi ground-speed max-taxi)) ["TAXI" :green]
+               (and (< low altitude pattern-low) flying-speed?) ["LOW " :white]
+               (and nearby? (< pattern-low altitude pattern-high) flying-speed?) ["PATN" :white]
+               (< distance 6) ["NEAR" :white]
+               :else [(find-location lat lon altitude config/geofences) :white])
 
-                             rogue-remark (if rogue? "NO-CO" "     ")
-                             ]
-                            (format "%s %s" position-remark rogue-remark)))
+             rogue-remark (if rogue? "NO-CO" "     ")
+             color (if rogue? :blue color)
+             ]
+            [(format "%s %s" position-remark rogue-remark) color]))
 
         alt (cond
               on-ground? "GND"
@@ -88,7 +90,9 @@
                              bearing
                              distance
                              alt
-                             ground-speed))
+                               ground-speed))
+        [remark color]  (if adsb? (generate-remark)
+                                  ["            " :white])
         line (format "%5sZ %-6s %5s %5s %6s %s %s               "
                      (time-util/get-HHmm (time-util/local-to-utc start-time))
                      tail-number
@@ -96,8 +100,9 @@
                      (format-name instructor-name)
                      check-out-time
                      brg-alt-gs
-                     (if adsb? (generate-remark) "            "))]
-    (subs line 0 config/cols)))
+                     remark)]
+    {:line (subs line 0 config/cols)
+     :color color}))
 
 (defn make-short-metar []
   (let [metar (sources/get-metar weather/source config/airport)
@@ -107,25 +112,29 @@
                       (-> metar-text
                           (str/split #"RMK")
                           first
-                          (subs 6)))]
-    (if (> (count short-metar) config/cols)
-      (subs short-metar 0 config/cols)
-      short-metar)))
+                          (subs 6)))
+        final-metar (if (> (count short-metar) config/cols)
+                      (subs short-metar 0 config/cols)
+                      short-metar)]
+    {:line final-metar
+     :color :white}))
 
 (defn split-taf [raw-taf]
   (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
         tafs (str/replace tafs #"PROB30 TEMPO" "PROB30 TEMPX")
         tafs (str/replace tafs #"PROB40 TEMPO" "PROB40 TEMPX")
         taf-items (map str/trim (str/split tafs #"(?=FM|BECMG|PROB[34]0 TEMPX|PROB[34]0 \d|TEMPO)"))
-        taf-items (map #(str/replace % "TEMPX" "TEMPO") taf-items)]
-    (concat [taf-name] taf-items)))
+        taf-items (map #(str/replace % "TEMPX" "TEMPO") taf-items)
+        taf-lines (concat [taf-name] taf-items)]
+    (map (fn [line] {:line line :color :white}) taf-lines)))
 
 (defn make-taf-screen []
   (let [taf-response (sources/get-taf weather/source config/taf-airports)
         short-metar (make-short-metar)
         raw-tafs (map :rawTAF taf-response)
-        tafs (flatten (map #(->> % split-taf (take 4)) raw-tafs))]
-    (concat tafs ["" short-metar])))
+        tafs (flatten (map #(->> % split-taf (take 4)) raw-tafs))
+        blank-line {:line "" :color :white}]
+    (concat tafs [blank-line short-metar])))
 
 (defn- make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)
@@ -146,12 +155,15 @@
                              adsbs)
         report (map format-res final-reservations)
         flight-count (- (:line-count @config/display-info) 2)
-        padded-items (concat report (repeat flight-count (apply str (repeat config/cols " "))))
+        blank-line (apply str (repeat config/cols " "))
+        padded-items (concat report
+                             (repeat flight-count {:line blank-line :color :white}))
         displayed-items (take flight-count padded-items)
         dropped-items (count (drop flight-count report))
-        footer (if (zero? dropped-items)
-                 "             "
-                 (format "...%2d MORE..." dropped-items))
+        footer {:color :white
+                :line (if (zero? dropped-items)
+                        "             "
+                        (format "...%2d MORE..." dropped-items))}
         final-screen (concat displayed-items [footer short-metar])
         ]
     final-screen))
@@ -164,8 +176,9 @@
         fltCat (if (nil? fltCat) "    " fltCat)
         cover (if (nil? cover) "   " cover)
         base (if (nil? base) "     " base)
-        wgst (if (nil? wgst) "   " (str "G" wgst))]
-    (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)))
+        wgst (if (nil? wgst) "   " (str "G" wgst))
+        ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)]
+    {:line ctgy-line :color :white}))
 
 (defn make-flight-category-screen []
   (let [metars (sources/get-metar weather/source config/flight-category-airports)

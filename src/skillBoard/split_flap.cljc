@@ -153,11 +153,18 @@
         flap-height (* font-height (inc config/sf-line-gap))
         top-margin (:top-margin @config/display-info)
         label-margin (+ top-margin (:label-height @config/display-info))
+
         draw-char
-        (fn [c x y]
+        (fn [c x y color]
           (let [cx (* x flap-width)
                 cy (+ (* y flap-height) label-margin)]
-            (q/fill 255 255 255)
+            (condp = color
+              :white (q/fill 255 255 255)
+              :red (q/fill 255 200 200)
+              :green (q/fill 200 255 200)
+              :blue (q/fill 200 200 255)
+              (q/fill 200 200 200)
+              )
             (q/no-stroke)
             (q/rect (+ cx (* font-width 0.1))
                     (+ cy (* font-height 0.1))
@@ -172,13 +179,13 @@
           )
 
         draw-line
-        (fn [line y]
+        (fn [line color y]
           (loop [x 0
                  cs line]
             (if (empty? cs)
               nil
               (let [c (first cs)]
-                (draw-char c x y)
+                (draw-char c x y color)
                 (recur (inc x) (rest cs))))))
         draw-lines
         (fn []
@@ -186,14 +193,14 @@
                  y 0]
             (if (empty? lines)
               nil
-              (let [line (first lines)]
+              (let [{:keys [line color]} (first lines)]
                 (when (not (string/blank? line))
-                  (draw-line line y))
+                  (draw-line line color y))
                 (recur (rest lines) (inc y))))))
         draw-flappers
         (fn [] (doseq [{:keys [at from]} flappers]
                  (let [[col row] at]
-                   (draw-char from col row))))
+                   (draw-char from col row nil))))
 
         setup-headers
         (fn []
