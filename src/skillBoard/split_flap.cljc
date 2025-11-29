@@ -71,8 +71,8 @@
   )
 
 (defn make-flappers-for-line [new-line old-line row flappers]
-  (loop [new-line new-line
-         old-line old-line
+  (loop [new-line (:line new-line)
+         old-line (:line old-line)
          col 0
          flappers flappers]
     (cond
@@ -122,13 +122,15 @@
 (defn do-update [{:keys [time flappers lines pulse] :as state}]
   (let [now (System/currentTimeMillis)
         since (quot (- now time) 1000)
-        poll? (> since config/seconds-between-internet-polls)
+        poll? (or
+                (> since config/seconds-between-internet-polls)
+                (q/mouse-pressed?))
         old-summary lines
-        summary (if (or poll? (q/mouse-pressed?))
+        summary (if poll?
                   (presenter/make-screen)
                   old-summary)
         flappers (cond
-                   poll? (make-flappers summary old-summary)
+                   (not= summary old-summary) (make-flappers summary old-summary)
                    (> (- now time) config/flap-duration) []
                    :else (update-flappers flappers)
                    )
@@ -198,9 +200,10 @@
                   (draw-line line color y))
                 (recur (rest lines) (inc y))))))
         draw-flappers
-        (fn [] (doseq [{:keys [at from]} flappers]
-                 (let [[col row] at]
-                   (draw-char from col row nil))))
+        (fn []
+          (doseq [{:keys [at from]} flappers]
+            (let [[col row] at]
+              (draw-char from col row nil))))
 
         setup-headers
         (fn []
@@ -212,8 +215,8 @@
             (q/text-size label-font-size)
             (q/text-align :left :center)
             (q/fill 255 255 255)
-          baseline
-          ))
+            baseline
+            ))
 
         display-flight-operation-headers
         (fn []
