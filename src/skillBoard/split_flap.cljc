@@ -238,7 +238,7 @@
         (fn []
           (let [baseline (setup-headers)]
             (q/text "AIRPORT" 0 baseline)
-            (q/text "CATGRY" (* flap-width 6) baseline)
+            (q/text "CATGRY" (* flap-width 5) baseline)
             (q/text "SKY" (* flap-width 10) baseline)
             (q/text "BASE" (* flap-width 14) baseline)
             (q/text "VIS" (* flap-width 20) baseline)
