@@ -19,9 +19,9 @@
 ;screens
 (def screens
   (atom (cycle
-          [{:duration 30 :screen :flights}
-           {:duration 30 :screen :taf}
-           {:duration 30 :screen :flight-category}])))
+          [{:duration 40 :screen :flights}
+           {:duration 20 :screen :taf}
+           {:duration 20 :screen :flight-category}])))
 
 
 ;Home airport configuration
