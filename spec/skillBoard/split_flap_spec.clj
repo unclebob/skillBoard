@@ -70,3 +70,11 @@
   (it "deletes a finished flapper"
     (should= []
              (split-flap/update-flappers [{:at [0 0] :from \A :to \A}]))))
+
+(describe "utilities"
+  (it "should pad and trim lines"
+    (should= "   " (split-flap/pad-and-trim-line "" 3))
+    (should= "abc" (split-flap/pad-and-trim-line "abc" 3))
+    (should= "ab " (split-flap/pad-and-trim-line "ab" 3))
+    (should= "abc" (split-flap/pad-and-trim-line "abcd" 3))
+    ))

@@ -148,6 +148,10 @@
     :flight-category "FLIGHT CATEGORY"
     "TILT"))
 
+(defn pad-and-trim-line [line length]
+  (let [padded-line (str line (apply str (repeat length " ")))]
+    (subs padded-line 0 length)))
+
 (defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height pulse header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (if pulse now (string/replace now ":" " "))
@@ -183,7 +187,7 @@
         draw-line
         (fn [line color y]
           (loop [x 0
-                 cs line]
+                 cs (pad-and-trim-line line config/cols)]
             (if (empty? cs)
               nil
               (let [c (first cs)]

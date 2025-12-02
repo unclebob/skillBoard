@@ -1,6 +1,5 @@
 (ns skillBoard.flight-schedule-pro-spec
   (:require [java-time.api :as time]
-            [skillBoard.config :as config]
             [skillBoard.flight-schedule-pro :as fsp]
             [speclj.core :refer :all]))
 ;reservationStatus {:id 1, :name "Checked Out"} {:id 2, :name "Completed"} {:id 0, :name "Reserved"}
@@ -126,9 +125,9 @@
                 {:id 3 :tail-number "t1" :co @now}
                 {:id 4 :tail-number "t1"}]
                (fsp/remove-superceded-reservations [{:id 1 :tail-number "t1"}
-                                   {:id 2 :tail-number "t2"}
-                                   {:id 3 :tail-number "t1" :co @now}
-                                   {:id 4 :tail-number "t1"}]))
+                                                    {:id 2 :tail-number "t2"}
+                                                    {:id 3 :tail-number "t1" :co @now}
+                                                    {:id 4 :tail-number "t1"}]))
       (should= [{:id 3 :tail-number "t1" :co @now}
                 {:id 5 :tail-number "t2" :co @now}
                 {:id 6 :tail-number "t1"}
