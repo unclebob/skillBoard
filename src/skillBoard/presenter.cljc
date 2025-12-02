@@ -90,9 +90,9 @@
                              bearing
                              distance
                              alt
-                               ground-speed))
-        [remark color]  (if adsb? (generate-remark)
-                                  ["            " :white])
+                             ground-speed))
+        [remark color] (if adsb? (generate-remark)
+                                 ["            " :white])
         line (format "%5sZ %-6s %5s %5s %6s %s %s               "
                      (time-util/get-HHmm (time-util/local-to-utc start-time))
                      tail-number
@@ -136,6 +136,14 @@
         blank-line {:line "" :color :white}]
     (concat tafs [blank-line short-metar])))
 
+(defn make-adsb-tail-number-map [adsbs]
+  (apply hash-map
+         (flatten
+           (for [adsb adsbs]
+             [(get adsb :reg)
+              adsb])))
+  )
+
 (defn- make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)
         short-metar (make-short-metar)
@@ -144,15 +152,16 @@
         flights-packet (sources/get-flights fsp/source)
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
-        adsbs (if @test?
-                {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
-                 "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
-                (radar-cape/get-adsb-tail-number-map radar-cape/source active-aircraft))
+        adsbs (sources/get-adsb-by-tail-numbers radar-cape/source active-aircraft)
+        adsb-map (if @test?
+                   {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
+                    "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
+                   (make-adsb-tail-number-map adsbs))
 
-        updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
+        updated-reservations (radar-cape/update-with-adsb filtered-reservations adsb-map)
         final-reservations (radar-cape/include-unreserved-flights
                              updated-reservations
-                             adsbs)
+                             adsb-map)
         report (map format-res final-reservations)
         flight-count (- (:line-count @config/display-info) 2)
         blank-line (apply str (repeat config/cols " "))

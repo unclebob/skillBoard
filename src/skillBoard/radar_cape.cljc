@@ -30,15 +30,6 @@
       (swap! com-errors inc)
       (prn (str "Error fetching ADSB: " (.getMessage e))))))
 
-(defn get-adsb-tail-number-map [source tail-numbers]
-  (let [raw (sources/get-adsb-by-tail-numbers source tail-numbers)]
-    (apply hash-map
-           (flatten
-             (for [adsb raw]
-               [(get adsb :reg)
-                adsb]))))
-  )
-
 (defn update-with-adsb [reservations adsbs]
   (let [tails (set (keys adsbs))]
     (loop [tails tails
