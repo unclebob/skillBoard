@@ -36,7 +36,7 @@
 
 ;Internet configuration
 (def radar-cape-ip "10.10.40.60")
-(def seconds-between-internet-polls 30)
+(def seconds-between-internet-polls 20)
 
 ;Wider area configuration.
 ;
