@@ -147,7 +147,7 @@
         adsbs (if @test?
                 {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
                  "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
-                (radar-cape/get-adsb radar-cape/source active-aircraft))
+                (radar-cape/get-adsb-tail-number-map radar-cape/source active-aircraft))
 
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsbs)
         final-reservations (radar-cape/include-unreserved-flights

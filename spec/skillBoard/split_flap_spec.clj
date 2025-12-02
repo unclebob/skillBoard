@@ -2,60 +2,62 @@
   (:require [skillBoard.split-flap :as split-flap]
             [speclj.core :refer :all]))
 
+(defn- make-lines [& strings]
+  (map (fn [s] {:line s}) strings))
+
 (describe "flapper creation"
   (it "handles degenerate cases"
     (should= [] (split-flap/make-flappers [] [])))
 
   (it "handles identical strings producing no flappers"
-    (should= [] (split-flap/make-flappers ["a" "a"] ["a" "a"])))
+    (should= [] (split-flap/make-flappers (make-lines "a" "a")
+                                          (make-lines "a" "a"))))
 
   (it "creates a flapper if one character on one line is different"
     (should= [{:at [0 0] :from \b :to \a}]
-             (split-flap/make-flappers ["a"] ["b"]))
+             (split-flap/make-flappers (make-lines "a") (make-lines "b")))
     (should= [{:at [1 0] :from \b :to \a}]
-             (split-flap/make-flappers ["xa"] ["xb"]))
-    )
+             (split-flap/make-flappers (make-lines "xa") (make-lines "xb"))))
 
   (it "creates many flappers if many characters on one line are different"
     (should= [{:at [0 0] :from \R :to \B}
               {:at [5 0] :from \o :to \a}
               {:at [8 0] :from \o :to \i}]
-             (split-flap/make-flappers ["Bob Martin"] ["Rob Morton"]))
-    )
+             (split-flap/make-flappers (make-lines "Bob Martin") (make-lines "Rob Morton"))))
 
   (it "creates extra flappers for single lines of differing length"
     (should= [{:at [1 0] :from \b :to \space}]
-             (split-flap/make-flappers ["a"] ["ab"]))
+             (split-flap/make-flappers (make-lines "a") (make-lines "ab")))
     (should= [{:at [1 0] :from \space :to \b}]
-             (split-flap/make-flappers ["ab"] ["a"]))
+             (split-flap/make-flappers (make-lines "ab") (make-lines "a")))
     )
 
   (it "creates flappers for more than one line"
     (should= [{:at [0 0] :from \R :to \B}
               {:at [1 1] :from \o :to \a}
               {:at [4 1] :from \o :to \i}]
-             (split-flap/make-flappers ["Bob" "Martin"]
-                                       ["Rob" "Morton"]))
+             (split-flap/make-flappers (make-lines "Bob" "Martin")
+                                       (make-lines "Rob" "Morton")))
     )
 
   (it "handles reports with different numbers of rows."
     (should= [{:at [0 1] :from \space :to \B}]
-             (split-flap/make-flappers ["A" "B"]
-                                       ["A"]))
+             (split-flap/make-flappers (make-lines "A" "B")
+                                       (make-lines "A")))
     (should= [{:at [0 1] :from \B :to \space}]
-             (split-flap/make-flappers ["A"]
-                                       ["A" "B"]))
+             (split-flap/make-flappers (make-lines "A")
+                                       (make-lines "A" "B")))
     (should= [{:at [0 1] :from \B :to \space}
               {:at [0 2] :from \C :to \space}]
-             (split-flap/make-flappers ["A"]
-                                       ["A" "B" "C"]))
+             (split-flap/make-flappers (make-lines "A")
+                                       (make-lines "A" "B" "C")))
     (should= [{:at [1 1] :from \space :to \a}
               {:at [1 2] :from \x :to \space}
               {:at [0 3] :from \space :to \D}
               {:at [1 3] :from \space :to \b}
               ]
-             (split-flap/make-flappers ["A" "Ba" "C" "Db"]
-                                       ["A" "B" "Cx"]))
+             (split-flap/make-flappers (make-lines "A" "Ba" "C" "Db")
+                                       (make-lines "A" "B" "Cx")))
     )
   )
 

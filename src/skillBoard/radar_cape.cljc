@@ -11,7 +11,7 @@
 
 (def com-errors (atom 0))
 
-(defn get-adsb-raw
+(defn get-adsb-by-tail-numbers
   [tail-numbers]
   (try
     (let [tails (map #(str "icao=" %) tail-numbers)
@@ -30,8 +30,8 @@
       (swap! com-errors inc)
       (prn (str "Error fetching ADSB: " (.getMessage e))))))
 
-(defn get-adsb [source tail-numbers]
-  (let [raw (sources/get-adsb-raw source tail-numbers)]
+(defn get-adsb-tail-number-map [source tail-numbers]
+  (let [raw (sources/get-adsb-by-tail-numbers source tail-numbers)]
     (apply hash-map
            (flatten
              (for [adsb raw]
@@ -88,5 +88,5 @@
 
 (def source {:type :radar-cape})
 
-(defmethod sources/get-adsb-raw :radar-cape [_source tail-numbers]
-  (get-adsb-raw tail-numbers))
+(defmethod sources/get-adsb-by-tail-numbers :radar-cape [_source tail-numbers]
+  (get-adsb-by-tail-numbers tail-numbers))
