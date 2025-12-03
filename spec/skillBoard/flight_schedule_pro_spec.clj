@@ -1,7 +1,8 @@
 (ns skillBoard.flight-schedule-pro-spec
-  (:require [java-time.api :as time]
-            [skillBoard.flight-schedule-pro :as fsp]
-            [speclj.core :refer :all]))
+  (:require
+    [java-time.api :as time]
+    [skillBoard.flight-schedule-pro :as fsp]
+    [speclj.core :refer :all]))
 ;reservationStatus {:id 1, :name "Checked Out"} {:id 2, :name "Completed"} {:id 0, :name "Reserved"}
 
 (declare now now-str)

@@ -8,9 +8,11 @@
     [skillBoard.config :as config]
     [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]
-    ))
+    [skillBoard.api-utils :as api]))
+
 
 (def com-errors (atom 0))
+(def previous-reservations (atom {}))
 
 (defn unpack-reservations [{:keys [items]}]
   (if (empty? items)
@@ -44,35 +46,24 @@
                  :checked-in-on (when-let [checked-in-on (:checkedInOn flight)]
                                   (time-util/parse-time checked-in-on))}])))))
 
-(def previous-reservations (atom {}))
-
 (defn get-reservations []
-  (try
-    (let [operator-id (:fsp-operator-id @config/config)
-          fsp-key (:fsp-key @config/config)
-          today (time/local-date)
-          tomorrow (time/plus today (time/days 1))
-          yesterday (time/minus today (time/days 1))
-          start-time (time/format "yyyy-MM-dd" yesterday)
-          end-time (time/format "yyyy-MM-dd" tomorrow)
-          url (str "https://usc-api.flightschedulepro.com/scheduling/v1.0/operators/" operator-id
-                   "/reservations"
-                   "?startTime=gte:" start-time
-                   "&endTime=lt:" end-time
-                   "&limit=200")
-          response (http/get url {:headers {"x-subscription-key" fsp-key}
-                                  :socket-timeout 2000
-                                  :connection-timeout 2000})]
-      (if (= (:status response) 200)
-        (do
-          (reset! previous-reservations (json/read-str (:body response) :key-fn keyword))
-          (reset! com-errors 0)
-          @previous-reservations)
-        (throw (ex-info "Failed to fetch reservations" {:status (:status response)}))))
-    (catch Exception e
-      (prn (str "Error fetching reservations: " (.getMessage e)))
-      (swap! com-errors inc)
-      @previous-reservations)))
+  (let [operator-id (:fsp-operator-id @config/config)
+        fsp-key (:fsp-key @config/config)
+        today (time/local-date)
+        tomorrow (time/plus today (time/days 1))
+        yesterday (time/minus today (time/days 1))
+        start-time (time/format "yyyy-MM-dd" yesterday)
+        end-time (time/format "yyyy-MM-dd" tomorrow)
+        url (str "https://usc-api.flightschedulepro.com/scheduling/v1.0/operators/" operator-id
+                 "/reservations"
+                 "?startTime=gte:" start-time
+                 "&endTime=lt:" end-time
+                 "&limit=200")
+        args {:headers {"x-subscription-key" fsp-key}
+              :socket-timeout 2000
+              :connection-timeout 2000}
+        save-atom previous-reservations]
+    (api/get-json url args save-atom com-errors "reservations")))
 
 (def previous-flights (atom {}))
 (defn get-flights []
