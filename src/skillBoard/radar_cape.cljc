@@ -1,34 +1,25 @@
 (ns skillBoard.radar-cape
   (:require
-    [clj-http.client :as http]
-    [clojure.data.json :as json]
     [clojure.set :as set]
     [clojure.string :as str]
     [java-time.api :as time]
+    [skillBoard.api-utils :as api]
     [skillBoard.config :as config]
     [skillBoard.sources :as sources]
     ))
 
 (def com-errors (atom 0))
+(def adsbs-atom (atom nil))
+(defn get-adsb-by-tail-numbers [tail-numbers]
+  (let [tails (map #(str "icao=" %) tail-numbers)
+        tails (str/join \& (set tails))
+        url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
+        args {:accept :text
+              :with-credentials? false
+              :socket-timeout 2000
+              :connection-timeout 2000}]
+    (api/get-json url args adsbs-atom com-errors "ADSB")))
 
-(defn get-adsb-by-tail-numbers
-  [tail-numbers]
-  (try
-    (let [tails (map #(str "icao=" %) tail-numbers)
-          tails (str/join \& (set tails))
-          url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
-          response (http/get url {:accept :text
-                                  :with-credentials? false
-                                  :socket-timeout 2000
-                                  :connection-timeout 2000})]
-      (if (= (:status response) 200)
-        (do
-          (reset! com-errors 0)
-          (json/read-str (:body response) :key-fn keyword))
-        (throw (ex-info "Failed to fetch ADSB" {:status (:status response)}))))
-    (catch Exception e
-      (swap! com-errors inc)
-      (prn (str "Error fetching ADSB: " (.getMessage e))))))
 
 (defn update-with-adsb [reservations adsbs]
   (let [tails (set (keys adsbs))]
