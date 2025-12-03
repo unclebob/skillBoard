@@ -353,40 +353,6 @@
     )
   )
 
-(def samples-for-remove-superceded
-  [{:reservation-id 1
-    :tail-number "N123AB"
-    :co nil}                                                ; ← no checkout → keep
-
-   {:reservation-id 2
-    :tail-number "N123AB"
-    :co "2025-12-03T12:00:00"}                              ; ← has checkout → this one wins
-
-   {:reservation-id 3
-    :tail-number "N123AB"
-    :co nil}                                                ; ← older/same tail, no checkout → discard
-
-   {:reservation-id 4
-    :tail-number "N456CD"
-    :co "2025-12-03T14:00:00"}                              ; ← has checkout → keep this one
-
-   {:reservation-id 5
-    :tail-number "N456CD"
-    :co nil}                                                ; ← discard
-
-   {:reservation-id 6
-    :tail-number "N789XY"
-    :co nil}                                                ; ← no checkout anywhere → keep
-
-   {:reservation-id 7
-    :tail-number nil
-    :co "2025-12-03T10:00:00"}                              ; ← nil tail, has checkout → keep (no conflict)
-
-   {:reservation-id 8
-    :tail-number "N999ZZ"
-    :co nil}                                                ; ← normal, no conflict → keep
-   ])
-
 (describe "remove-superceded-reservations"
   (it "keeps all reservations when no :co exists for a tail"
     (let [no-checkouts [{:reservation-id 10 :tail-number "N111AA" :co nil}
@@ -402,7 +368,6 @@
                        {:reservation-id 22 :tail-number "N555XX" :co nil}]
           result (fsp/remove-superceded-reservations multiple-co)
           ids (map :reservation-id result)]
-      ;; First one with :co wins → 20
       (should= [21 22] ids)))
 
   (it "handles nil tail-numbers correctly (no false conflicts)"
@@ -411,7 +376,6 @@
                 {:reservation-id 32 :tail-number "N333CC" :co "2025-12-03T13:00"}]
           result (fsp/remove-superceded-reservations data)]
       (should= 3 (count result))))
-  ; all kept — nil tails don't conflict with each other
 
   (it "works with empty input"
     (should-be empty? (fsp/remove-superceded-reservations [])))
@@ -426,5 +390,4 @@
           kept (first result)]
       (should= "2025-12-03T15:00" (:co kept))
       (should= 100 (:reservation-id kept))))
-
   )
