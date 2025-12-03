@@ -1,7 +1,7 @@
 (ns skillBoard.presenter-spec
   (:require [skillBoard.presenter :as p]
             [skillBoard.sources :as sources]
-            [skillBoard.stubs.source :as stubs]
+            [skillBoard.test-source :as stubs]
             [skillBoard.time-util :as time-util]
             [speclj.core :refer :all]
             ))
@@ -212,4 +212,21 @@
                    "TAF AMD KORD 121130Z 1212/1318 27015G25KT P6SM SCT020 BKN250 "
                    "FM141200 22005KT P6SM SCT250"))))
     )
+  )
+
+(describe "format-name"
+  (it "formats normal names correctly: LAST.F → uppercased 3-letter last + dot + first initial"
+    (should= "SMI.J" (p/format-name ["John" "Smith"]))
+    (should= "DOE.J" (p/format-name ["Jane" "Doe"]))
+    (should= "NGU.T" (p/format-name ["Tuan" "Nguyen"])))
+
+  (it "handles empty and blank strings gracefully"
+    (should= "ALICE" (p/format-name ["Alice" ""]))
+    (should= "ROBER" (p/format-name ["Robert" ""]))
+    (should= "BOB  " (p/format-name ["Bob" "   "]))
+    (should= "     " (p/format-name ["" "   "]))
+    (should= "SMITH" (p/format-name ["" "Smith"]))
+    (should= "MARTI" (p/format-name ["" "Martinez"]))
+    (should= "LI .J" (p/format-name ["John" "Li"]))
+    (should= "SM .J" (p/format-name ["Jane" "Sm"])))
   )

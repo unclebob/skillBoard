@@ -1,4 +1,4 @@
-(ns skillBoard.stubs.source
+(ns skillBoard.test-source
   (:require [skillBoard.sources :as sources]))
 
 (def adsb-source {:type :adsb-stub})

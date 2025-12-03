@@ -3,7 +3,7 @@
     [java-time.api :as time]
     [skillBoard.radar-cape :as rc]
     [skillBoard.sources :as sources]
-    [skillBoard.stubs.source :as stubs]
+    [skillBoard.test-source :as stubs]
     [speclj.core :refer :all]))
 
 (declare start-time co now)

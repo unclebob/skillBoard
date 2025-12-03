@@ -13,11 +13,16 @@
     ))
 
 (def test? (atom false))
+(defn- blank? [s] (empty? (str/trim s)))
 
 (defn format-name [[first-name last-name]]
-  (if (nil? first-name)
-    "     "
-    (str/upper-case (str (subs last-name 0 3) "." (first first-name)))))
+  (let [padded-first (str (str/trim first-name) "     ")
+        padded-last (str (str/trim last-name) "     ")]
+    (cond
+      (and (blank? first-name) (blank? last-name)) "     "
+      (blank? last-name) (str/upper-case (subs padded-first 0 5))
+      (blank? first-name) (str/upper-case (subs padded-last 0 5))
+      :else (str/upper-case (str (subs padded-last 0 3) "." (first padded-first))))))
 
 (defn find-location [my-lat my-lon my-alt geofences]
   (loop [fences geofences]
