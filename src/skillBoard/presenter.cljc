@@ -124,10 +124,14 @@
     {:line (str/trim final-metar)
      :color :white}))
 
-(defn get-short-metar []
-  (let [metar (sources/get-metar weather/source config/airport)
-        metar-text (:rawOb (first metar))]
-    (shorten-metar metar-text)))
+(defn get-short-metar
+  ([]
+   (get-short-metar config/airport))
+
+  ([airport]
+   (let [metar (sources/get-metar weather/source airport)
+         metar-text (:rawOb (first metar))]
+     (shorten-metar metar-text))))
 
 (defn split-taf [raw-taf]
   (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
@@ -140,11 +144,12 @@
 
 (defn make-taf-screen []
   (let [taf-response (sources/get-taf weather/source config/taf-airports)
-        short-metar (get-short-metar)
+        primary-metar (get-short-metar)
+        secondary-metars (map get-short-metar config/secondary-metar-airports)
         raw-tafs (map :rawTAF taf-response)
         tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
         blank-line {:line "" :color :white}]
-    (concat tafs [blank-line short-metar])))
+    (concat tafs [blank-line primary-metar] secondary-metars)))
 
 (defn make-adsb-tail-number-map [adsbs]
   (apply hash-map
@@ -187,12 +192,12 @@
 
 (defn make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)
-          reservations-packet (sources/get-reservations fsp/source)
-          flights-packet (sources/get-flights fsp/source)]
+        reservations-packet (sources/get-reservations fsp/source)
+        flights-packet (sources/get-flights fsp/source)]
     (format-flight-screen active-aircraft
                           reservations-packet
                           flights-packet)
-  ))
+    ))
 
 (defn make-flight-category-line [metar]
   (let [{:keys [fltCat icaoId visib cover clouds wspd wgst]} metar

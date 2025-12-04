@@ -28,6 +28,7 @@
 (def airport "KUGN")
 (def bearing-center "UGN")
 (def taf-airports "KENW")
+(def secondary-metar-airports ["KENW" "KJVL"])
 (def flight-category-airports "KUGN,KMKE,KUES,KBUU,KJVL,KPIA,KFWA,KSBN,KMSN,KMDW,KENW,KRFD,KDKB,KDPA,KETB,KVYS,KBMI")
 (def airport-lat-lon [42.4221486 -87.8679161])
 (def time-zone "America/Chicago")
