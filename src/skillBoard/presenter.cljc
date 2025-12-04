@@ -211,8 +211,19 @@
         ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)]
     {:line ctgy-line :color :white}))
 
+(defn by-distance [metar1 metar2]
+  (let [lat1 (:lat metar1)
+        lon1 (:lon metar1)
+        lat2 (:lat metar2)
+        lon2 (:lon metar2)
+        [airport-lat airport-lon] config/airport-lat-lon
+        dist1 (:distance (nav/dist-and-bearing airport-lat airport-lon lat1 lon1))
+        dist2 (:distance (nav/dist-and-bearing  airport-lat airport-lon lat2 lon2))]
+    (< dist1 dist2)))
+
 (defn make-flight-category-screen []
   (let [metars (sources/get-metar weather/source config/flight-category-airports)
+        metars (sort by-distance metars)
         fc-lines (map make-flight-category-line metars)]
     fc-lines)
   )

@@ -6,8 +6,8 @@
     ))
 
 (def com-errors (atom 0))
-
 (def previous-metar (atom nil))
+
 (defn get-metar [icao]
   (let [url (str "https://aviationweather.gov/api/data/metar?ids=" (str/upper-case icao) "&format=json")
         args {:accept :text :with-credentials? false}]

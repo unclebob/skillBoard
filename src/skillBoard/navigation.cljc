@@ -1,15 +1,14 @@
-(ns skillBoard.navigation
-  (:require [clojure.math :as math]))
+(ns skillBoard.navigation)
 
 (defn dist-and-bearing
   "Calculate distance in nautical miles and bearing between two lat-long points."
-  [tower-lat tower-lon aircraft-lat aircraft-lon]
-  (let [R 3440.1 ;; Earth's radius in nautical miles
+  [lat1 lon1 lat2 lon2]
+  (let [R 3440.1                                            ;; Earth's radius in nautical miles
         to-rad #(/ (* % Math/PI) 180)
-        lat1 (to-rad tower-lat)
-        lon1 (to-rad tower-lon)
-        lat2 (to-rad aircraft-lat)
-        lon2 (to-rad aircraft-lon)
+        lat1 (to-rad lat1)
+        lon1 (to-rad lon1)
+        lat2 (to-rad lat2)
+        lon2 (to-rad lon2)
         dlat (- lat2 lat1)
         dlon (- lon2 lon1)
         ;; Haversine formula for distance
