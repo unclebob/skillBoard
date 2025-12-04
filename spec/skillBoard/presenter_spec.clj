@@ -1,10 +1,14 @@
 (ns skillBoard.presenter-spec
-  (:require [skillBoard.presenter :as p]
-            [skillBoard.sources :as sources]
-            [skillBoard.test-source :as stubs]
-            [skillBoard.time-util :as time-util]
-            [speclj.core :refer :all]
-            ))
+  (:require
+    [skillBoard.config :as config]
+    [skillBoard.flight-schedule-pro :as fsp]
+    [skillBoard.presenter :as p]
+    [skillBoard.radar-cape :as radar-cape]
+    [skillBoard.sources :as sources]
+    [skillBoard.test-source :as stubs]
+    [skillBoard.time-util :as time-util]
+    [speclj.core :refer :all]
+    ))
 
 (def ref-lat 42)
 (def ref-lon -87)
@@ -211,6 +215,37 @@
                  (str
                    "TAF AMD KORD 121130Z 1212/1318 27015G25KT P6SM SCT020 BKN250 "
                    "FM141200 22005KT P6SM SCT250"))))
+
+    (it "handles corrected TAFs correctly"
+      (should= [{:line "TAF COR KORD", :color :white}
+                {:line "121130Z 1212/1318 27015G25KT P6SM SCT020 BKN250", :color :white}
+                {:line "BECMG131200 22005KT P6SM SCT250", :color :white}]
+               (p/split-taf
+                 (str
+                   "TAF COR KORD 121130Z 1212/1318 27015G25KT P6SM SCT020 BKN250 "
+                   "BECMG131200 22005KT P6SM SCT250"))))
+    )
+
+  (context "make-flight-category-line"
+    (it "formats a complete metar correctly"
+      (should= {:line "KORD  VFR CLR        10 15   ", :color :white}
+               (p/make-flight-category-line {:fltCat "VFR" :icaoId "KORD" :visib "10" :cover "CLR" :clouds [] :wspd 15 :wgst nil})))
+
+    (it "handles nil values correctly"
+      (should= {:line "KORD      CLR        10 15G20", :color :white}
+               (p/make-flight-category-line {:fltCat nil :icaoId "KORD" :visib "10" :cover "CLR" :clouds [] :wspd 15 :wgst 20})))
+
+    (it "handles non-CLR cover with cloud base"
+      (should= {:line "KORD  IFR BKN   030   5 10G15", :color :white}
+               (p/make-flight-category-line {:fltCat "IFR" :icaoId "KORD" :visib "5" :cover "BKN" :clouds [{:base "030"}] :wspd 10 :wgst 15})))
+
+    (it "handles nil cover"
+      (should= {:line "KORD  IFR       050   5 10G15", :color :white}
+               (p/make-flight-category-line {:fltCat "IFR" :icaoId "KORD" :visib "5" :cover nil :clouds [{:base "050"}] :wspd 10 :wgst 15})))
+
+    (it "handles nil base"
+      (should= {:line "KORD  IFR OVC         5 10G15", :color :white}
+               (p/make-flight-category-line {:fltCat "IFR" :icaoId "KORD" :visib "5" :cover "OVC" :clouds [] :wspd 10 :wgst 15})))
     )
   )
 
@@ -228,5 +263,60 @@
     (should= "SMITH" (p/format-name ["" "Smith"]))
     (should= "MARTI" (p/format-name ["" "Martinez"]))
     (should= "LI .J" (p/format-name ["John" "Li"]))
-    (should= "SM .J" (p/format-name ["Jane" "Sm"])))
+    (should= "SM .J" (p/format-name ["Jane" "Sm"]))
+    (should= "     " (p/format-name [nil nil])))
+  )
+
+(describe "shorten-metar"
+  (it "returns NO-METAR for nil input"
+    (should= {:line "NO-METAR" :color :white} (p/shorten-metar nil)))
+
+  (it "shortens METAR without RMK"
+    (should= {:line "KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014" :color :white}
+             (p/shorten-metar "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014")))
+
+  (it "shortens METAR with RMK, taking before RMK"
+    (should= {:line "KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014" :color :white}
+             (p/shorten-metar "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014 RMK AO2 SLP221 T02440044")))
+
+  (it "truncates if the shortened METAR is longer than 64 characters"
+    (let [long-part (apply str (repeat 70 "A"))
+          metar-text (str "METAR " long-part)]
+      (should= {:line (subs long-part 0 64) :color :white} (p/shorten-metar metar-text))))
+)
+
+(describe "format-flight-screen"
+  (it "formats an empty flight screen correctly"
+    (with-redefs [p/get-short-metar (fn [] {:line "METAR" :color :white})
+                  fsp/unpack-reservations (fn [_] [])
+                  fsp/unpack-flights (fn [_] [])
+                  fsp/sort-and-filter-reservations (fn [_ _] [])
+                  sources/get-adsb-by-tail-numbers (fn [_ _] [])
+                  p/make-adsb-tail-number-map (fn [_] {})
+                  radar-cape/update-with-adsb (fn [_ _] [])
+                  radar-cape/include-unreserved-flights (fn [_ _] [])
+                  p/format-res (fn [_] {:line "RES" :color :white})
+                  config/display-info (atom {:line-count 10})
+                  config/cols 64]
+      (let [blank-line (apply str (repeat 64 " "))
+            expected (concat (repeat 8 {:line blank-line :color :white})
+                             [{:color :white :line "             "} {:line "METAR" :color :white}])]
+        (should= expected (p/format-flight-screen [] [] [])))))
+
+  (it "formats a flight screen with dropped items correctly"
+    (with-redefs [p/get-short-metar (fn [] {:line "METAR" :color :white})
+                  fsp/unpack-reservations (fn [_] [])
+                  fsp/unpack-flights (fn [_] [])
+                  fsp/sort-and-filter-reservations (fn [_ _] [])
+                  sources/get-adsb-by-tail-numbers (fn [_ _] [])
+                  p/make-adsb-tail-number-map (fn [_] {})
+                  radar-cape/update-with-adsb (fn [_ _] [])
+                  radar-cape/include-unreserved-flights (fn [_ _] (repeat 10 {}))
+                  p/format-res (fn [_] {:line "RES" :color :white})
+                  config/display-info (atom {:line-count 10})
+                  config/cols 64]
+      (let [expected (concat (repeat 8 {:line "RES" :color :white})
+                             [{:color :white :line "... 2 MORE..."} {:line "METAR" :color :white}])]
+        (should= expected (p/format-flight-screen [] [] [])))))
+
   )

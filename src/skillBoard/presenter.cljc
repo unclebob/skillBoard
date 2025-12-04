@@ -16,7 +16,9 @@
 (defn- blank? [s] (empty? (str/trim s)))
 
 (defn format-name [[first-name last-name]]
-  (let [padded-first (str (str/trim first-name) "     ")
+  (let [first-name (if (nil? first-name) "" first-name)
+        last-name (if (nil? last-name) "" last-name)
+        padded-first (str (str/trim first-name) "     ")
         padded-last (str (str/trim last-name) "     ")]
     (cond
       (and (blank? first-name) (blank? last-name)) "     "
@@ -109,10 +111,8 @@
     {:line (subs line 0 config/cols)
      :color color}))
 
-(defn make-short-metar []
-  (let [metar (sources/get-metar weather/source config/airport)
-        metar-text (:rawOb (first metar))
-        short-metar (if (nil? metar-text)
+(defn shorten-metar [metar-text]
+  (let [short-metar (if (nil? metar-text)
                       "NO-METAR"
                       (-> metar-text
                           (str/split #"RMK")
@@ -121,8 +121,13 @@
         final-metar (if (> (count short-metar) config/cols)
                       (subs short-metar 0 config/cols)
                       short-metar)]
-    {:line final-metar
+    {:line (str/trim final-metar)
      :color :white}))
+
+(defn get-short-metar []
+  (let [metar (sources/get-metar weather/source config/airport)
+        metar-text (:rawOb (first metar))]
+    (shorten-metar metar-text)))
 
 (defn split-taf [raw-taf]
   (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
@@ -135,9 +140,9 @@
 
 (defn make-taf-screen []
   (let [taf-response (sources/get-taf weather/source config/taf-airports)
-        short-metar (make-short-metar)
+        short-metar (get-short-metar)
         raw-tafs (map :rawTAF taf-response)
-        tafs (flatten (map #(->> % split-taf (take 4)) raw-tafs))
+        tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
         blank-line {:line "" :color :white}]
     (concat tafs [blank-line short-metar])))
 
@@ -149,12 +154,9 @@
               adsb])))
   )
 
-(defn- make-flight-screen []
-  (let [active-aircraft (sources/get-aircraft fsp/source)
-        short-metar (make-short-metar)
-        reservations-packet (sources/get-reservations fsp/source)
+(defn format-flight-screen [active-aircraft reservations-packet flights-packet]
+  (let [short-metar (get-short-metar)
         unpacked-res (fsp/unpack-reservations reservations-packet)
-        flights-packet (sources/get-flights fsp/source)
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs (sources/get-adsb-by-tail-numbers radar-cape/source active-aircraft)
@@ -181,6 +183,16 @@
         final-screen (concat displayed-items [footer short-metar])
         ]
     final-screen))
+
+
+(defn make-flight-screen []
+  (let [active-aircraft (sources/get-aircraft fsp/source)
+          reservations-packet (sources/get-reservations fsp/source)
+          flights-packet (sources/get-flights fsp/source)]
+    (format-flight-screen active-aircraft
+                          reservations-packet
+                          flights-packet)
+  ))
 
 (defn make-flight-category-line [metar]
   (let [{:keys [fltCat icaoId visib cover clouds wspd wgst]} metar
