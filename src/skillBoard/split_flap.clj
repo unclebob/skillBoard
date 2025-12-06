@@ -9,7 +9,6 @@
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.text-util :as text]
     [skillBoard.time-util :as time-util]
-    [skillBoard.weather :as weather]
     ))
 
 (def next-char
@@ -268,8 +267,8 @@
           (q/ellipse pos 35 10 10)
 
           (cond
-            (> @weather/com-errors 3) (q/fill 255 0 0)
-            (> @weather/com-errors 1) (q/fill 255 165 0)
+            (> @comm/weather-com-errors 3) (q/fill 255 0 0)
+            (> @comm/weather-com-errors 1) (q/fill 255 165 0)
             :else (q/fill 0 255 0))
           (q/ellipse pos 50 10 10)
           )

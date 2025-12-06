@@ -43,6 +43,8 @@
   (comm/get-aircraft)
   (comm/get-flights)
   (comm/get-reservations)
+  (comm/get-metars config/all-metars)
+  (comm/get-tafs config/all-metars)
   )
 
 (defn start-polling []

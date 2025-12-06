@@ -11,7 +11,6 @@
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]
-    [skillBoard.weather :as weather]
     ))
 
 (def test? (atom false))
@@ -131,8 +130,8 @@
    (get-short-metar config/airport))
 
   ([airport]
-   (let [metar (sources/get-metar weather/source airport)
-         metar-text (:rawOb (first metar))]
+   (let [metar (get @comm/polled-metars airport)
+         metar-text (:rawOb metar)]
      (shorten-metar metar-text))))
 
 (defn split-taf [raw-taf]
@@ -145,10 +144,10 @@
     (map (fn [line] {:line line :color :white}) taf-lines)))
 
 (defn make-taf-screen []
-  (let [taf-response (sources/get-taf weather/source config/taf-airport)
-        primary-metar (get-short-metar)
+  (let [taf-response (get @comm/polled-tafs config/taf-airport)
+        primary-metar (get-short-metar config/airport)
         secondary-metars (map get-short-metar config/secondary-metar-airports)
-        raw-tafs (map :rawTAF taf-response)
+        raw-tafs [(:rawTAF taf-response)]
         tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
         blank-line {:line "" :color :white}]
     (concat tafs [blank-line primary-metar] secondary-metars)))
@@ -214,7 +213,7 @@
     (< dist1 dist2)))
 
 (defn make-flight-category-screen []
-  (let [metars (sources/get-metar weather/source config/flight-category-airports)
+  (let [metars (vals @comm/polled-metars)
         metars (sort by-distance metars)
         fc-lines (map make-flight-category-line metars)]
     fc-lines)

@@ -2,6 +2,7 @@
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
+    [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.config :as config]))
 
@@ -25,6 +26,10 @@
 (def polled-flights (atom {}))
 
 (def polled-aircraft (atom {}))
+
+(def polled-metars (atom {}))
+(def polled-tafs (atom {}))
+(def weather-com-errors (atom 0))
 
 (defn get-reservations []
   (let [operator-id (:fsp-operator-id @config/config)
@@ -72,3 +77,29 @@
         aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
         tail-numbers (map #(get % :tailNumber) aircraft)]
     tail-numbers))
+
+(defn get-metars [icao]
+  (let [icao-str (if (sequential? icao)
+                   (str/join "," (map str/upper-case icao))
+                   (str/upper-case icao))
+        url (str "https://aviationweather.gov/api/data/metar?ids=" icao-str "&format=json")
+        args {:accept :text :with-credentials? false}
+        metar-response (get-json url args polled-metars weather-com-errors "METAR")]
+    (let [metar-dict (if (sequential? metar-response)
+                       (into {} (map (fn [m] [(:icaoId m) m]) metar-response))
+                       {(:icaoId metar-response) metar-response})]
+      (reset! polled-metars metar-dict)
+      metar-dict)))
+
+(defn get-tafs [icao]
+  (let [icao-str (if (sequential? icao)
+                   (str/join "," (map str/upper-case icao))
+                   (str/upper-case icao))
+        url (str "https://aviationweather.gov/api/data/taf?ids=" icao-str "&format=json")
+        args {:accept :text :with-credentials? false}
+        taf-response (get-json url args polled-tafs weather-com-errors "TAF")]
+    (let [taf-dict (if (sequential? taf-response)
+                     (into {} (map (fn [m] [(:icaoId m) m]) taf-response))
+                     {(:icaoId taf-response) taf-response})]
+      (reset! polled-tafs taf-dict)
+      taf-dict)))
