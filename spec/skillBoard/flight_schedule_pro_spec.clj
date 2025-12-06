@@ -168,14 +168,14 @@
                                    (reset! captured-error-handler error-handler)
                                    (reset! captured-source source)
                                    {:data :mocked})]
-        (let [result (fsp/get-flights)]
+        (let [result (comm/get-flights)]
           (should= {:data :mocked} result)
           (should-contain "/operators/OP123/flights?" @captured-url)
           (should-contain "&limit=200" @captured-url)
           (should-contain "flightDate=gte:2025-12-03" @captured-url)
           (should-contain "flightDateRangeEndDate=lt:2025-12-04" @captured-url)
           (should-contain "limit=200" @captured-url)
-          (should= fsp/previous-flights @captured-save-atom)
+          (should= comm/polled-flights @captured-save-atom)
           (should= comm/reservation-com-errors @captured-error-handler)
           (should= "flights" @captured-source)
           (should= {:headers {"x-subscription-key" "fake-key"},

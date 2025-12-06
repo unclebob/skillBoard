@@ -40,6 +40,7 @@
            :clock-font clock-font)))
 
 (defn poll []
+  (comm/get-flights)
   (comm/get-reservations)
   )
 
@@ -115,8 +116,6 @@
     :p (reset! atoms/poll-key true)
     :s (reset! atoms/screen-key true)
     nil)
-  (prn 'poll-key @atoms/poll-key)
-  (prn 'screen-key @atoms/screen-key)
   state)
 
 (declare skillBoard)

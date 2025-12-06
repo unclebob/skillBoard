@@ -22,6 +22,8 @@
 (def polled-reservations (atom {}))
 (def reservation-com-errors (atom 0))
 
+(def polled-flights (atom {}))
+
 (defn get-reservations []
   (let [operator-id (:fsp-operator-id @config/config)
         fsp-key (:fsp-key @config/config)
@@ -39,3 +41,20 @@
               :socket-timeout 2000
               :connection-timeout 2000}]
     (get-json url args polled-reservations reservation-com-errors "reservations")))
+
+(defn get-flights []
+  (let [operator-id (:fsp-operator-id @config/config)
+        fsp-key (:fsp-key @config/config)
+        today (time/local-date)
+        tomorrow (time/plus today (time/days 1))
+        start-time (time/format "yyyy-MM-dd" today)
+        end-time (time/format "yyyy-MM-dd" tomorrow)
+        url (str "https://usc-api.flightschedulepro.com/reports/v1.0/operators/" operator-id
+                 "/flights" "?flightDate=gte:" start-time
+                 "&flightDateRangeEndDate=lt:" end-time
+                 "&limit=200"
+                 )
+        args {:headers {"x-subscription-key" fsp-key}
+              :socket-timeout 2000
+              :connection-timeout 2000}]
+    (get-json url args polled-flights reservation-com-errors "flights")))

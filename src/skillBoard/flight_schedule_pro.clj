@@ -40,23 +40,7 @@
                  :checked-in-on (when-let [checked-in-on (:checkedInOn flight)]
                                   (time-util/parse-time checked-in-on))}])))))
 
-(def previous-flights (atom {}))
-(defn get-flights []
-  (let [operator-id (:fsp-operator-id @config/config)
-        fsp-key (:fsp-key @config/config)
-        today (time/local-date)
-        tomorrow (time/plus today (time/days 1))
-        start-time (time/format "yyyy-MM-dd" today)
-        end-time (time/format "yyyy-MM-dd" tomorrow)
-        url (str "https://usc-api.flightschedulepro.com/reports/v1.0/operators/" operator-id
-                 "/flights" "?flightDate=gte:" start-time
-                 "&flightDateRangeEndDate=lt:" end-time
-                 "&limit=200"
-                 )
-        args {:headers {"x-subscription-key" fsp-key}
-              :socket-timeout 2000
-              :connection-timeout 2000}]
-    (comm/get-json url args previous-flights comm/reservation-com-errors "flights")))
+
 
 (defn remove-superceded-reservations [reservations]
   (let [co-tails (set (map :tail-number (filter #(some? (:co %)) reservations)))]
@@ -116,9 +100,6 @@
     tail-numbers))
 
 (def source {:type :fsp})
-
-(defmethod sources/get-flights :fsp [_source]
-  (get-flights))
 
 (defmethod sources/get-aircraft :fsp [_source]
   (get-aircraft))

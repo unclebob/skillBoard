@@ -1,6 +1,7 @@
 (ns skillBoard.presenter
   (:require
     [clojure.string :as str]
+    [clojure.math :as math]
     [quil.core :as q]
     [skillBoard.config :as config]
     [skillBoard.config :as config]
@@ -80,14 +81,14 @@
               on-ground? "GND"
               (not (contains? res :altitude)) "   "
               (nil? altitude) "---"
-              :else (format "%03d" (Math/round (/ altitude 100.0))))
+              :else (format "%03d" (math/round (/ altitude 100.0))))
         no-brg-alt-gs? (and (nil? bearing)
                             (nil? distance)
                             (nil? altitude)
                             (nil? ground-speed))
         ground-speed (if (nil? ground-speed) "   " (format "%03d" ground-speed))
-        bearing (if (nil? bearing) "   " (format "%03d" (Math/round bearing)))
-        distance (if (nil? distance) "   " (format "%03d" (Math/round distance)))
+        bearing (if (nil? bearing) "   " (format "%03d" (math/round bearing)))
+        distance (if (nil? distance) "   " (format "%03d" (math/round distance)))
         check-out-time (if (nil? co)
                          "      "
                          (str (time-util/get-HHmm (time-util/local-to-utc co)) "Z"))
@@ -194,7 +195,7 @@
 (defn make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)
         reservations-packet @comm/polled-reservations
-        flights-packet (sources/get-flights fsp/source)]
+        flights-packet @comm/polled-flights]
     (format-flight-screen active-aircraft
                           reservations-packet
                           flights-packet)
