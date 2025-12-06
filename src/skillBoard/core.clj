@@ -3,6 +3,7 @@
     [java-time.api :as time]
     [quil.core :as q]
     [quil.middleware :as m]
+    [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
@@ -38,9 +39,6 @@
            :annotation-font annotation-font
            :clock-font clock-font)))
 
-(def poll-key (atom false))
-(def poll-time (atom (System/currentTimeMillis)))
-
 (defn poll []
   (comm/get-reservations)
   )
@@ -50,12 +48,12 @@
   (future
     (loop []
       (let [now (System/currentTimeMillis)
-            seconds-since-last-poll (quot (- now @poll-time) 1000)]
-        (when (or @poll-key
+            seconds-since-last-poll (quot (- now @atoms/poll-time) 1000)]
+        (when (or @atoms/poll-key
                   (>= seconds-since-last-poll config/seconds-between-internet-polls))
           (poll)
-          (reset! poll-key false)
-          (reset! poll-time now))
+          (reset! atoms/poll-key false)
+          (reset! atoms/poll-time now))
         (Thread/sleep 1000)
         (recur))
       )
@@ -113,9 +111,12 @@
   (System/exit 0))
 
 (defn key-released [state event]
-  (when (= :p (:key event))
-    (reset! poll-key true))
-
+  (condp = (:key event)
+    :p (reset! atoms/poll-key true)
+    :s (reset! atoms/screen-key true)
+    nil)
+  (prn 'poll-key @atoms/poll-key)
+  (prn 'screen-key @atoms/screen-key)
   state)
 
 (declare skillBoard)

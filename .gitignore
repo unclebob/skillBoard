@@ -4,3 +4,6 @@ out
 /skillBoard.iml
 /.idea/
 /private/
+/bun.sh
+/.grok/
+/target/
