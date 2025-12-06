@@ -83,8 +83,7 @@
         _ (swap! config/display-info assoc
                  :font-width font-width
                  :font-height font-height
-                 :line-count lines-count
-                 :pulse true)
+                 :line-count lines-count)
         summary (presenter/make-screen)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
@@ -119,7 +118,6 @@
 (defn key-released [state event]
   (condp = (:key event)
     :p (reset! atoms/poll-key true)
-    :s (reset! atoms/screen-key true)
     nil)
   state)
 

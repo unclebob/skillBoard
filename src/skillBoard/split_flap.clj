@@ -120,20 +120,16 @@
 
 (defn do-update [{:keys [time flappers lines] :as state}]
   (let [now (System/currentTimeMillis)
-        since (quot (- now time) 1000)
-        poll? (or
-                (> since config/seconds-between-internet-polls)
-                (q/mouse-pressed?))
         old-summary lines
-        summary (if poll?
-                  (presenter/make-screen)
-                  old-summary)
+        summary (presenter/make-screen)
+        new-screen? (not= summary old-summary)
+        new-screen-time (if new-screen? now time)
         flappers (cond
-                   (not= summary old-summary) (make-flappers summary old-summary)
-                   (> (- now time) config/flap-duration) []
+                   new-screen? (make-flappers summary old-summary)
+                   (> (- now new-screen-time) config/flap-duration) []
                    :else (update-flappers flappers)
                    )]
-    (assoc state :time (if poll? now time)
+    (assoc state :time new-screen-time
                  :lines summary
                  :flappers flappers)))
 

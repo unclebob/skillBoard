@@ -1,7 +1,5 @@
 (ns skillBoard.split-flap-spec
   (:require
-    [quil.core :as q]
-    [skillBoard.presenter :as presenter]
     [skillBoard.split-flap :as split-flap]
     [speclj.core :refer :all]))
 
@@ -81,45 +79,3 @@
     (should= "ab " (split-flap/pad-and-trim-line "ab" 3))
     (should= "abc" (split-flap/pad-and-trim-line "abcd" 3))
     ))
-
-(describe "do-update"
-  (it "does not poll when time is recent and no mouse press"
-    (let [now (System/currentTimeMillis)
-          recent-time (- now 10000) ; 10 seconds ago, less than 20
-          old-lines (make-lines "OLD LINE")
-          state {:time recent-time :flappers [] :lines old-lines :pulse false}]
-      (with-redefs [q/mouse-pressed? (fn [] false)
-                    presenter/make-screen (fn [] (throw (Exception. "Should not poll")))]
-        (let [new-state (split-flap/do-update state)]
-          (should= old-lines (:lines new-state))
-          (should= recent-time (:time new-state)) ; time not updated
-          (should= true (:pulse new-state))))))
-
-  (it "polls when mouse is pressed"
-    (let [now (System/currentTimeMillis)
-          recent-time (- now 10000)
-          old-lines (make-lines "OLD LINE")
-          new-lines (make-lines "NEW LINE")
-          state {:time recent-time :flappers [] :lines old-lines :pulse false}]
-      (with-redefs [q/mouse-pressed? (fn [] true)
-                    presenter/make-screen (fn [] new-lines)]
-        (let [new-state (split-flap/do-update state)]
-          (should= new-lines (:lines new-state))
-          (should-not= recent-time (:time new-state)) ; time updated
-          (should-not (empty? (:flappers new-state)))
-          (should= true (:pulse new-state))))))
-
-  (it "polls when time since last poll exceeds threshold"
-    (let [now (System/currentTimeMillis)
-          old-time (- now (* 21 1000)) ; 21 seconds ago
-          old-lines (make-lines "OLD LINE")
-          new-lines (make-lines "NEW LINE")
-          state {:time old-time :flappers [] :lines old-lines :pulse false}]
-      (with-redefs [q/mouse-pressed? (fn [] false)
-                    presenter/make-screen (fn [] new-lines)]
-        (let [new-state (split-flap/do-update state)]
-          (should= new-lines (:lines new-state))
-          (should-not= old-time (:time new-state))
-          (should-not (empty? (:flappers new-state)))
-          (should= true (:pulse new-state))))))
-  )
