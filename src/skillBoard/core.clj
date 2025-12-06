@@ -41,6 +41,7 @@
 
 (defn poll []
   (comm/get-aircraft)
+  (comm/get-adsb-by-tail-numbers @comm/polled-aircraft)
   (comm/get-flights)
   (comm/get-reservations)
   (comm/get-metars config/all-metars)

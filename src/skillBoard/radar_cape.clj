@@ -1,25 +1,8 @@
 (ns skillBoard.radar-cape
   (:require
     [clojure.set :as set]
-    [clojure.string :as str]
     [java-time.api :as time]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
-    [skillBoard.sources :as sources]
     ))
-
-(def com-errors (atom 0))
-(def adsbs-atom (atom nil))
-(defn get-adsb-by-tail-numbers [tail-numbers]
-  (let [tails (map #(str "icao=" %) tail-numbers)
-        tails (str/join \& (set tails))
-        url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
-        args {:accept :text
-              :with-credentials? false
-              :socket-timeout 2000
-              :connection-timeout 2000}]
-    (comm/get-json url args adsbs-atom com-errors "ADSB")))
-
 
 (defn update-with-adsb [reservations adsbs]
   (let [tails (set (keys adsbs))]
@@ -67,8 +50,3 @@
         inclusive-reservations (concat reservations rogue-reservations)]
     (sort #(time/before? (:start-time %1) (:start-time %2)) inclusive-reservations)))
 
-
-(def source {:type :radar-cape})
-
-(defmethod sources/get-adsb-by-tail-numbers :radar-cape [_source tail-numbers]
-  (get-adsb-by-tail-numbers tail-numbers))

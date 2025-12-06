@@ -6,7 +6,6 @@
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
-    [skillBoard.radar-cape :as radar-cape]
     [skillBoard.text-util :as text]
     [skillBoard.time-util :as time-util]
     ))
@@ -261,8 +260,8 @@
           (q/ellipse pos 20 10 10)
 
           (cond
-            (> @radar-cape/com-errors 3) (q/fill 255 0 0)
-            (> @radar-cape/com-errors 1) (q/fill 255 165 0)
+            (> @comm/adsb-com-errors 3) (q/fill 255 0 0)
+            (> @comm/adsb-com-errors 1) (q/fill 255 165 0)
             :else (q/fill 0 255 0))
           (q/ellipse pos 35 10 10)
 

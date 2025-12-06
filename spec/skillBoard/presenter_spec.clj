@@ -4,8 +4,6 @@
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.presenter :as p]
     [skillBoard.radar-cape :as radar-cape]
-    [skillBoard.sources :as sources]
-    [skillBoard.test-source :as stubs]
     [skillBoard.time-util :as time-util]
     [speclj.core :refer :all]
     ))
@@ -188,7 +186,9 @@
     (it "packs the adsb status into a map"
       (should= {"N419AM" {:tmp nil, :cat "A1", :dst nil, :spi false, :alr 0, :alt 4825, :ns 817072312, :vrt 640, :wsp nil, :src "A", :altg 5125, :tru 41, :uti 1750878586, :wdi nil, :org nil, :hex "A4F59B", :opr nil, :cou "USA ", :fli "N419AM", :gda "A", :dis 42.5, :lon -88.81367, :lla 0, :squ nil, :lat 42.51814, :spd 105, :reg "N419AM", :pic 11, :ava "A", :typ "DA40", :trk 119, :dbm -78}
                 "N757HE" {:tmp nil, :cat "A1", :sil 3, :dst nil, :spi false, :alr 0, :alt 1600, :mop 2, :sda 2, :ns 566304636, :vrt -64, :wsp nil, :src "A", :tru 193, :uti 1750878547, :wdi nil, :org nil, :hex "AA34BE", :nacp 9, :opr nil, :cou "USA ", :fli "N757HE", :gda "a", :dis 9.0, :cla 4, :lon -88.06391, :lla 42, :squ nil, :lat 42.44133, :spd 97, :reg "N757HE", :pic 11, :ava "A", :typ "C152", :trk 263, :dbm nil}}
-               (p/make-adsb-tail-number-map (sources/get-adsb-by-tail-numbers stubs/adsb-source ["N345TS" "N419AM"]))))
+               (p/make-adsb-tail-number-map
+                 [{:tmp nil, :cat "A1", :dst nil, :spi false, :alr 0, :alt 4825, :ns 817072312, :vrt 640, :wsp nil, :src "A", :altg 5125, :tru 41, :uti 1750878586, :wdi nil, :org nil, :hex "A4F59B", :opr nil, :cou "USA ", :fli "N419AM", :gda "A", :dis 42.5, :lon -88.81367, :lla 0, :squ nil, :lat 42.51814, :spd 105, :reg "N419AM", :pic 11, :ava "A", :typ "DA40", :trk 119, :dbm -78}
+                  {:tmp nil, :cat "A1", :sil 3, :dst nil, :spi false, :alr 0, :alt 1600, :mop 2, :sda 2, :ns 566304636, :vrt -64, :wsp nil, :src "A", :tru 193, :uti 1750878547, :wdi nil, :org nil, :hex "AA34BE", :nacp 9, :opr nil, :cou "USA ", :fli "N757HE", :gda "a", :dis 9.0, :cla 4, :lon -88.06391, :lla 42, :squ nil, :lat 42.44133, :spd 97, :reg "N757HE", :pic 11, :ava "A", :typ "C152", :trk 263, :dbm nil}])))
     )
 
   (context "split-taf"
@@ -291,7 +291,6 @@
                   fsp/unpack-reservations (fn [_] [])
                   fsp/unpack-flights (fn [_] [])
                   fsp/sort-and-filter-reservations (fn [_ _] [])
-                  sources/get-adsb-by-tail-numbers (fn [_ _] [])
                   p/make-adsb-tail-number-map (fn [_] {})
                   radar-cape/update-with-adsb (fn [_ _] [])
                   radar-cape/include-unreserved-flights (fn [_ _] [])
@@ -301,14 +300,13 @@
       (let [blank-line (apply str (repeat 64 " "))
             expected (concat (repeat 8 {:line blank-line :color :white})
                              [{:color :white :line "             "} {:line "METAR" :color :white}])]
-        (should= expected (p/format-flight-screen [] [] [])))))
+        (should= expected (p/format-flight-screen [] [])))))
 
   (it "formats a flight screen with dropped items correctly"
     (with-redefs [p/get-short-metar (fn [] {:line "METAR" :color :white})
                   fsp/unpack-reservations (fn [_] [])
                   fsp/unpack-flights (fn [_] [])
                   fsp/sort-and-filter-reservations (fn [_ _] [])
-                  sources/get-adsb-by-tail-numbers (fn [_ _] [])
                   p/make-adsb-tail-number-map (fn [_] {})
                   radar-cape/update-with-adsb (fn [_ _] [])
                   radar-cape/include-unreserved-flights (fn [_ _] (repeat 10 {}))
@@ -317,6 +315,6 @@
                   config/cols 64]
       (let [expected (concat (repeat 8 {:line "RES" :color :white})
                              [{:color :white :line "... 2 MORE..."} {:line "METAR" :color :white}])]
-        (should= expected (p/format-flight-screen [] [] [])))))
+        (should= expected (p/format-flight-screen [] [])))))
 
   )

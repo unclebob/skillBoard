@@ -9,7 +9,6 @@
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.navigation :as nav]
     [skillBoard.radar-cape :as radar-cape]
-    [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]
     ))
 
@@ -160,12 +159,12 @@
               adsb])))
   )
 
-(defn format-flight-screen [active-aircraft reservations-packet flights-packet]
+(defn format-flight-screen [reservations-packet flights-packet]
   (let [short-metar (get-short-metar)
         unpacked-res (fsp/unpack-reservations reservations-packet)
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
-        adsbs (sources/get-adsb-by-tail-numbers radar-cape/source active-aircraft)
+        adsbs @comm/polled-adsbs
         adsb-map (if @test?
                    {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
                     "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
@@ -232,9 +231,7 @@
       (reset! screen-start-time time)
       (swap! config/screens rest))
     (condp = @screen-type
-      :flights (format-flight-screen @comm/polled-aircraft
-                                     @comm/polled-reservations
-                                     @comm/polled-flights)
+      :flights (format-flight-screen @comm/polled-reservations @comm/polled-flights)
       :taf (make-taf-screen)
       :flight-category (make-flight-category-screen))
     ))

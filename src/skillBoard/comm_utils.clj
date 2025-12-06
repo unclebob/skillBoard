@@ -31,6 +31,9 @@
 (def polled-tafs (atom {}))
 (def weather-com-errors (atom 0))
 
+(def polled-adsbs (atom {}))
+(def adsb-com-errors (atom 0))
+
 (defn get-reservations []
   (let [operator-id (:fsp-operator-id @config/config)
         fsp-key (:fsp-key @config/config)
@@ -103,3 +106,14 @@
                      {(:icaoId taf-response) taf-response})]
       (reset! polled-tafs taf-dict)
       taf-dict)))
+
+(defn get-adsb-by-tail-numbers [tail-numbers]
+  (let [tails (map #(str "icao=" %) tail-numbers)
+        tails (str/join \& (set tails))
+        url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
+        args {:accept :text
+              :with-credentials? false
+              :socket-timeout 2000
+              :connection-timeout 2000}
+        adsb-response (get-json url args polled-adsbs adsb-com-errors "ADSB")]
+    adsb-response))
