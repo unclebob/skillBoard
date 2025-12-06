@@ -8,9 +8,6 @@
     [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]))
 
-
-(def com-errors (atom 0))
-
 (defn unpack-reservations [{:keys [items]}]
   (if (empty? items)
     []
@@ -43,26 +40,6 @@
                  :checked-in-on (when-let [checked-in-on (:checkedInOn flight)]
                                   (time-util/parse-time checked-in-on))}])))))
 
-(def previous-reservations (atom {}))
-(defn get-reservations []
-  (let [operator-id (:fsp-operator-id @config/config)
-        fsp-key (:fsp-key @config/config)
-        today (time/local-date)
-        tomorrow (time/plus today (time/days 1))
-        yesterday (time/minus today (time/days 1))
-        start-time (time/format "yyyy-MM-dd" yesterday)
-        end-time (time/format "yyyy-MM-dd" tomorrow)
-        url (str "https://usc-api.flightschedulepro.com/scheduling/v1.0/operators/" operator-id
-                 "/reservations"
-                 "?startTime=gte:" start-time
-                 "&endTime=lt:" end-time
-                 "&limit=200")
-        args {:headers {"x-subscription-key" fsp-key}
-              :socket-timeout 2000
-              :connection-timeout 2000}
-        save-atom previous-reservations]
-    (api/get-json url args save-atom com-errors "reservations")))
-
 (def previous-flights (atom {}))
 (defn get-flights []
   (let [operator-id (:fsp-operator-id @config/config)
@@ -79,7 +56,7 @@
         args {:headers {"x-subscription-key" fsp-key}
               :socket-timeout 2000
               :connection-timeout 2000}]
-    (api/get-json url args previous-flights com-errors "flights")))
+    (api/get-json url args previous-flights api/reservation-com-errors "flights")))
 
 (defn remove-superceded-reservations [reservations]
   (let [co-tails (set (map :tail-number (filter #(some? (:co %)) reservations)))]
@@ -133,15 +110,12 @@
         args {:headers {"x-subscription-key" fsp-key}
               :socket-timeout 2000
               :connection-timeout 2000}
-        response (api/get-json url args previous-aircraft com-errors "aircraft")
+        response (api/get-json url args previous-aircraft api/reservation-com-errors "aircraft")
         aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
         tail-numbers (map #(get % :tailNumber) aircraft)]
     tail-numbers))
 
 (def source {:type :fsp})
-
-(defmethod sources/get-reservations :fsp [_source]
-  (get-reservations))
 
 (defmethod sources/get-flights :fsp [_source]
   (get-flights))

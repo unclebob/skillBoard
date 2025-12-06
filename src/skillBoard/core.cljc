@@ -3,6 +3,7 @@
     [java-time.api :as time]
     [quil.core :as q]
     [quil.middleware :as m]
+    [skillBoard.api-utils :as api]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
     [skillBoard.split-flap :as split-flap]
@@ -37,11 +38,35 @@
            :annotation-font annotation-font
            :clock-font clock-font)))
 
+(def poll-key (atom false))
+(def poll-time (atom (System/currentTimeMillis)))
+
+(defn poll []
+  (api/get-reservations)
+  )
+
+(defn start-polling []
+  (poll)
+  (future
+    (loop []
+      (let [now (System/currentTimeMillis)
+            seconds-since-last-poll (quot (- now @poll-time) 1000)]
+        (when (or @poll-key
+                  (>= seconds-since-last-poll config/seconds-between-internet-polls))
+          (poll)
+          (reset! poll-key false)
+          (reset! poll-time now))
+        (Thread/sleep 1000)
+        (recur))
+      )
+    ))
+
 (defn setup []
   (prn "Setup..." (time-util/format-time (time/local-date-time)))
   (load-fonts)
   (config/load-config)
   (load-display-info)
+  (start-polling)
   (let [{:keys [sf-font-size sf-font header-font annotation-font clock-font
                 size top-margin label-height]} @config/display-info
         _ (q/text-font sf-font)
@@ -87,6 +112,12 @@
   (println "Skill Board closed.")
   (System/exit 0))
 
+(defn key-released [state event]
+  (when (= :p (:key event))
+    (reset! poll-key true))
+
+  state)
+
 (declare skillBoard)
 
 (defn -main [& args]
@@ -105,4 +136,5 @@
                  :features (if window? [] [:present])
                  :middleware [m/fun-mode]
                  :on-close on-close
+                 :key-released key-released
                  :host "skillBoard")))
