@@ -9,9 +9,13 @@
 (def previous-metar (atom nil))
 
 (defn get-metar [icao]
-  (let [url (str "https://aviationweather.gov/api/data/metar?ids=" (str/upper-case icao) "&format=json")
-        args {:accept :text :with-credentials? false}]
-    (comm/get-json url args previous-metar com-errors "METAR")))
+  (let [icao-str (if (sequential? icao)
+                   (str/join "," (map str/upper-case icao))
+                   (str/upper-case icao))
+        url (str "https://aviationweather.gov/api/data/metar?ids=" icao-str "&format=json")
+        args {:accept :text :with-credentials? false}
+        metar-response (comm/get-json url args previous-metar com-errors "METAR")]
+    metar-response))
 
 (def previous-taf (atom nil))
 (defn get-taf [icao]

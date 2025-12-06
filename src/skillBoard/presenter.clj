@@ -145,7 +145,7 @@
     (map (fn [line] {:line line :color :white}) taf-lines)))
 
 (defn make-taf-screen []
-  (let [taf-response (sources/get-taf weather/source config/taf-airports)
+  (let [taf-response (sources/get-taf weather/source config/taf-airport)
         primary-metar (get-short-metar)
         secondary-metars (map get-short-metar config/secondary-metar-airports)
         raw-tafs (map :rawTAF taf-response)
