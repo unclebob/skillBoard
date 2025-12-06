@@ -87,15 +87,12 @@
     (let [now (System/currentTimeMillis)
           recent-time (- now 10000) ; 10 seconds ago, less than 20
           old-lines (make-lines "OLD LINE")
-          state {:time recent-time :flappers [] :lines old-lines :pulse false}
-          frame-rate-atom (atom nil)]
+          state {:time recent-time :flappers [] :lines old-lines :pulse false}]
       (with-redefs [q/mouse-pressed? (fn [] false)
-                    q/frame-rate (fn [rate] (reset! frame-rate-atom rate))
                     presenter/make-screen (fn [] (throw (Exception. "Should not poll")))]
         (let [new-state (split-flap/do-update state)]
           (should= old-lines (:lines new-state))
           (should= recent-time (:time new-state)) ; time not updated
-          (should= 2 @frame-rate-atom) ; empty flappers, frame-rate 2
           (should= true (:pulse new-state))))))
 
   (it "polls when mouse is pressed"
@@ -103,16 +100,13 @@
           recent-time (- now 10000)
           old-lines (make-lines "OLD LINE")
           new-lines (make-lines "NEW LINE")
-          state {:time recent-time :flappers [] :lines old-lines :pulse false}
-          frame-rate-atom (atom nil)]
+          state {:time recent-time :flappers [] :lines old-lines :pulse false}]
       (with-redefs [q/mouse-pressed? (fn [] true)
-                    q/frame-rate (fn [rate] (reset! frame-rate-atom rate))
                     presenter/make-screen (fn [] new-lines)]
         (let [new-state (split-flap/do-update state)]
           (should= new-lines (:lines new-state))
           (should-not= recent-time (:time new-state)) ; time updated
           (should-not (empty? (:flappers new-state)))
-          (should= 10 @frame-rate-atom)
           (should= true (:pulse new-state))))))
 
   (it "polls when time since last poll exceeds threshold"
@@ -120,27 +114,12 @@
           old-time (- now (* 21 1000)) ; 21 seconds ago
           old-lines (make-lines "OLD LINE")
           new-lines (make-lines "NEW LINE")
-          state {:time old-time :flappers [] :lines old-lines :pulse false}
-          frame-rate-atom (atom nil)]
+          state {:time old-time :flappers [] :lines old-lines :pulse false}]
       (with-redefs [q/mouse-pressed? (fn [] false)
-                    q/frame-rate (fn [rate] (reset! frame-rate-atom rate))
                     presenter/make-screen (fn [] new-lines)]
         (let [new-state (split-flap/do-update state)]
           (should= new-lines (:lines new-state))
           (should-not= old-time (:time new-state))
           (should-not (empty? (:flappers new-state)))
-          (should= 10 @frame-rate-atom)
           (should= true (:pulse new-state))))))
-
-  (it "sets frame rate to 2 when flappers are not present"
-    (let [now (System/currentTimeMillis)
-          recent-time (- now 10000)
-          old-lines (make-lines "LINE")
-          state {:time recent-time :flappers [{:at [0 0] :from \A :to \B}] :lines old-lines :pulse false}
-          frame-rate-atom (atom nil)]
-      (with-redefs [q/mouse-pressed? (fn [] false)
-                    q/frame-rate (fn [rate] (reset! frame-rate-atom rate))
-                    presenter/make-screen (fn [] old-lines)] ; no change, so flappers will be udpated
-        (let [new-state (split-flap/do-update state)]
-          (should (empty? (:flappers new-state)))
-          (should= 2 @frame-rate-atom))))))
+  )

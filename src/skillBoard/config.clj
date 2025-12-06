@@ -15,6 +15,7 @@
 (def sf-char-gap 0.08)
 (def sf-line-gap 0.25)
 (def flap-duration 3500)                                    ;milliseconds
+(def frame-rate 10)
 
 ;screens
 (def screens

@@ -59,6 +59,7 @@
           (future (poll))
           (reset! atoms/poll-key false)
           (reset! atoms/poll-time now))
+        (reset! atoms/clock-pulse (< 500 (mod now 1000)))
         (Thread/sleep 100)
         (recur))
       )
@@ -87,7 +88,7 @@
         summary (presenter/make-screen)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
-    (q/frame-rate 10)
+    (q/frame-rate config/frame-rate)
     (q/background 255)
     {:time now
      :lines summary

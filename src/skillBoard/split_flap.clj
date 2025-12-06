@@ -3,6 +3,7 @@
     [clojure.string :as string]
     [java-time.api :as time]
     [quil.core :as q]
+    [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
@@ -117,7 +118,7 @@
                           :to to}))
             (recur (rest flappers) (conj updated-flappers flapper))))))))
 
-(defn do-update [{:keys [time flappers lines pulse] :as state}]
+(defn do-update [{:keys [time flappers lines] :as state}]
   (let [now (System/currentTimeMillis)
         since (quot (- now time) 1000)
         poll? (or
@@ -131,13 +132,10 @@
                    (not= summary old-summary) (make-flappers summary old-summary)
                    (> (- now time) config/flap-duration) []
                    :else (update-flappers flappers)
-                   )
-        frame-rate (if (empty? flappers) 2 10)]
-    (q/frame-rate frame-rate)
+                   )]
     (assoc state :time (if poll? now time)
                  :lines summary
-                 :flappers flappers
-                 :pulse (not pulse))))
+                 :flappers flappers)))
 
 (defn header-text []
   (condp = @presenter/screen-type
@@ -150,9 +148,9 @@
   (let [padded-line (str line (apply str (repeat length " ")))]
     (subs padded-line 0 length)))
 
-(defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height pulse header-font] :as state}]
+(defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
-        now (if pulse now (string/replace now ":" " "))
+        now (if @atoms/clock-pulse now (string/replace now ":" " "))
         flap-width (+ font-width (:sf-char-gap @config/display-info))
         flap-height (* font-height (inc config/sf-line-gap))
         top-margin (:top-margin @config/display-info)
