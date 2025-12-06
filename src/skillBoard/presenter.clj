@@ -1,8 +1,9 @@
 (ns skillBoard.presenter
   (:require
-    [clojure.string :as str]
     [clojure.math :as math]
+    [clojure.string :as str]
     [quil.core :as q]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
@@ -11,7 +12,6 @@
     [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]
     [skillBoard.weather :as weather]
-    [skillBoard.comm-utils :as comm]
     ))
 
 (def test? (atom false))
@@ -191,16 +191,6 @@
         ]
     final-screen))
 
-
-(defn make-flight-screen []
-  (let [active-aircraft (sources/get-aircraft fsp/source)
-        reservations-packet @comm/polled-reservations
-        flights-packet @comm/polled-flights]
-    (format-flight-screen active-aircraft
-                          reservations-packet
-                          flights-packet)
-    ))
-
 (defn make-flight-category-line [metar]
   (let [{:keys [fltCat icaoId visib cover clouds wspd wgst]} metar
         base (if (= cover "CLR")
@@ -220,7 +210,7 @@
         lon2 (:lon metar2)
         [airport-lat airport-lon] config/airport-lat-lon
         dist1 (:distance (nav/dist-and-bearing airport-lat airport-lon lat1 lon1))
-        dist2 (:distance (nav/dist-and-bearing  airport-lat airport-lon lat2 lon2))]
+        dist2 (:distance (nav/dist-and-bearing airport-lat airport-lon lat2 lon2))]
     (< dist1 dist2)))
 
 (defn make-flight-category-screen []
@@ -243,7 +233,9 @@
       (reset! screen-start-time time)
       (swap! config/screens rest))
     (condp = @screen-type
-      :flights (make-flight-screen)
+      :flights (format-flight-screen @comm/polled-aircraft
+                                     @comm/polled-reservations
+                                     @comm/polled-flights)
       :taf (make-taf-screen)
       :flight-category (make-flight-category-screen))
     ))

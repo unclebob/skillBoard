@@ -24,6 +24,8 @@
 
 (def polled-flights (atom {}))
 
+(def polled-aircraft (atom {}))
+
 (defn get-reservations []
   (let [operator-id (:fsp-operator-id @config/config)
         fsp-key (:fsp-key @config/config)
@@ -58,3 +60,15 @@
               :socket-timeout 2000
               :connection-timeout 2000}]
     (get-json url args polled-flights reservation-com-errors "flights")))
+
+(defn get-aircraft []
+  (let [operator-id (:fsp-operator-id @config/config)
+        fsp-key (:fsp-key @config/config)
+        url (str "https://usc-api.flightschedulepro.com/core/v1.0/operators/" operator-id "/aircraft")
+        args {:headers {"x-subscription-key" fsp-key}
+              :socket-timeout 2000
+              :connection-timeout 2000}
+        response (get-json url args polled-aircraft reservation-com-errors "aircraft")
+        aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
+        tail-numbers (map #(get % :tailNumber) aircraft)]
+    tail-numbers))

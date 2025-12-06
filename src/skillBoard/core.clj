@@ -40,6 +40,7 @@
            :clock-font clock-font)))
 
 (defn poll []
+  (comm/get-aircraft)
   (comm/get-flights)
   (comm/get-reservations)
   )
@@ -52,10 +53,10 @@
             seconds-since-last-poll (quot (- now @atoms/poll-time) 1000)]
         (when (or @atoms/poll-key
                   (>= seconds-since-last-poll config/seconds-between-internet-polls))
-          (poll)
+          (future (poll))
           (reset! atoms/poll-key false)
           (reset! atoms/poll-time now))
-        (Thread/sleep 1000)
+        (Thread/sleep 100)
         (recur))
       )
     ))
