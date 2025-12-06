@@ -1,7 +1,7 @@
 (ns skillBoard.flight-schedule-pro-spec
   (:require
     [java-time.api :as time]
-    [skillBoard.api-utils :as api]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [speclj.core :refer :all]))
@@ -150,43 +150,9 @@
 
 (def frozen-today (time/local-date 2025 12 03))
 
-(describe "get-reservations"
-  (with-stubs)
-
-  (it "calls api/get-json with correct arguments including save-atom and error handler"
-    (let [captured-url (atom nil)
-          captured-args (atom nil)
-          captured-save-atom (atom nil)
-          captured-error-handler (atom nil)
-          captured-source (atom nil)]
-      (with-redefs [time/local-date (constantly frozen-today)
-                    config/config (atom {:fsp-operator-id "OP123"
-                                         :fsp-key "fake-key"})
-                    api/get-json (fn [url args save-atom error-handler source]
-                                   (reset! captured-url url)
-                                   (reset! captured-args args)
-                                   (reset! captured-save-atom save-atom)
-                                   (reset! captured-error-handler error-handler)
-                                   (reset! captured-source source)
-                                   {:data :mocked})]
-        (let [result (fsp/get-reservations)]
-          (should= {:data :mocked} result)
-          (should-contain "?startTime=gte:2025-12-02" @captured-url)
-          (should-contain "&endTime=lt:2025-12-04" @captured-url)
-          (should-contain "/operators/OP123/reservations?" @captured-url)
-          (should-contain "&limit=200" @captured-url)
-          (should= fsp/previous-reservations @captured-save-atom)
-          (should= fsp/com-errors @captured-error-handler)
-          (should= "reservations" @captured-source)
-          (should= {:headers {"x-subscription-key" "fake-key"},
-                    :socket-timeout 2000,
-                    :connection-timeout 2000}
-                   @captured-args)))))
-  )
-
 (describe "get-flights"
   (with-stubs)
-  (it "calls api/get-json with correct arguments including save-atom and error handler"
+  (it "calls comm/get-json with correct arguments including save-atom and error handler"
     (let [captured-url (atom nil)
           captured-args (atom nil)
           captured-save-atom (atom nil)
@@ -195,7 +161,7 @@
       (with-redefs [time/local-date (constantly frozen-today)
                     config/config (atom {:fsp-operator-id "OP123"
                                          :fsp-key "fake-key"})
-                    api/get-json (fn [url args save-atom error-handler source]
+                    comm/get-json (fn [url args save-atom error-handler source]
                                    (reset! captured-url url)
                                    (reset! captured-args args)
                                    (reset! captured-save-atom save-atom)
@@ -210,7 +176,7 @@
           (should-contain "flightDateRangeEndDate=lt:2025-12-04" @captured-url)
           (should-contain "limit=200" @captured-url)
           (should= fsp/previous-flights @captured-save-atom)
-          (should= fsp/com-errors @captured-error-handler)
+          (should= comm/reservation-com-errors @captured-error-handler)
           (should= "flights" @captured-source)
           (should= {:headers {"x-subscription-key" "fake-key"},
                     :socket-timeout 2000,
@@ -220,7 +186,7 @@
 
 (describe "get-aircraft"
   (with-stubs)
-  (it "calls api/get-json with correct arguments including save-atom and error handler"
+  (it "calls comm/get-json with correct arguments including save-atom and error handler"
     (let [captured-url (atom nil)
           captured-args (atom nil)
           captured-save-atom (atom nil)
@@ -229,7 +195,7 @@
       (with-redefs [time/local-date (constantly frozen-today)
                     config/config (atom {:fsp-operator-id "OP123"
                                          :fsp-key "fake-key"})
-                    api/get-json (fn [url args save-atom error-handler source]
+                    comm/get-json (fn [url args save-atom error-handler source]
                                    (reset! captured-url url)
                                    (reset! captured-args args)
                                    (reset! captured-save-atom save-atom)
@@ -241,7 +207,7 @@
           (should= ["tail1"] result)
           (should-contain "/operators/OP123/aircraft" @captured-url)
           (should= fsp/previous-aircraft @captured-save-atom)
-          (should= fsp/com-errors @captured-error-handler)
+          (should= comm/reservation-com-errors @captured-error-handler)
           (should= "aircraft" @captured-source)
           (should= {:headers {"x-subscription-key" "fake-key"},
                     :socket-timeout 2000,

@@ -3,7 +3,7 @@
     [java-time.api :as time]
     [quil.core :as q]
     [quil.middleware :as m]
-    [skillBoard.api-utils :as api]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
     [skillBoard.split-flap :as split-flap]
@@ -42,7 +42,7 @@
 (def poll-time (atom (System/currentTimeMillis)))
 
 (defn poll []
-  (api/get-reservations)
+  (comm/get-reservations)
   )
 
 (defn start-polling []

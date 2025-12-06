@@ -3,7 +3,7 @@
     [clojure.string]
     [clojure.string :as str]
     [java-time.api :as time]
-    [skillBoard.api-utils :as api]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]))
@@ -56,7 +56,7 @@
         args {:headers {"x-subscription-key" fsp-key}
               :socket-timeout 2000
               :connection-timeout 2000}]
-    (api/get-json url args previous-flights api/reservation-com-errors "flights")))
+    (comm/get-json url args previous-flights comm/reservation-com-errors "flights")))
 
 (defn remove-superceded-reservations [reservations]
   (let [co-tails (set (map :tail-number (filter #(some? (:co %)) reservations)))]
@@ -110,7 +110,7 @@
         args {:headers {"x-subscription-key" fsp-key}
               :socket-timeout 2000
               :connection-timeout 2000}
-        response (api/get-json url args previous-aircraft api/reservation-com-errors "aircraft")
+        response (comm/get-json url args previous-aircraft comm/reservation-com-errors "aircraft")
         aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
         tail-numbers (map #(get % :tailNumber) aircraft)]
     tail-numbers))

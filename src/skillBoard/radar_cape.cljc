@@ -3,7 +3,7 @@
     [clojure.set :as set]
     [clojure.string :as str]
     [java-time.api :as time]
-    [skillBoard.api-utils :as api]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.sources :as sources]
     ))
@@ -18,7 +18,7 @@
               :with-credentials? false
               :socket-timeout 2000
               :connection-timeout 2000}]
-    (api/get-json url args adsbs-atom com-errors "ADSB")))
+    (comm/get-json url args adsbs-atom com-errors "ADSB")))
 
 
 (defn update-with-adsb [reservations adsbs]

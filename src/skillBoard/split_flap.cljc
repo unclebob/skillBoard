@@ -3,7 +3,7 @@
     [clojure.string :as string]
     [java-time.api :as time]
     [quil.core :as q]
-    [skillBoard.api-utils :as api]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenter :as presenter]
     [skillBoard.radar-cape :as radar-cape]
@@ -256,8 +256,8 @@
         display-com-errors
         (fn [pos]
           (cond
-            (> @api/reservation-com-errors 6) (q/fill 255 0 0)
-            (> @api/reservation-com-errors 3) (q/fill 255 165 0)
+            (> @comm/reservation-com-errors 6) (q/fill 255 0 0)
+            (> @comm/reservation-com-errors 3) (q/fill 255 165 0)
             :else (q/fill 0 255 0))
           (q/ellipse pos 20 10 10)
 

@@ -10,7 +10,7 @@
     [skillBoard.sources :as sources]
     [skillBoard.time-util :as time-util]
     [skillBoard.weather :as weather]
-    [skillBoard.api-utils :as api]
+    [skillBoard.comm-utils :as comm]
     ))
 
 (def test? (atom false))
@@ -193,7 +193,7 @@
 
 (defn make-flight-screen []
   (let [active-aircraft (sources/get-aircraft fsp/source)
-        reservations-packet @api/polled-reservations
+        reservations-packet @comm/polled-reservations
         flights-packet (sources/get-flights fsp/source)]
     (format-flight-screen active-aircraft
                           reservations-packet

@@ -1,4 +1,4 @@
-(ns skillBoard.api-utils
+(ns skillBoard.comm-utils
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
