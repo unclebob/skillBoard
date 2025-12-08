@@ -3,6 +3,7 @@
     [skillBoard.presenters.utils :as utils]
     [skillBoard.navigation :as nav]
     [skillBoard.config :as config]
+    [skillBoard.comm-utils :as comm]
     [speclj.core :refer :all]))
 
 (describe "by-distance"
@@ -17,6 +18,18 @@
         (utils/by-distance metar1 metar2)
         (should= [[airport-lat airport-lon 10.0 20.0]
                   [airport-lat airport-lon 30.0 40.0]] @calls)))))
+
+(describe "get-short-metar"
+  (it "calls shorten-metar with the correct metar text"
+    (let [calls (atom [])
+          airport "KJFK"
+          metar-text "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014"]
+      (with-redefs [comm/polled-metars (atom {airport {:rawOb metar-text}})
+                    utils/shorten-metar (fn [text]
+                                          (swap! calls conj text)
+                                          {:line "shortened" :color :white})]
+        (utils/get-short-metar airport)
+        (should= [metar-text] @calls)))))
 
 (describe "shorten-metar"
   (it "returns NO-METAR for nil input"
