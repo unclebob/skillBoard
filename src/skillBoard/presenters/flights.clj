@@ -1,19 +1,15 @@
-(ns skillBoard.presenter
+(ns skillBoard.presenters.flights
   (:require
     [clojure.math :as math]
     [clojure.string :as str]
-    [quil.core :as q]
+    [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.navigation :as nav]
+    [skillBoard.presenters.utils :as utils]
     [skillBoard.radar-cape :as radar-cape]
-    [skillBoard.time-util :as time-util]
-    ))
-
-(def test? (atom false))
-(defn- blank? [s] (empty? (str/trim s)))
+    [skillBoard.time-util :as time-util]))
 
 (defn format-name [[first-name last-name]]
   (let [first-name (if (nil? first-name) "" first-name)
@@ -21,9 +17,9 @@
         padded-first (str (str/trim first-name) "     ")
         padded-last (str (str/trim last-name) "     ")]
     (cond
-      (and (blank? first-name) (blank? last-name)) "     "
-      (blank? last-name) (str/upper-case (subs padded-first 0 5))
-      (blank? first-name) (str/upper-case (subs padded-last 0 5))
+      (and (utils/blank? first-name) (utils/blank? last-name)) "     "
+      (utils/blank? last-name) (str/upper-case (subs padded-first 0 5))
+      (utils/blank? first-name) (str/upper-case (subs padded-last 0 5))
       :else (str/upper-case (str (subs padded-last 0 3) "." (first padded-first))))))
 
 (defn find-location [my-lat my-lon my-alt geofences]
@@ -111,46 +107,6 @@
     {:line (subs line 0 config/cols)
      :color color}))
 
-(defn shorten-metar [metar-text]
-  (let [short-metar (if (nil? metar-text)
-                      "NO-METAR"
-                      (-> metar-text
-                          (str/split #"RMK")
-                          first
-                          (subs 6)))
-        final-metar (if (> (count short-metar) config/cols)
-                      (subs short-metar 0 config/cols)
-                      short-metar)]
-    {:line (str/trim final-metar)
-     :color :white}))
-
-(defn get-short-metar
-  ([]
-   (get-short-metar config/airport))
-
-  ([airport]
-   (let [metar (get @comm/polled-metars airport)
-         metar-text (:rawOb metar)]
-     (shorten-metar metar-text))))
-
-(defn split-taf [raw-taf]
-  (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
-        tafs (str/replace tafs #"PROB30 TEMPO" "PROB30 TEMPX")
-        tafs (str/replace tafs #"PROB40 TEMPO" "PROB40 TEMPX")
-        taf-items (map str/trim (str/split tafs #"(?=FM|BECMG|PROB[34]0 TEMPX|PROB[34]0 \d|TEMPO)"))
-        taf-items (map #(str/replace % "TEMPX" "TEMPO") taf-items)
-        taf-lines (concat [taf-name] taf-items)]
-    (map (fn [line] {:line line :color :white}) taf-lines)))
-
-(defn make-taf-screen []
-  (let [taf-response (get @comm/polled-tafs config/taf-airport)
-        primary-metar (get-short-metar config/airport)
-        secondary-metars (map get-short-metar config/secondary-metar-airports)
-        raw-tafs [(:rawTAF taf-response)]
-        tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
-        blank-line {:line "" :color :white}]
-    (concat tafs [blank-line primary-metar] secondary-metars)))
-
 (defn make-adsb-tail-number-map [adsbs]
   (apply hash-map
          (flatten
@@ -160,12 +116,12 @@
   )
 
 (defn format-flight-screen [reservations-packet flights-packet]
-  (let [short-metar (get-short-metar)
+  (let [short-metar (utils/get-short-metar)
         unpacked-res (fsp/unpack-reservations reservations-packet)
         flights (fsp/unpack-flights flights-packet)
         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
         adsbs @comm/polled-adsbs
-        adsb-map (if @test?
+        adsb-map (if @atoms/test?
                    {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
                     "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
                    (make-adsb-tail-number-map adsbs))
@@ -188,51 +144,3 @@
         final-screen (concat displayed-items [footer short-metar])
         ]
     final-screen))
-
-(defn make-flight-category-line [metar]
-  (let [{:keys [fltCat icaoId visib cover clouds wspd wgst]} metar
-        base (if (= cover "CLR")
-               "    "
-               (:base (first clouds)))
-        fltCat (if (nil? fltCat) "    " fltCat)
-        cover (if (nil? cover) "   " cover)
-        base (if (nil? base) "     " base)
-        wgst (if (nil? wgst) "   " (str "G" wgst))
-        ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)]
-    {:line ctgy-line :color :white}))
-
-(defn by-distance [metar1 metar2]
-  (let [lat1 (:lat metar1)
-        lon1 (:lon metar1)
-        lat2 (:lat metar2)
-        lon2 (:lon metar2)
-        [airport-lat airport-lon] config/airport-lat-lon
-        dist1 (:distance (nav/dist-and-bearing airport-lat airport-lon lat1 lon1))
-        dist2 (:distance (nav/dist-and-bearing airport-lat airport-lon lat2 lon2))]
-    (< dist1 dist2)))
-
-(defn make-flight-category-screen []
-  (let [metars (vals @comm/polled-metars)
-        metars (sort by-distance metars)
-        fc-lines (map make-flight-category-line metars)]
-    fc-lines)
-  )
-
-(def screen-type (atom nil))
-(def screen-duration (atom 0))
-(def screen-start-time (atom 0))
-
-(defn make-screen []
-  (let [time (System/currentTimeMillis)
-        current-screen-seconds (quot (- time @screen-start-time) 1000)]
-    (when (or (q/mouse-pressed?) (> current-screen-seconds @screen-duration))
-      (reset! screen-type (:screen (first @config/screens)))
-      (reset! screen-duration (:duration (first @config/screens)))
-      (reset! screen-start-time time)
-      (swap! config/screens rest))
-    (condp = @screen-type
-      :flights (format-flight-screen @comm/polled-reservations @comm/polled-flights)
-      :taf (make-taf-screen)
-      :flight-category (make-flight-category-screen))
-    ))
-

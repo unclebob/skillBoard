@@ -1,0 +1,40 @@
+(ns skillBoard.presenters.utils
+  (:require
+    [clojure.string :as str]
+    [skillBoard.comm-utils :as comm]
+    [skillBoard.config :as config]
+    [skillBoard.navigation :as nav]))
+
+(defn blank? [s] (empty? (str/trim s)))
+
+(defn by-distance [metar1 metar2]
+  (let [lat1 (:lat metar1)
+        lon1 (:lon metar1)
+        lat2 (:lat metar2)
+        lon2 (:lon metar2)
+        [airport-lat airport-lon] config/airport-lat-lon
+        dist1 (:distance (nav/dist-and-bearing airport-lat airport-lon lat1 lon1))
+        dist2 (:distance (nav/dist-and-bearing airport-lat airport-lon lat2 lon2))]
+    (< dist1 dist2)))
+
+(defn shorten-metar [metar-text]
+  (let [short-metar (if (nil? metar-text)
+                      "NO-METAR"
+                      (-> metar-text
+                          (str/split #"RMK")
+                          first
+                          (subs 6)))
+        final-metar (if (> (count short-metar) config/cols)
+                      (subs short-metar 0 config/cols)
+                      short-metar)]
+    {:line (str/trim final-metar)
+     :color :white}))
+
+(defn get-short-metar
+  ([]
+   (get-short-metar config/airport))
+
+  ([airport]
+   (let [metar (get @comm/polled-metars airport)
+         metar-text (:rawOb metar)]
+     (shorten-metar metar-text))))

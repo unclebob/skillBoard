@@ -27,18 +27,24 @@
 
 ;Home airport configuration
 (def airport "KUGN")
+(def airport-lat-lon [42.4221486 -87.8679161])
+(def airport-elevation 728.1)
+(def pattern-altitude 1728)
 (def bearing-center "UGN")
+(def nearby-altitude-range [airport-elevation 4000])
+(def nearby-distance 3)
+
+(def time-zone "America/Chicago")
+
+;other nearby airports
 (def taf-airport "KENW")
 (def secondary-metar-airports ["KENW" "KJVL"])
 (def all-metars ["KUGN" "KMKE" "KUES" "KBUU" "KJVL" "KPIA" "KFWA" "KSBN" "KMSN" "KMDW" "KENW" "KRFD" "KDKB" "KDPA" "KETB" "KVYS" "KBMI"])
-(def airport-lat-lon [42.4221486 -87.8679161])
-(def time-zone "America/Chicago")
-(def airport-elevation 728.1)
-(def pattern-altitude 1728)
+
 
 ;Internet configuration
 (def radar-cape-ip "10.10.40.60")
-(def seconds-between-internet-polls 20)
+(def seconds-between-internet-polls 60)
 
 ;Wider area configuration.
 ;

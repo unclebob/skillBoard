@@ -6,7 +6,7 @@
     [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
-    [skillBoard.presenter :as presenter]
+    [skillBoard.presenters.main :as presenter]
     [skillBoard.text-util :as text]
     [skillBoard.time-util :as time-util]
     ))

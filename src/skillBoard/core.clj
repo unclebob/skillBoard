@@ -6,7 +6,7 @@
     [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
-    [skillBoard.presenter :as presenter]
+    [skillBoard.presenters.main :as presenter]
     [skillBoard.split-flap :as split-flap]
     [skillBoard.text-util :as text]
     [skillBoard.time-util :as time-util]))
@@ -127,8 +127,8 @@
   (println "skillBoard has begun.")
   (let [args (set args)
         window? (some? (args "-w"))
-        _ (reset! presenter/test? (some? (args "-t")))
-        _ (prn 'args args 'window? window? 'test? @presenter/test?)
+        _ (reset! atoms/test? (some? (args "-t")))
+        _ (prn 'args args 'window? window? 'test? @atoms/test?)
         ]
     (q/defsketch skillBoard
                  :title "Skill Board"
