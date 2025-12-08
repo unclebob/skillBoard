@@ -38,3 +38,5 @@
    (let [metar (get @comm/polled-metars airport)
          metar-text (:rawOb metar)]
      (shorten-metar metar-text))))
+(defn get-now []
+  (System/currentTimeMillis))
