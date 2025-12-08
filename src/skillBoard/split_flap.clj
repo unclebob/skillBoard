@@ -118,21 +118,6 @@
                           :to to}))
             (recur (rest flappers) (conj updated-flappers flapper))))))))
 
-(defn do-update [{:keys [time flappers lines] :as state}]
-  (let [now (System/currentTimeMillis)
-        old-summary lines
-        summary (presenter/make-screen)
-        new-screen? (not= summary old-summary)
-        new-screen-time (if new-screen? now time)
-        flappers (cond
-                   new-screen? (make-flappers summary old-summary)
-                   (> (- now new-screen-time) config/flap-duration) []
-                   :else (update-flappers flappers)
-                   )]
-    (assoc state :time new-screen-time
-                 :lines summary
-                 :flappers flappers)))
-
 (defn header-text []
   (condp = @presenter/screen-type
     :flights "FLIGHT OPERATIONS"
@@ -298,6 +283,19 @@
     (q/background 30)
     (draw-header)
     (draw-lines)
-    (draw-flappers)
-    ))
+    (draw-flappers)))
 
+(defn do-update [{:keys [time flappers lines] :as state}]
+  (let [now (System/currentTimeMillis)
+        old-summary lines
+        summary (presenter/make-screen)
+        new-screen? (not= summary old-summary)
+        new-screen-time (if new-screen? now time)
+        flappers (cond
+                   new-screen? (make-flappers summary nil)
+                   (> (- now new-screen-time) config/flap-duration) []
+                   :else (update-flappers flappers)
+                   )]
+    (assoc state :time new-screen-time
+                 :lines summary
+                 :flappers flappers)))
