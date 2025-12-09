@@ -148,3 +148,6 @@
 
 (defmethod skillBoard.presenters.screen/make :flights [_]
   (make-flights-screen @comm/polled-reservations @comm/polled-flights))
+
+(defmethod skillBoard.presenters.screen/header-text :flights [_]
+  "FLIGHT OPERATIONS")

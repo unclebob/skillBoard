@@ -26,3 +26,6 @@
 
 (defmethod skillBoard.presenters.screen/make :taf [_]
   (make-taf-screen))
+
+(defmethod skillBoard.presenters.screen/header-text :taf [_]
+  "WEATHER")

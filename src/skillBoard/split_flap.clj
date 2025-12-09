@@ -7,6 +7,7 @@
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenters.main :as presenter]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.text-util :as text]
     [skillBoard.time-util :as time-util]
     ))
@@ -119,11 +120,7 @@
             (recur (rest flappers) (conj updated-flappers flapper))))))))
 
 (defn header-text []
-  (condp = @presenter/screen-type
-    :flights "FLIGHT OPERATIONS"
-    :taf "WEATHER"
-    :airports "FLIGHT CATEGORY"
-    "TILT"))
+  (screen/header-text @presenter/screen-type))
 
 (defn pad-and-trim-line [line length]
   (let [padded-line (str line (apply str (repeat length " ")))]

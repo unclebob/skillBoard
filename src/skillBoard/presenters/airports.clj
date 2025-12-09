@@ -24,3 +24,6 @@
 
 (defmethod skillBoard.presenters.screen/make :airports [_]
   (make-airports-screen))
+
+(defmethod skillBoard.presenters.screen/header-text :airports [_]
+  "FLIGHT CATEGORY")
