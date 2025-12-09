@@ -2,7 +2,7 @@
   (:require
     [quil.core :as q]
     [skillBoard.comm-utils :as comm]
-    [skillBoard.presenters.screen]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
 (defn make-flight-category-line [metar]
@@ -23,14 +23,14 @@
         fc-lines (map make-flight-category-line metars)]
     fc-lines))
 
-(defmethod skillBoard.presenters.screen/make :airports [_]
+(defmethod screen/make :airports [_]
   (make-airports-screen))
 
-(defmethod skillBoard.presenters.screen/header-text :airports [_]
+(defmethod screen/header-text :airports [_]
   "FLIGHT CATEGORY")
 
-(defmethod skillBoard.presenters.screen/display-column-headers :airports [_ flap-width header-font]
-  (let [baseline (skillBoard.presenters.screen/setup-headers header-font)]
+(defmethod screen/display-column-headers :airports [_ flap-width header-font]
+  (let [baseline (screen/setup-headers header-font)]
     (q/text "AIRPORT" 0 baseline)
     (q/text "CATGRY" (* flap-width 5) baseline)
     (q/text "SKY" (* flap-width 10) baseline)

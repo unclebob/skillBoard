@@ -3,7 +3,7 @@
     [clojure.string :as str]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
-    [skillBoard.presenters.screen]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
 (defn split-taf [raw-taf]
@@ -24,8 +24,11 @@
         blank-line {:line "" :color :white}]
     (concat tafs [blank-line primary-metar] secondary-metars)))
 
-(defmethod skillBoard.presenters.screen/make :taf [_]
+(defmethod screen/make :taf [_]
   (make-taf-screen))
 
-(defmethod skillBoard.presenters.screen/header-text :taf [_]
+(defmethod screen/header-text :taf [_]
   "WEATHER")
+
+(defmethod screen/display-column-headers :taf [_ _flap-width _header-font]
+  nil)

@@ -8,7 +8,7 @@
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.navigation :as nav]
-    [skillBoard.presenters.screen]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.time-util :as time-util]))
@@ -147,14 +147,14 @@
         ]
     final-screen))
 
-(defmethod skillBoard.presenters.screen/make :flights [_]
+(defmethod screen/make :flights [_]
   (make-flights-screen @comm/polled-reservations @comm/polled-flights))
 
-(defmethod skillBoard.presenters.screen/header-text :flights [_]
+(defmethod screen/header-text :flights [_]
   "FLIGHT OPERATIONS")
 
-(defmethod skillBoard.presenters.screen/display-column-headers :flights [_ flap-width header-font]
-  (let [baseline (skillBoard.presenters.screen/setup-headers header-font)]
+(defmethod screen/display-column-headers :flights [_ flap-width header-font]
+  (let [baseline (screen/setup-headers header-font)]
     (q/text "TIME" 0 baseline)
     (q/text "AIRCRAFT" (* flap-width 7) baseline)
     (q/text "CREW" (* flap-width 14) baseline)

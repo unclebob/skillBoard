@@ -25,9 +25,5 @@
 (defmethod make :default [_]
   :no-such-screen)
 
-
-(defmethod display-column-headers :taf [_ _flap-width _header-font]
-  nil)
-
 (defmethod display-column-headers :default [_ _flap-width _header-font]
   nil)
