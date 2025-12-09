@@ -18,40 +18,42 @@
                         adsb-aircraft)
         airport-lat-lon config/airport-lat-lon
         [airport-lat airport-lon] airport-lat-lon
-        aircraft-lines (for [aircraft adsb-aircraft]
-                         (let [scheduled-aircraft (set scheduled-aircraft)
-                               lat (:lat aircraft)
-                               lon (:lon aircraft)
-                               alt (:alt aircraft 0)
-                               gs (:gs aircraft 0)
-                               {:keys [bearing distance]} (nav/dist-and-bearing airport-lat airport-lon lat lon)
-                               brg (math/round bearing)
-                               gs-rounded (math/round gs)
-                               dist (math/round distance)
-                               alt-hundreds (math/round (/ alt 100.0))
-                               close-to-ground? (< (abs (- alt config/airport-elevation)) 10)
-                               alt-str (if close-to-ground? "GND" (format "%03d" alt-hundreds))
-                               brg-alt-gs (format "%s%03d%03d/%s/%03d" config/bearing-center brg dist alt-str gs-rounded)
-                               tail-number (:fli aircraft)
 
-                               generate-remark
-                               (fn []
-                                 (let [nearby? (< distance 6)
-                                       low (+ config/airport-elevation 30)
-                                       on-ground? (or close-to-ground? (< alt low))
-                                       [position-remark base-color]
-                                       (cond
-                                         (and nearby? on-ground? (< gs 2)) ["RAMP" :green]
-                                         (and nearby? on-ground? (<= 2 gs 25)) ["TAXI" :green]
-                                         (< distance 2) ["NEAR" :white]
-                                         :else [(utils/find-location lat lon alt config/geofences) :white])
-                                       rogue? (not (scheduled-aircraft tail-number))
-                                       color (if rogue? :blue base-color)]
-                                   [position-remark color]))
+        aircraft-lines
+        (for [aircraft adsb-aircraft]
+          (let [scheduled-aircraft (set scheduled-aircraft)
+                lat (:lat aircraft)
+                lon (:lon aircraft)
+                alt (:alt aircraft 0)
+                gs (:gs aircraft 0)
+                {:keys [bearing distance]} (nav/dist-and-bearing airport-lat airport-lon lat lon)
+                brg (math/round bearing)
+                gs-rounded (math/round gs)
+                dist (math/round distance)
+                alt-hundreds (math/round (/ alt 100.0))
+                close-to-ground? (< (abs (- alt config/airport-elevation)) 10)
+                alt-str (if close-to-ground? "GND" (format "%03d" alt-hundreds))
+                brg-alt-gs (format "%s%03d%03d/%s/%03d" config/bearing-center brg dist alt-str gs-rounded)
+                tail-number (:fli aircraft)
 
-                               [remarks color] (generate-remark)
-                               line (format "%-8s %-16s %-8s" tail-number brg-alt-gs remarks)]
-                           {:line line :color color :distance dist}))
+                generate-remark
+                (fn []
+                  (let [nearby? (< distance 6)
+                        low (+ config/airport-elevation 30)
+                        on-ground? (or close-to-ground? (< alt low))
+                        [position-remark base-color]
+                        (cond
+                          (and nearby? on-ground? (< gs 2)) ["RAMP" :green]
+                          (and nearby? on-ground? (<= 2 gs 25)) ["TAXI" :green]
+                          (< distance 2) ["NEAR" :white]
+                          :else [(utils/find-location lat lon alt config/geofences) :white])
+                        rogue? (not (scheduled-aircraft tail-number))
+                        color (if rogue? :blue base-color)]
+                    [position-remark color]))
+
+                [remarks color] (generate-remark)
+                line (format "%-8s %-16s %-8s" tail-number brg-alt-gs remarks)]
+            {:line line :color color :distance dist}))
         sorted-aircraft (sort-by :distance aircraft-lines)
         total-lines (:line-count @config/display-info)
         blank-line {:line "" :color :white}
