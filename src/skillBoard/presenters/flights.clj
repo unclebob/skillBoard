@@ -2,6 +2,7 @@
   (:require
     [clojure.math :as math]
     [clojure.string :as str]
+    [quil.core :as q]
     [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
@@ -151,3 +152,12 @@
 
 (defmethod skillBoard.presenters.screen/header-text :flights [_]
   "FLIGHT OPERATIONS")
+
+(defmethod skillBoard.presenters.screen/display-column-headers :flights [_ flap-width header-font]
+  (let [baseline (skillBoard.presenters.screen/setup-headers header-font)]
+    (q/text "TIME" 0 baseline)
+    (q/text "AIRCRAFT" (* flap-width 7) baseline)
+    (q/text "CREW" (* flap-width 14) baseline)
+    (q/text "OUT" (* flap-width 26) baseline)
+    (q/text "BRG/ALT/GS" (* flap-width 33) baseline)
+    (q/text "REMARKS" (* flap-width 51) baseline)))

@@ -183,50 +183,6 @@
             (let [[col row] at]
               (draw-char from col row nil))))
 
-        setup-headers
-        (fn []
-          (let [label-height (* 0.8 (:label-height @config/display-info))
-                label-font-size (text/find-font-size-for-height header-font label-height)
-                baseline (- (+ top-margin label-height) (/ label-height 2))
-                ]
-            (q/text-font header-font)
-            (q/text-size label-font-size)
-            (q/text-align :left :center)
-            (q/fill 255 255 255)
-            baseline
-            ))
-
-        display-flight-operation-headers
-        (fn []
-          (let [baseline (setup-headers)]
-            (q/text "TIME" 0 baseline)
-            (q/text "AIRCRAFT" (* flap-width 7) baseline)
-            (q/text "CREW" (* flap-width 14) baseline)
-            (q/text "OUT" (* flap-width 26) baseline)
-            (q/text "BRG/ALT/GS" (* flap-width 33) baseline)
-            (q/text "REMARKS" (* flap-width 51) baseline)
-            )
-          )
-
-        display-flight-category-headers
-        (fn []
-          (let [baseline (setup-headers)]
-            (q/text "AIRPORT" 0 baseline)
-            (q/text "CATGRY" (* flap-width 5) baseline)
-            (q/text "SKY" (* flap-width 10) baseline)
-            (q/text "BASE" (* flap-width 14) baseline)
-            (q/text "VIS" (* flap-width 20) baseline)
-            (q/text "WIND" (* flap-width 24) baseline)
-            )
-          )
-
-        display-column-headers
-        (fn []
-          (condp = @presenter/screen-type
-            :flights (display-flight-operation-headers)
-            :taf nil
-            :airports (display-flight-category-headers)))
-
         display-com-errors
         (fn [pos]
           (cond
@@ -274,7 +230,7 @@
           (q/text-align :center :top)
           (q/text-size 12)
           (q/text config/version (/ (q/width) 2) 5)
-          (display-column-headers)
+          (screen/display-column-headers @presenter/screen-type flap-width header-font)
           (display-time))]
 
     (q/background 30)

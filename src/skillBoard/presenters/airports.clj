@@ -1,5 +1,6 @@
 (ns skillBoard.presenters.airports
   (:require
+    [quil.core :as q]
     [skillBoard.comm-utils :as comm]
     [skillBoard.presenters.screen]
     [skillBoard.presenters.utils :as utils]))
@@ -27,3 +28,12 @@
 
 (defmethod skillBoard.presenters.screen/header-text :airports [_]
   "FLIGHT CATEGORY")
+
+(defmethod skillBoard.presenters.screen/display-column-headers :airports [_ flap-width header-font]
+  (let [baseline (skillBoard.presenters.screen/setup-headers header-font)]
+    (q/text "AIRPORT" 0 baseline)
+    (q/text "CATGRY" (* flap-width 5) baseline)
+    (q/text "SKY" (* flap-width 10) baseline)
+    (q/text "BASE" (* flap-width 14) baseline)
+    (q/text "VIS" (* flap-width 20) baseline)
+    (q/text "WIND" (* flap-width 24) baseline)))
