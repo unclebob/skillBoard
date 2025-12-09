@@ -10,12 +10,18 @@
         base (if (= cover "CLR")
                "    "
                (:base (first clouds)))
-        fltCat (if (nil? fltCat) "    " fltCat)
+        color (case fltCat
+                "VFR" :green
+                "MVFR" :blue
+                "IFR" :red
+                "LIFR" :magenta
+                :white)
+        fltCat-display (if (nil? fltCat) "    " fltCat)
         cover (if (nil? cover) "   " cover)
         base (if (nil? base) "     " base)
         wgst (if (nil? wgst) "   " (str "G" wgst))
-        ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)]
-    {:line ctgy-line :color :white}))
+        ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat-display cover base visib wspd wgst)]
+    {:line ctgy-line :color color}))
 
 (defn make-airports-screen []
   (let [metars (vals @comm/polled-metars)
