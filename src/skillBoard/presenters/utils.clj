@@ -7,6 +7,13 @@
 
 (defn blank? [s] (empty? (str/trim s)))
 
+(defn flight-category [vis ceiling]
+  (cond
+    (and (>= vis 10.0) (>= ceiling 3000)) :green   ; VFR
+    (and (>= vis 3.0) (>= ceiling 1000)) :blue    ; MVFR
+    (and (>= vis 1.0) (>= ceiling 500)) :red     ; IFR
+    :else :magenta)) ; LIFR
+
 (defn by-distance [metar1 metar2]
   (let [lat1 (:lat metar1)
         lon1 (:lon metar1)
