@@ -22,7 +22,8 @@
   (atom (cycle
           [{:duration 40 :screen :flights}
            {:duration 20 :screen :taf}
-           {:duration 20 :screen :airports}])))
+           {:duration 20 :screen :airports}
+           {:duration 20 :screen :traffic}])))
 
 
 ;Home airport configuration

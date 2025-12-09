@@ -24,16 +24,7 @@
       (utils/blank? first-name) (str/upper-case (subs padded-last 0 5))
       :else (str/upper-case (str (subs padded-last 0 3) "." (first padded-first))))))
 
-(defn find-location [my-lat my-lon my-alt geofences]
-  (loop [fences geofences]
-    (if (empty? fences)
-      ""
-      (let [{:keys [lat lon radius min-alt max-alt name]} (first fences)
-            {:keys [distance]} (nav/dist-and-bearing lat lon my-lat my-lon)]
-        (if (and (<= distance radius)
-                 (<= min-alt my-alt max-alt))
-          name
-          (recur (rest fences)))))))
+
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
                           altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
@@ -66,7 +57,7 @@
                (and (< low altitude pattern-low) flying-speed?) ["LOW " :white]
                (and nearby? (< pattern-low altitude pattern-high) flying-speed?) ["PATN" :white]
                (< distance 6) ["NEAR" :white]
-               :else [(find-location lat lon altitude config/geofences) :white])
+               :else [(utils/find-location lat lon altitude config/geofences) :white])
 
              rogue-remark (if rogue? "NO-CO" "     ")
              color (if rogue? :blue color)

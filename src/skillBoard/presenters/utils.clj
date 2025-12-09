@@ -14,6 +14,17 @@
     (and (>= vis 1.0) (>= ceiling 500)) :red     ; IFR
     :else :magenta)) ; LIFR
 
+(defn find-location [my-lat my-lon my-alt geofences]
+  (loop [fences geofences]
+    (if (empty? fences)
+      ""
+      (let [{:keys [lat lon radius min-alt max-alt name]} (first fences)
+            {:keys [distance]} (nav/dist-and-bearing lat lon my-lat my-lon)]
+        (if (and (<= distance radius)
+                 (<= min-alt my-alt max-alt))
+          name
+          (recur (rest fences)))))))
+
 (defn by-distance [metar1 metar2]
   (let [lat1 (:lat metar1)
         lon1 (:lon metar1)

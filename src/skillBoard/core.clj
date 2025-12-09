@@ -12,7 +12,8 @@
     [skillBoard.time-util :as time-util]
     [skillBoard.presenters.flights]
     [skillBoard.presenters.airports]
-    [skillBoard.presenters.weather]))
+    [skillBoard.presenters.weather]
+    [skillBoard.presenters.traffic]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -49,6 +50,7 @@
   (comm/get-reservations)
   (comm/get-metars config/all-metars)
   (comm/get-tafs config/all-metars)
+  (comm/get-nearby-adsb)
   )
 
 (defn start-polling []
