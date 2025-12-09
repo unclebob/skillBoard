@@ -3,6 +3,7 @@
     [clojure.string :as str]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.presenters.screen]
     [skillBoard.presenters.utils :as utils]))
 
 (defn split-taf [raw-taf]
@@ -22,3 +23,6 @@
         tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
         blank-line {:line "" :color :white}]
     (concat tafs [blank-line primary-metar] secondary-metars)))
+
+(defmethod skillBoard.presenters.screen/make :taf [_]
+  (make-taf-screen))

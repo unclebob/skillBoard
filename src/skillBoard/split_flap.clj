@@ -122,7 +122,7 @@
   (condp = @presenter/screen-type
     :flights "FLIGHT OPERATIONS"
     :taf "WEATHER"
-    :flight-category "FLIGHT CATEGORY"
+    :airports "FLIGHT CATEGORY"
     "TILT"))
 
 (defn pad-and-trim-line [line length]
@@ -228,7 +228,7 @@
           (condp = @presenter/screen-type
             :flights (display-flight-operation-headers)
             :taf nil
-            :flight-category (display-flight-category-headers)))
+            :airports (display-flight-category-headers)))
 
         display-com-errors
         (fn [pos]

@@ -227,7 +227,7 @@
       (let [blank-line (apply str (repeat 64 " "))
             expected (concat (repeat 8 {:line blank-line :color :white})
                              [{:color :white :line "             "} {:line "METAR" :color :white}])]
-        (should= expected (flights/format-flight-screen [] [])))))
+        (should= expected (flights/make-flights-screen [] [])))))
 
   (it "formats a flight screen with dropped items correctly"
     (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color :white})
@@ -243,5 +243,5 @@
                   config/cols 64]
       (let [expected (concat (repeat 8 {:line "RES" :color :white})
                              [{:color :white :line "... 2 MORE..."} {:line "METAR" :color :white}])]
-        (should= expected (flights/format-flight-screen [] [])))))
+        (should= expected (flights/make-flights-screen [] [])))))
 )

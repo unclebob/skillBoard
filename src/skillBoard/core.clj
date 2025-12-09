@@ -9,7 +9,10 @@
     [skillBoard.presenters.main :as presenter]
     [skillBoard.split-flap :as split-flap]
     [skillBoard.text-util :as text]
-    [skillBoard.time-util :as time-util]))
+    [skillBoard.time-util :as time-util]
+    [skillBoard.presenters.flights]
+    [skillBoard.presenters.airports]
+    [skillBoard.presenters.weather]))
 
 (defn load-display-info []
   (let [screen-width (q/width)

@@ -5,15 +5,19 @@
     [skillBoard.presenters.airports :as airports]
     [skillBoard.presenters.flights :as flights]
     [skillBoard.presenters.main :as main]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
     [skillBoard.presenters.weather :as weather]
     [speclj.core :refer :all]))
+
+(defmethod screen/make :next-screen [_] nil)
+(defmethod screen/make :timeout-screen [_] nil)
 
 (describe "make-screen"
   (it "returns flights screen when screen-type is :flights and mouse not pressed"
     (with-redefs [q/mouse-pressed? (fn [] false)
                   utils/get-now (fn [] 1000)
-                  flights/format-flight-screen (fn [_res _fl] "mocked flights screen")]
+                  flights/make-flights-screen (fn [_res _fl] "mocked flights screen")]
       (reset! main/screen-type :flights)
       (reset! main/screen-duration 10)
       (reset! main/screen-start-time 0)
@@ -28,11 +32,11 @@
       (reset! main/screen-start-time 0)
       (should= "mocked taf screen" (main/make-screen))))
 
-  (it "returns flight-category screen when screen-type is :flight-category and mouse not pressed"
+  (it "returns flight-category screen when screen-type is :airports and mouse not pressed"
     (with-redefs [q/mouse-pressed? (fn [] false)
                   utils/get-now (fn [] 1000)
-                  airports/make-flight-category-screen (fn [] "mocked flight-category screen")]
-      (reset! main/screen-type :flight-category)
+                  airports/make-airports-screen (fn [] "mocked flight-category screen")]
+      (reset! main/screen-type :airports)
       (reset! main/screen-duration 10)
       (reset! main/screen-start-time 0)
       (should= "mocked flight-category screen" (main/make-screen))))

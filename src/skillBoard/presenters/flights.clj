@@ -7,6 +7,7 @@
     [skillBoard.config :as config]
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.navigation :as nav]
+    [skillBoard.presenters.screen]
     [skillBoard.presenters.utils :as utils]
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.time-util :as time-util]))
@@ -115,7 +116,7 @@
               adsb])))
   )
 
-(defn format-flight-screen [reservations-packet flights-packet]
+(defn make-flights-screen [reservations-packet flights-packet]
   (let [short-metar (utils/get-short-metar)
         unpacked-res (fsp/unpack-reservations reservations-packet)
         flights (fsp/unpack-flights flights-packet)
@@ -144,3 +145,6 @@
         final-screen (concat displayed-items [footer short-metar])
         ]
     final-screen))
+
+(defmethod skillBoard.presenters.screen/make :flights [_]
+  (make-flights-screen @comm/polled-reservations @comm/polled-flights))

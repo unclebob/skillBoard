@@ -1,14 +1,11 @@
 (ns skillBoard.presenters.main
   (:require
     [quil.core :as q]
-    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
-    [skillBoard.presenters.airports :as airports]
-    [skillBoard.presenters.flights :as flights]
-    [skillBoard.presenters.utils :as utils]
-    [skillBoard.presenters.weather :as weather]))
+    [skillBoard.presenters.screen :as screen]
+    [skillBoard.presenters.utils :as utils]))
 
-(def screen-type (atom nil))
+(def screen-type (atom (:screen (first @config/screens))))
 (def screen-duration (atom 0))
 (def screen-start-time (atom 0))
 
@@ -20,9 +17,5 @@
       (reset! screen-duration (:duration (first @config/screens)))
       (reset! screen-start-time time)
       (swap! config/screens rest))
-    (condp = @screen-type
-      :flights (flights/format-flight-screen @comm/polled-reservations @comm/polled-flights)
-      :taf (weather/make-taf-screen)
-      :flight-category (airports/make-flight-category-screen)
-      :no-such-screen)
+    (screen/make @screen-type)
     ))

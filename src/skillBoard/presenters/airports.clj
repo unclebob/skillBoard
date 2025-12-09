@@ -1,6 +1,7 @@
 (ns skillBoard.presenters.airports
   (:require
     [skillBoard.comm-utils :as comm]
+    [skillBoard.presenters.screen]
     [skillBoard.presenters.utils :as utils]))
 
 (defn make-flight-category-line [metar]
@@ -15,8 +16,11 @@
         ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat cover base visib wspd wgst)]
     {:line ctgy-line :color :white}))
 
-(defn make-flight-category-screen []
+(defn make-airports-screen []
   (let [metars (vals @comm/polled-metars)
         metars (sort utils/by-distance metars)
         fc-lines (map make-flight-category-line metars)]
     fc-lines))
+
+(defmethod skillBoard.presenters.screen/make :airports [_]
+  (make-airports-screen))
