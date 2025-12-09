@@ -20,16 +20,16 @@
                   [airport-lat airport-lon 30.0 40.0]] @calls)))))
 
 (describe "get-short-metar"
-  (it "calls shorten-metar with the correct metar text"
+  (it "calls shorten-metar with the correct metar"
     (let [calls (atom [])
           airport "KJFK"
-          metar-text "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014"]
-      (with-redefs [comm/polled-metars (atom {airport {:rawOb metar-text}})
-                    utils/shorten-metar (fn [text]
-                                          (swap! calls conj text)
+          metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014"}]
+      (with-redefs [comm/polled-metars (atom {airport metar})
+                    utils/shorten-metar (fn [m]
+                                          (swap! calls conj m)
                                           {:line "shortened" :color :white})]
         (utils/get-short-metar airport)
-        (should= [metar-text] @calls)))))
+        (should= [metar] @calls)))))
 
 (describe "shorten-metar"
   (it "returns NO-METAR for nil input"
@@ -37,13 +37,37 @@
 
   (it "shortens METAR without RMK"
     (should= {:line "KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014" :color :white}
-             (utils/shorten-metar "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014")))
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014"})))
 
   (it "shortens METAR with RMK, taking before RMK"
     (should= {:line "KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014" :color :white}
-             (utils/shorten-metar "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014 RMK AO2 SLP221 T02440044")))
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014 RMK AO2 SLP221 T02440044"})))
 
   (it "truncates if the shortened METAR is longer than 64 characters"
     (let [long-part (apply str (repeat 70 "A"))
           metar-text (str "METAR " long-part)]
-      (should= {:line (subs long-part 0 64) :color :white} (utils/shorten-metar metar-text)))))
+      (should= {:line (subs long-part 0 64) :color :white} (utils/shorten-metar {:rawOb metar-text}))))
+
+  (it "colors VFR green"
+    (should= {:line "KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :color :green}
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :fltCat "VFR"})))
+
+  (it "colors MVFR blue"
+    (should= {:line "KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :color :blue}
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :fltCat "MVFR"})))
+
+  (it "colors IFR red"
+    (should= {:line "KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :color :red}
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :fltCat "IFR"})))
+
+  (it "colors LIFR magenta"
+    (should= {:line "KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :color :magenta}
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :fltCat "LIFR"})))
+
+  (it "colors unknown fltCat white"
+    (should= {:line "KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :color :white}
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :fltCat "UNKNOWN"})))
+
+  (it "colors nil fltCat white"
+    (should= {:line "KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :color :white}
+             (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM CLR 24/04 A3014" :fltCat nil}))))

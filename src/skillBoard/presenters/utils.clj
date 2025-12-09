@@ -17,8 +17,9 @@
         dist2 (:distance (nav/dist-and-bearing airport-lat airport-lon lat2 lon2))]
     (< dist1 dist2)))
 
-(defn shorten-metar [metar-text]
-  (let [short-metar (if (nil? metar-text)
+(defn shorten-metar [metar]
+  (let [metar-text (:rawOb metar)
+        short-metar (if (nil? metar-text)
                       "NO-METAR"
                       (-> metar-text
                           (str/split #"RMK")
@@ -26,18 +27,24 @@
                           (subs 6)))
         final-metar (if (> (count short-metar) config/cols)
                       (subs short-metar 0 config/cols)
-                      short-metar)]
+                      short-metar)
+        fltCat (:fltCat metar)
+        color (case fltCat
+                "VFR" :green
+                "MVFR" :blue
+                "IFR" :red
+                "LIFR" :magenta
+                :white)]
     {:line (str/trim final-metar)
-     :color :white}))
+     :color color}))
 
 (defn get-short-metar
   ([]
    (get-short-metar config/airport))
 
   ([airport]
-   (let [metar (get @comm/polled-metars airport)
-         metar-text (:rawOb metar)]
-     (shorten-metar metar-text))))
+   (let [metar (get @comm/polled-metars airport)]
+     (shorten-metar metar))))
 
 (defn get-now []
   (System/currentTimeMillis))
