@@ -73,6 +73,27 @@
         (should= expected-line (:line (first result)))
         (should= :blue (:color (first result))))))
 
+  (it "uses GND for aircraft with gda flag G"
+    (with-redefs [atoms/test? (atom false)
+                  comm/polled-nearby-adsbs (atom [])
+                  comm/polled-aircraft (atom [])
+                  config/display-info (atom {:line-count 10})
+                  config/airport-lat-lon [42.0 -87.0]
+                  config/airport-elevation 100
+                  config/bearing-center "C"
+                  config/geofences []
+                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/find-location (fn [_ _ _ _] "LOCATION")
+                  nav/dist-and-bearing (fn [_ _ lat _lon]
+                                         (let [distance (abs (- lat 42.0))]
+                                           {:distance distance :bearing 0}))]
+      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :gs 100 :gda "G"}]
+            scheduled []
+            result (traffic/make-traffic-screen adsb scheduled)
+            expected-line "N12345   C000002/GND/100  NEAR    "]
+        (should= expected-line (:line (first result)))
+        (should= :blue (:color (first result))))))
+
   (it "generates location remark for distant aircraft"
     (with-redefs [atoms/test? (atom false)
                   comm/polled-nearby-adsbs (atom [])
