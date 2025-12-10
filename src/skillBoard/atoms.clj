@@ -4,3 +4,4 @@
 (def poll-time (atom (System/currentTimeMillis)))
 (def clock-pulse (atom false))
 (def test? (atom false))
+(def change-screen? (atom false))

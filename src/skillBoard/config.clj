@@ -21,7 +21,7 @@
 (def in-fleet-color :white)
 (def out-of-fleet-color :yellow)
 (def scheduled-flight-color :white)
-(def unscheduled-flight-color :magenta)
+(def unscheduled-flight-color :yellow)
 (def on-ground-color :green)
 (def vfr-color :green)
 (def mvfr-color :blue)

@@ -123,6 +123,7 @@
 (defn key-released [state event]
   (condp = (:key event)
     :p (reset! atoms/poll-key true)
+    :space (reset! atoms/change-screen? true)
     nil)
   state)
 
