@@ -19,7 +19,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))] ; simplify: distance = |lat - 42|
@@ -29,7 +29,7 @@
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000003/GND/001  RAMP    "]
         (should= expected-line (:line (first result)))
-        (should= :blue (:color (first result))))))
+        (should= config/out-of-fleet-color (:color (first result))))))
 
   (it "generates TAXI remark for nearby on-ground medium speed aircraft"
     (with-redefs [atoms/test? (atom false)
@@ -40,7 +40,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -50,7 +50,7 @@
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000002/GND/010  TAXI    "]
         (should= expected-line (:line (first result)))
-        (should= :blue (:color (first result))))))
+        (should= config/out-of-fleet-color (:color (first result))))))
 
   (it "generates NEAR remark for close aircraft"
     (with-redefs [atoms/test? (atom false)
@@ -61,7 +61,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -71,7 +71,7 @@
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000002/020/100  NEAR    "]
         (should= expected-line (:line (first result)))
-        (should= :blue (:color (first result))))))
+        (should= config/out-of-fleet-color (:color (first result))))))
 
   (it "uses GND for aircraft with gda flag G"
     (with-redefs [atoms/test? (atom false)
@@ -82,7 +82,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -92,7 +92,7 @@
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000002/GND/100  NEAR    "]
         (should= expected-line (:line (first result)))
-        (should= :blue (:color (first result))))))
+        (should= config/out-of-fleet-color (:color (first result))))))
 
   (it "generates location remark for distant aircraft"
     (with-redefs [atoms/test? (atom false)
@@ -103,7 +103,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -113,18 +113,18 @@
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000006/020/100  LOCATION"]
         (should= expected-line (:line (first result)))
-        (should= :blue (:color (first result))))))
+        (should= config/out-of-fleet-color (:color (first result))))))
 
-  (it "uses green color for scheduled aircraft"
+  (it "uses on-ground color for on-ground aircraft"
     (with-redefs [atoms/test? (atom false)
                   comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  comm/polled-aircraft (atom ["N12345"])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -132,7 +132,26 @@
       (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :gs 1}]
             scheduled ["N12345"]
             result (traffic/make-traffic-screen adsb scheduled)]
-        (should= :green (:color (first result))))))
+        (should= config/on-ground-color (:color (first result))))))
+
+  (it "uses in-fleet color for in-fleet aircraft"
+    (with-redefs [atoms/test? (atom false)
+                  comm/polled-nearby-adsbs (atom [])
+                  comm/polled-aircraft (atom ["N12345"])
+                  config/display-info (atom {:line-count 10})
+                  config/airport-lat-lon [42.0 -87.0]
+                  config/airport-elevation 100
+                  config/bearing-center "C"
+                  config/geofences []
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/find-location (fn [_ _ _ _] "LOCATION")
+                  nav/dist-and-bearing (fn [_ _ lat _lon]
+                                         (let [distance (abs (- lat 42.0))]
+                                           {:distance distance :bearing 0}))]
+      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 1000 :gs 100}]
+            scheduled ["N12345"]
+            result (traffic/make-traffic-screen adsb scheduled)]
+        (should= config/in-fleet-color (:color (first result))))))
 
   (it "sorts aircraft by distance"
     (with-redefs [atoms/test? (atom false)

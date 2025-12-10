@@ -9,7 +9,7 @@
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
-(defn make-traffic-screen [adsb-aircraft scheduled-aircraft]
+(defn make-traffic-screen [adsb-aircraft fleet-aircraft]
   (let [adsb-aircraft (if @atoms/test?
                         [{:fli "N12345" :lat 42.5 :lon -87.8 :alt 2500 :gs 120}
                          {:fli "N98765" :lat 42.4 :lon -87.9 :alt 728 :gs 2}
@@ -21,7 +21,7 @@
 
         aircraft-lines
         (for [aircraft adsb-aircraft]
-          (let [scheduled-aircraft (set scheduled-aircraft)
+          (let [fleet-aircraft (set fleet-aircraft)
                 lat (:lat aircraft)
                 lon (:lon aircraft)
                 alt (:alt aircraft 0)
@@ -44,12 +44,12 @@
                         on-ground? (or close-to-ground? (< alt low))
                         [position-remark base-color]
                         (cond
-                          (and nearby? on-ground? (< gs 2)) ["RAMP" :green]
-                          (and nearby? on-ground? (<= 2 gs 25)) ["TAXI" :green]
-                          (< distance 2) ["NEAR" :white]
-                          :else [(utils/find-location lat lon alt config/geofences) :white])
-                        rogue? (not (scheduled-aircraft tail-number))
-                        color (if rogue? :blue base-color)]
+                          (and nearby? on-ground? (< gs 2)) ["RAMP" config/on-ground-color]
+                          (and nearby? on-ground? (<= 2 gs 25)) ["TAXI" config/on-ground-color]
+                          (< distance 2) ["NEAR" config/in-fleet-color]
+                          :else [(utils/find-location lat lon alt config/geofences) config/in-fleet-color])
+                        out-of-fleet (not (fleet-aircraft tail-number))
+                        color (if out-of-fleet config/out-of-fleet-color base-color)]
                     [position-remark color]))
 
                 [remarks color] (generate-remark)
@@ -57,7 +57,7 @@
             {:line line :color color :distance dist}))
         sorted-aircraft (sort-by :distance aircraft-lines)
         total-lines (:line-count @config/display-info)
-        blank-line {:line "" :color :white}
+        blank-line {:line "" :color config/info-color}
         padded-aircraft (concat sorted-aircraft (repeat total-lines blank-line))
         displayed-items (take (dec total-lines) padded-aircraft)
         short-metar (utils/get-short-metar)

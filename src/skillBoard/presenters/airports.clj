@@ -2,6 +2,7 @@
   (:require
     [quil.core :as q]
     [skillBoard.comm-utils :as comm]
+    [skillBoard.config :as config]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
@@ -11,11 +12,11 @@
                "    "
                (:base (first clouds)))
         color (case fltCat
-                "VFR" :green
-                "MVFR" :blue
-                "IFR" :red
-                "LIFR" :magenta
-                :white)
+                "VFR" config/vfr-color
+                "MVFR" config/mvfr-color
+                "IFR" config/ifr-color
+                "LIFR" config/lifr-color
+                config/info-color)
         fltCat-display (if (nil? fltCat) "    " fltCat)
         cover (if (nil? cover) "   " cover)
         base (if (nil? base) "     " base)

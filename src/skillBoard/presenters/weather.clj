@@ -24,10 +24,10 @@
 
 (defn weather-color [line]
   (if (re-find #"^TAF" line)
-    :white ; header line
+    config/info-color ; header line
     (let [vis (parse-taf-visibility line)
           ceiling (parse-taf-ceiling line)]
-      (utils/flight-category vis ceiling))))
+      (utils/flight-category-color vis ceiling))))
 
 (defn split-taf [raw-taf]
   (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
@@ -44,7 +44,7 @@
         secondary-metars (map utils/get-short-metar config/secondary-metar-airports)
         raw-tafs [(:rawTAF taf-response)]
         tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
-        blank-line {:line "" :color :white}]
+        blank-line {:line "" :color config/info-color}]
     (concat tafs [blank-line primary-metar] secondary-metars)))
 
 (defmethod screen/make :taf [_]

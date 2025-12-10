@@ -17,6 +17,18 @@
 (def flap-duration 3500)                                    ;milliseconds
 (def frame-rate 15)
 
+;colors
+(def in-fleet-color :white)
+(def out-of-fleet-color :yellow)
+(def scheduled-flight-color :white)
+(def unscheduled-flight-color :magenta)
+(def on-ground-color :green)
+(def vfr-color :green)
+(def mvfr-color :blue)
+(def ifr-color :red)
+(def lifr-color :magenta)
+(def info-color :white)
+
 ;screens
 (def screens
   (atom (cycle

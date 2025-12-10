@@ -30,23 +30,23 @@
 
 (defn get-now [] (time/local-date-time))
 
-(defn include-unreserved-flights [reservations adsbs]
+(defn include-unscheduled-flights [reservations adsbs]
   (let [tails-with-co (set (map :tail-number (filter #(some? (:co %)) reservations)))
         flying-tails (set (map :reg (vals adsbs)))
-        rogue-tails (set/difference flying-tails tails-with-co)
-        rogue-reservations (for [tail rogue-tails
-                                 :let [adsb (get adsbs tail)]
-                                 :when (some? adsb)]
-                             {
-                              :adsb? true
-                              :tail-number tail
-                              :altitude (:altg adsb)
-                              :lat-lon [(:lat adsb) (:lon adsb)]
-                              :ground-speed (:spd adsb)
-                              :start-time (get-now)
-                              :rogue? true
-                              :on-ground? (or (= "g" (:gda adsb))
-                                              (= "G" (:gda adsb)))})
-        inclusive-reservations (concat reservations rogue-reservations)]
+        unscheduled-tails (set/difference flying-tails tails-with-co)
+        unscheduled-flights (for [tail unscheduled-tails
+                                  :let [adsb (get adsbs tail)]
+                                  :when (some? adsb)]
+                              {
+                               :adsb? true
+                               :tail-number tail
+                               :altitude (:altg adsb)
+                               :lat-lon [(:lat adsb) (:lon adsb)]
+                               :ground-speed (:spd adsb)
+                               :start-time (get-now)
+                               :unscheduled? true
+                               :on-ground? (or (= "g" (:gda adsb))
+                                               (= "G" (:gda adsb)))})
+        inclusive-reservations (concat reservations unscheduled-flights)]
     (sort #(time/before? (:start-time %1) (:start-time %2)) inclusive-reservations)))
 

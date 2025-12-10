@@ -7,12 +7,12 @@
 
 (defn blank? [s] (empty? (str/trim s)))
 
-(defn flight-category [vis ceiling]
+(defn flight-category-color [vis ceiling]
   (cond
-    (and (>= vis 10.0) (>= ceiling 3000)) :green   ; VFR
-    (and (>= vis 3.0) (>= ceiling 1000)) :blue    ; MVFR
-    (and (>= vis 1.0) (>= ceiling 500)) :red     ; IFR
-    :else :magenta)) ; LIFR
+    (and (>= vis 10.0) (>= ceiling 3000)) config/vfr-color
+    (and (>= vis 3.0) (>= ceiling 1000)) config/mvfr-color
+    (and (>= vis 1.0) (>= ceiling 500)) config/ifr-color
+    :else config/lifr-color))
 
 (defn find-location [my-lat my-lon my-alt geofences]
   (loop [fences geofences]

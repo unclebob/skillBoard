@@ -52,19 +52,19 @@
     (with now (time/minus @start-time (time/hours 2)))
     (it "handles degenerate cases"
       (should= []
-               (rc/include-unreserved-flights
+               (rc/include-unscheduled-flights
                  []
                  {}))
       (should= [{:start-time @start-time
                  :tail-number "t1"}]
-               (rc/include-unreserved-flights
+               (rc/include-unscheduled-flights
                  [{:start-time @start-time
                    :tail-number "t1"}]
                  {}))
       (should= [{:start-time @start-time
                  :tail-number "t1"
                  :co @co}]
-               (rc/include-unreserved-flights
+               (rc/include-unscheduled-flights
                  [{:start-time @start-time
                    :tail-number "t1"
                    :co @co}]
@@ -74,7 +74,7 @@
       (should= [{:start-time @start-time
                  :tail-number "t1"
                  :co @co}]
-               (rc/include-unreserved-flights
+               (rc/include-unscheduled-flights
                  [{:start-time @start-time
                    :tail-number "t1"
                    :co @co}]
@@ -88,12 +88,12 @@
                    :altitude 1000
                    :lat-lon ["lat" "lon"]
                    :ground-speed 160
-                   :rogue? true
+                   :unscheduled? true
                    :adsb? true
                    :on-ground? false}
                   {:start-time @start-time
                    :tail-number "t1"}]
-                 (rc/include-unreserved-flights
+                 (rc/include-unscheduled-flights
                    [{:start-time @start-time
                      :tail-number "t1"}]
                    {"t1" {:reg "t1"

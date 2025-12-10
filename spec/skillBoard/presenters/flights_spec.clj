@@ -13,7 +13,7 @@
   (context "format-res"
     (it "formats a basic reservation"
       (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN0915309/010/100             ",
-                :color :white}
+                :color config/scheduled-flight-color}
                (flights/format-res {:start-time time-util/epoch
                               :tail-number "TAIL"
                               :pilot-name ["PILOT" "LAST"]
@@ -22,14 +22,14 @@
                               :altitude 1000
                               :ground-speed 100
                               :lat-lon [0 0]
-                              :rogue? false
+                              :unscheduled? false
                               :on-ground? false
                               :adsb? false})
                )
       )
     (it "formats a on ground reservation"
       (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN000000/GND/000 RAMP         ",
-                :color :green}
+                :color config/on-ground-color}
                (flights/format-res {:start-time time-util/epoch
                               :tail-number "TAIL"
                               :pilot-name ["PILOT" "LAST"]
@@ -38,7 +38,7 @@
                               :altitude 0
                               :ground-speed 0
                               :lat-lon [42.4221486 -87.8679161]
-                              :rogue? false
+                              :unscheduled? false
                               :on-ground? true
                               :adsb? true})
                )
@@ -46,7 +46,7 @@
 
     (it "formats a taxi reservation"
       (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN000000/GND/010 TAXI         ",
-                :color :green}
+                :color config/on-ground-color}
                (flights/format-res {:start-time time-util/epoch
                               :tail-number "TAIL"
                               :pilot-name ["PILOT" "LAST"]
@@ -55,15 +55,15 @@
                               :altitude 0
                               :ground-speed 10
                               :lat-lon [42.4221486 -87.8679161]
-                              :rogue? false
+                              :unscheduled? false
                               :on-ground? true
                               :adsb? true})
                )
       )
 
-    (it "formats a rogue (non-checked-out) reservation in the pattern"
+    (it "formats an unscheduled flight in the pattern"
       (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN000000/020/100 PATN NO-CO   ",
-                :color :blue}
+                :color config/unscheduled-flight-color}
                (flights/format-res {:start-time time-util/epoch
                               :tail-number "TAIL"
                               :pilot-name ["PILOT" "LAST"]
@@ -72,7 +72,7 @@
                               :altitude 2000
                               :ground-speed 100
                               :lat-lon [42.4221486 -87.8679161]
-                              :rogue? true
+                              :unscheduled? true
                               :on-ground? false
                               :adsb? true})
                )
@@ -80,7 +80,7 @@
 
     (it "formats a reservation flying low"
       (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN000000/008/100 LOW          ",
-                :color :white}
+                :color config/scheduled-flight-color}
                (flights/format-res {:start-time time-util/epoch
                               :tail-number "TAIL"
                               :pilot-name ["PILOT" "LAST"]
@@ -89,14 +89,14 @@
                               :altitude 800
                               :ground-speed 100
                               :lat-lon [42.4221486 -87.8679161]
-                              :rogue? false
+                              :unscheduled? false
                               :on-ground? false
                               :adsb? true})
                )
       )
     (it "formats a reservation flying near"
       (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN000000/030/100 NEAR         ",
-                :color :white}
+                :color config/scheduled-flight-color}
                (flights/format-res {:start-time time-util/epoch
                               :tail-number "TAIL"
                               :pilot-name ["PILOT" "LAST"]
@@ -105,7 +105,7 @@
                               :altitude 3000
                               :ground-speed 100
                               :lat-lon [42.4221486 -87.8679161]
-                              :rogue? false
+                              :unscheduled? false
                               :on-ground? false
                               :adsb? true})
                )
@@ -140,35 +140,37 @@
 
 (describe "format-flight-screen"
   (it "formats an empty flight screen correctly"
-    (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color :white})
+    (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   fsp/unpack-reservations (fn [_] [])
                   fsp/unpack-flights (fn [_] [])
                   fsp/sort-and-filter-reservations (fn [_ _] [])
                   flights/make-adsb-tail-number-map (fn [_] {})
                   radar-cape/update-with-adsb (fn [_ _] [])
-                  radar-cape/include-unreserved-flights (fn [_ _] [])
-                  flights/format-res (fn [_] {:line "RES" :color :white})
+                  radar-cape/include-unscheduled-flights (fn [_ _] [])
+                  flights/format-res (fn [_] {:line "RES" :color config/in-fleet-color})
                   atoms/test? (atom false)
                   config/display-info (atom {:line-count 10})
                   config/cols 64]
       (let [blank-line (apply str (repeat 64 " "))
-            expected (concat (repeat 8 {:line blank-line :color :white})
-                             [{:color :white :line "             "} {:line "METAR" :color :white}])]
+            expected (concat (repeat 8 {:line blank-line :color config/info-color})
+                             [{:color config/info-color :line "             "}
+                              {:line "METAR" :color config/info-color}])]
         (should= expected (flights/make-flights-screen [] [])))))
 
   (it "formats a flight screen with dropped items correctly"
-    (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color :white})
+    (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   fsp/unpack-reservations (fn [_] [])
                   fsp/unpack-flights (fn [_] [])
                   fsp/sort-and-filter-reservations (fn [_ _] [])
                   flights/make-adsb-tail-number-map (fn [_] {})
                   radar-cape/update-with-adsb (fn [_ _] [])
-                  radar-cape/include-unreserved-flights (fn [_ _] (repeat 10 {}))
-                  flights/format-res (fn [_] {:line "RES" :color :white})
+                  radar-cape/include-unscheduled-flights (fn [_ _] (repeat 10 {}))
+                  flights/format-res (fn [_] {:line "RES" :color config/in-fleet-color})
                   atoms/test? (atom false)
                   config/display-info (atom {:line-count 10})
                   config/cols 64]
-      (let [expected (concat (repeat 8 {:line "RES" :color :white})
-                             [{:color :white :line "... 2 MORE..."} {:line "METAR" :color :white}])]
+      (let [expected (concat (repeat 8 {:line "RES" :color config/in-fleet-color})
+                             [{:color config/info-color :line "... 2 MORE..."}
+                              {:line "METAR" :color config/info-color}])]
         (should= expected (flights/make-flights-screen [] [])))))
 )

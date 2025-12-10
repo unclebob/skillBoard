@@ -27,7 +27,7 @@
 
 
 (defn format-res [{:keys [start-time tail-number pilot-name instructor-name co
-                          altitude ground-speed lat-lon rogue? on-ground? adsb?] :as res}]
+                          altitude ground-speed lat-lon unscheduled? on-ground? adsb?] :as res}]
   (let [[tower-lat tower-lon] config/airport-lat-lon
         [lat lon] lat-lon
         {:keys [distance bearing]} (if (nil? lat) {} (nav/dist-and-bearing tower-lat tower-lon lat lon))
@@ -52,17 +52,17 @@
              min-taxi 2
              [position-remark color]
              (cond
-               (and nearby? on-ground? (< ground-speed 2)) ["RAMP" :green]
-               (and nearby? on-ground? (<= min-taxi ground-speed max-taxi)) ["TAXI" :green]
-               (and (< low altitude pattern-low) flying-speed?) ["LOW " :white]
-               (and nearby? (< pattern-low altitude pattern-high) flying-speed?) ["PATN" :white]
-               (< distance 6) ["NEAR" :white]
-               :else [(utils/find-location lat lon altitude config/geofences) :white])
+               (and nearby? on-ground? (< ground-speed 2)) ["RAMP" config/on-ground-color]
+               (and nearby? on-ground? (<= min-taxi ground-speed max-taxi)) ["TAXI" config/on-ground-color]
+               (and (< low altitude pattern-low) flying-speed?) ["LOW " config/scheduled-flight-color]
+               (and nearby? (< pattern-low altitude pattern-high) flying-speed?) ["PATN" config/scheduled-flight-color]
+               (< distance 6) ["NEAR" config/scheduled-flight-color]
+               :else [(utils/find-location lat lon altitude config/geofences) config/scheduled-flight-color])
 
-             rogue-remark (if rogue? "NO-CO" "     ")
-             color (if rogue? :blue color)
+             unscheduled-remark (if unscheduled? "NO-CO" "     ")
+             color (if unscheduled? config/unscheduled-flight-color color)
              ]
-            [(format "%s %s" position-remark rogue-remark) color]))
+            [(format "%s %s" position-remark unscheduled-remark) color]))
 
         alt (cond
               on-ground? "GND"
@@ -88,7 +88,7 @@
                              alt
                              ground-speed))
         [remark color] (if adsb? (generate-remark)
-                                 ["            " :white])
+                                 ["            " config/scheduled-flight-color])
         line (format "%5sZ %-6s %5s %5s %6s %s %s               "
                      (time-util/get-HHmm (time-util/local-to-utc start-time))
                      tail-number
@@ -120,17 +120,17 @@
                    (make-adsb-tail-number-map adsbs))
 
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsb-map)
-        final-reservations (radar-cape/include-unreserved-flights
+        final-reservations (radar-cape/include-unscheduled-flights
                              updated-reservations
                              adsb-map)
         report (map format-res final-reservations)
         flight-count (- (:line-count @config/display-info) 2)
         blank-line (apply str (repeat config/cols " "))
         padded-items (concat report
-                             (repeat flight-count {:line blank-line :color :white}))
+                             (repeat flight-count {:line blank-line :color config/info-color}))
         displayed-items (take flight-count padded-items)
         dropped-items (count (drop flight-count report))
-        footer {:color :white
+        footer {:color config/info-color
                 :line (if (zero? dropped-items)
                         "             "
                         (format "...%2d MORE..." dropped-items))}
