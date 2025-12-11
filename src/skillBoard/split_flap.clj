@@ -152,16 +152,12 @@
         draw-char
         (fn [c cx cy color]
           (set-color color)
-          (q/no-stroke)
           (q/rect (+ cx backing-rect-top-left-x)
                   (+ cy backing-rect-top-left-y)
                   backing-rect-width
                   backing-rect-height)
 
           (q/fill 0 0 0)
-          (q/text-font sf-font)
-          (q/text-size sf-font-size)
-          (q/text-align :left :top)
           (q/text (str c) cx cy))
 
         draw-line
@@ -177,6 +173,10 @@
 
         draw-lines
         (fn []
+          (q/no-stroke)
+          (q/text-font sf-font)
+          (q/text-size sf-font-size)
+          (q/text-align :left :top)
           (loop [lines lines
                  y 0]
             (if (empty? lines)
