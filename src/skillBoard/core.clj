@@ -6,14 +6,14 @@
     [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.presenters.airports]
+    [skillBoard.presenters.flights]
     [skillBoard.presenters.main :as presenter]
+    [skillBoard.presenters.traffic]
+    [skillBoard.presenters.weather]
     [skillBoard.split-flap :as split-flap]
     [skillBoard.text-util :as text]
-    [skillBoard.time-util :as time-util]
-    [skillBoard.presenters.flights]
-    [skillBoard.presenters.airports]
-    [skillBoard.presenters.weather]
-    [skillBoard.presenters.traffic]))
+    [skillBoard.time-util :as time-util]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -111,7 +111,14 @@
   (split-flap/do-update state))
 
 (defn draw-state [state]
-  (split-flap/draw state)
+  (let [now (System/currentTimeMillis)]
+    (split-flap/draw state)
+    (when @atoms/test?
+      (swap! atoms/draw-time-accumulator + (- (System/currentTimeMillis) now))
+      (when (>= (- now @atoms/draw-time-start) 1000)
+        (prn "Draw time:" @atoms/draw-time-accumulator "ms")
+        (reset! atoms/draw-time-start now)
+        (reset! atoms/draw-time-accumulator 0))))
   )
 
 (defn on-close [_]

@@ -5,3 +5,5 @@
 (def clock-pulse (atom false))
 (def test? (atom false))
 (def change-screen? (atom false))
+(def draw-time-accumulator (atom 0))
+(def draw-time-start (atom (System/currentTimeMillis)))
