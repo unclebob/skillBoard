@@ -25,7 +25,7 @@
                 lat (:lat aircraft)
                 lon (:lon aircraft)
                 alt (:alt aircraft 0)
-                gs (:gs aircraft 0)
+                gs (:spd aircraft 0)
                 {:keys [bearing distance]} (nav/dist-and-bearing airport-lat airport-lon lat lon)
                 brg (math/round bearing)
                 gs-rounded (math/round gs)

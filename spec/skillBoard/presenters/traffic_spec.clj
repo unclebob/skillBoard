@@ -24,7 +24,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))] ; simplify: distance = |lat - 42|
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :gs 1}]
+      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000003/GND/001  RAMP    "]
@@ -45,7 +45,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 44.0 :lon -87.0 :alt 105 :gs 10}]
+      (let [adsb [{:fli "N12345" :lat 44.0 :lon -87.0 :alt 105 :spd 10}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000002/GND/010  TAXI    "]
@@ -66,7 +66,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :gs 100}]
+      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :spd 100}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000002/020/100  NEAR    "]
@@ -87,7 +87,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :gs 100 :gda "G"}]
+      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :spd 100 :gda "G"}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000002/GND/100  NEAR    "]
@@ -108,7 +108,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 48.0 :lon -87.0 :alt 2000 :gs 100}]
+      (let [adsb [{:fli "N12345" :lat 48.0 :lon -87.0 :alt 2000 :spd 100}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
             expected-line "N12345   C000006/020/100  LOCATION"]
@@ -129,7 +129,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :gs 1}]
+      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}]
             scheduled ["N12345"]
             result (traffic/make-traffic-screen adsb scheduled)]
         (should= config/on-ground-color (:color (first result))))))
@@ -148,7 +148,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 1000 :gs 100}]
+      (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 1000 :spd 100}]
             scheduled ["N12345"]
             result (traffic/make-traffic-screen adsb scheduled)]
         (should= config/in-fleet-color (:color (first result))))))
@@ -167,9 +167,9 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N1" :lat 47.0 :lon -87.0 :alt 2000 :gs 100} ; dist 5
-                  {:fli "N2" :lat 43.0 :lon -87.0 :alt 2000 :gs 100} ; dist 1
-                  {:fli "N3" :lat 45.0 :lon -87.0 :alt 2000 :gs 100}] ; dist 3
+      (let [adsb [{:fli "N1" :lat 47.0 :lon -87.0 :alt 2000 :spd 100} ; dist 5
+                  {:fli "N2" :lat 43.0 :lon -87.0 :alt 2000 :spd 100} ; dist 1
+                  {:fli "N3" :lat 45.0 :lon -87.0 :alt 2000 :spd 100}] ; dist 3
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)]
         (should= "N2" (subs (:line (first result)) 0 2))
@@ -190,7 +190,7 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N1" :lat 43.0 :lon -87.0 :alt 2000 :gs 100}]
+      (let [adsb [{:fli "N1" :lat 43.0 :lon -87.0 :alt 2000 :spd 100}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)]
         (should= 10 (count result))
