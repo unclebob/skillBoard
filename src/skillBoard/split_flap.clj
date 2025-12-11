@@ -126,6 +126,17 @@
   (let [padded-line (str line (apply str (repeat length " ")))]
     (subs padded-line 0 length)))
 
+(defn set-color [color]
+  (condp = color
+    :white (q/fill 255 255 255)
+    :red (q/fill 255 150 175)
+    :green (q/fill 175 255 175)
+    :blue (q/fill 175 175 255)
+    :magenta (q/fill 255 200 255)
+    :cyan (q/fill 175 255 255)
+    :yellow (q/fill 255 255 175)
+    (q/fill 175 175 175)))
+
 (defn draw [{:keys [sf-font sf-font-size clock-font lines flappers font-width font-height header-font] :as state}]
   (let [now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (if @atoms/clock-pulse now (string/replace now ":" " "))
@@ -133,43 +144,37 @@
         flap-height (* font-height (inc config/sf-line-gap))
         top-margin (:top-margin @config/display-info)
         label-margin (+ top-margin (:label-height @config/display-info))
+        backing-rect-top-left-x (int (* font-width 0.1))
+        backing-rect-top-left-y (int (* font-height 0.1))
+        backing-rect-width ^int (int (* font-width 0.8))
+        backing-rect-height ^int (int (* font-height 0.8))
 
         draw-char
-        (fn [c x y color]
-          (let [cx (* x flap-width)
-                cy (+ (* y flap-height) label-margin)]
-            (condp = color
-              :white (q/fill 255 255 255)
-              :red (q/fill 255 150 175)
-              :green (q/fill 175 255 175)
-              :blue (q/fill 175 175 255)
-              :magenta (q/fill 255 200 255)
-              :cyan (q/fill 175 255 255)
-              :yellow (q/fill 255 255 175)
-              (q/fill 175 175 175)
-              )
-            (q/no-stroke)
-            (q/rect (+ cx (* font-width 0.1))
-                    (+ cy (* font-height 0.1))
-                    (* font-width 0.8)
-                    (* font-height 0.8))
+        (fn [c cx cy color]
+          (set-color color)
+          (q/no-stroke)
+          (q/rect (+ cx backing-rect-top-left-x)
+                  (+ cy backing-rect-top-left-y)
+                  backing-rect-width
+                  backing-rect-height)
 
-            (q/fill 0 0 0)
-            (q/text-font sf-font)
-            (q/text-size sf-font-size)
-            (q/text-align :left :top)
-            (q/text (str c) cx cy))
-          )
+          (q/fill 0 0 0)
+          (q/text-font sf-font)
+          (q/text-size sf-font-size)
+          (q/text-align :left :top)
+          (q/text (str c) cx cy))
 
         draw-line
         (fn [line color y]
-          (loop [x 0
-                 cs (pad-and-trim-line line config/cols)]
-            (if (empty? cs)
-              nil
-              (let [c (first cs)]
-                (draw-char c x y color)
-                (recur (inc x) (rest cs))))))
+          (let [cy (+ (* y flap-height) label-margin)]
+            (loop [x 0
+                   cs (pad-and-trim-line line config/cols)]
+              (if (empty? cs)
+                nil
+                (let [c (first cs)]
+                  (draw-char c x cy color)
+                  (recur (+ x flap-width) (rest cs)))))))
+
         draw-lines
         (fn []
           (loop [lines lines
@@ -180,11 +185,14 @@
                 (when (not (string/blank? line))
                   (draw-line line color y))
                 (recur (rest lines) (inc y))))))
+
         draw-flappers
         (fn []
           (doseq [{:keys [at from]} flappers]
             (let [[col row] at]
-              (draw-char from col row nil))))
+              (draw-char from
+                         (* col flap-width)
+                         (+ (* row flap-height) label-margin) nil))))
 
         display-com-errors
         (fn [pos]
@@ -239,7 +247,8 @@
     (q/background 30)
     (draw-header)
     (draw-lines)
-    (draw-flappers)))
+    (draw-flappers)
+    ))
 
 (defn do-update [{:keys [time flappers lines] :as state}]
   (let [now (System/currentTimeMillis)
