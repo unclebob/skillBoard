@@ -257,7 +257,7 @@
         new-screen? (not= summary old-summary)
         new-screen-time (if new-screen? now time)
         flappers (cond
-                   new-screen? (make-flappers summary nil)
+                   new-screen? (make-flappers summary old-summary)
                    (> (- now new-screen-time) config/flap-duration) []
                    :else (update-flappers flappers)
                    )]

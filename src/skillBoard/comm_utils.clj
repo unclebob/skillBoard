@@ -73,7 +73,7 @@
     (get-json url args polled-flights reservation-com-errors "flights")))
 
 (defn get-aircraft []
-  (let [json-response (atom nil) ;dummy
+  (let [json-response (atom nil)                            ;dummy
         operator-id (:fsp-operator-id @config/config)
         fsp-key (:fsp-key @config/config)
         url (str "https://usc-api.flightschedulepro.com/core/v1.0/operators/" operator-id "/aircraft")
@@ -135,8 +135,10 @@
                          (let [lat (:lat aircraft)
                                lon (:lon aircraft)
                                alt (:alt aircraft)
-                               dist (:distance (nav/dist-and-bearing airport-lat airport-lon lat lon))]
-                           (and (< dist config/nearby-distance)
+                               valid? (and (some? alt) (some? lat) (some? lon))
+                               dist (if valid? (:distance (nav/dist-and-bearing airport-lat airport-lon lat lon)) nil)]
+                           (and valid?
+                                (< dist config/nearby-distance)
                                 (>= alt min-alt)
                                 (<= alt max-alt))))
                        all-adsb)]

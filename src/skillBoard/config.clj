@@ -45,7 +45,7 @@
 (def pattern-altitude 1728)
 (def bearing-center "UGN")
 (def nearby-altitude-range [airport-elevation 4000])
-(def nearby-distance 3)
+(def nearby-distance 15)
 
 (def time-zone "America/Chicago")
 
