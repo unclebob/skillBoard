@@ -9,7 +9,7 @@
 
 (defn flight-category-color [vis ceiling]
   (cond
-    (and (>= vis 10.0) (>= ceiling 3000)) config/vfr-color
+    (and (>= vis 5.0) (>= ceiling 3000)) config/vfr-color
     (and (>= vis 3.0) (>= ceiling 1000)) config/mvfr-color
     (and (>= vis 1.0) (>= ceiling 500)) config/ifr-color
     :else config/lifr-color))
