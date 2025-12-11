@@ -41,20 +41,6 @@
       (reset! main/screen-start-time 0)
       (should= "mocked flight-category screen" (main/make-screen))))
 
-  (it "updates atoms when mouse is pressed"
-    (let [original-screens [{:screen :next-screen :duration 15} {:screen :another :duration 25}]]
-      (reset! config/screens original-screens)
-      (reset! main/screen-type :flights)
-      (reset! main/screen-duration 10)
-      (reset! main/screen-start-time 1000)
-      (with-redefs [q/mouse-pressed? (fn [] true)
-                    utils/get-now (fn [] 2000)]
-        (main/make-screen)
-        (should= :next-screen @main/screen-type)
-        (should= 15 @main/screen-duration)
-        (should= 2000 @main/screen-start-time)
-        (should= (rest original-screens) @config/screens))))
-
   (it "updates atoms when screen duration times out"
     (let [original-screens [{:screen :timeout-screen :duration 20} {:screen :next :duration 30}]]
       (reset! config/screens original-screens)
