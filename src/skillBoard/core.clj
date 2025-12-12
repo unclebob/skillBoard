@@ -13,7 +13,8 @@
     [skillBoard.presenters.weather]
     [skillBoard.split-flap :as split-flap]
     [skillBoard.text-util :as text]
-    [skillBoard.time-util :as time-util]))
+    [skillBoard.time-util :as time-util]
+    [skillBoard.core-utils :as core-utils]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -72,6 +73,7 @@
 
 (defn setup []
   (prn "Setup..." (time-util/format-time (time/local-date-time)))
+  (core-utils/log "Skill Board started.")
   (load-fonts)
   (config/load-config)
   (load-display-info)

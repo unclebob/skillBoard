@@ -7,3 +7,4 @@ out
 /bun.sh
 /.grok/
 /target/
+/log.txt
