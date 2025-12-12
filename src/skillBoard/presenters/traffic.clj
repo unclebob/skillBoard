@@ -31,7 +31,7 @@
                 gs-rounded (math/round gs)
                 dist (math/round distance)
                 alt-hundreds (math/round (/ alt 100.0))
-                close-to-ground? (or (< (abs (- alt config/airport-elevation)) 10)
+                close-to-ground? (or (< (abs (- alt config/airport-elevation)) 30)
                                      (#{"G" "g"} (:gda aircraft "")))
                 alt-str (if close-to-ground? "GND" (format "%03d" alt-hundreds))
                 brg-alt-gs (format "%s%03d%03d/%s/%03d" config/bearing-center brg dist alt-str gs-rounded)
@@ -41,11 +41,16 @@
                 (fn []
                   (let [nearby? (< distance 6)
                         low (+ config/airport-elevation 30)
-                        on-ground? (or close-to-ground? (< alt low))
+                        pattern-low (- config/pattern-altitude 500)
+                        pattern-high (+ config/pattern-altitude 500)
+                        flying-speed? (> gs 50)
+
                         [position-remark base-color]
                         (cond
-                          (and nearby? on-ground? (< gs 2)) ["RAMP" config/on-ground-color]
-                          (and nearby? on-ground? (<= 2 gs 25)) ["TAXI" config/on-ground-color]
+                          (and nearby? close-to-ground? (< gs 2)) ["RAMP" config/on-ground-color]
+                          (and nearby? close-to-ground? (<= 2 gs 25)) ["TAXI" config/on-ground-color]
+                          (and (< low alt pattern-low) flying-speed?) ["LOW " config/in-fleet-color]
+                          (and nearby? (< pattern-low alt pattern-high) flying-speed?) ["PATN" config/in-fleet-color]
                           (< distance 2) ["NEAR" config/in-fleet-color]
                           :else [(utils/find-location lat lon alt config/geofences) config/in-fleet-color])
                         out-of-fleet (not (fleet-aircraft tail-number))

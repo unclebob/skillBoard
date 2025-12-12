@@ -66,10 +66,10 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :spd 100}]
+      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 3000 :spd 100}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
-            expected-line "N12345   C000002/020/100  NEAR    "]
+            expected-line "N12345   C000002/030/100  NEAR    "]
         (should= expected-line (:line (first result)))
         (should= config/out-of-fleet-color (:color (first result))))))
 
@@ -87,10 +87,10 @@
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
                                            {:distance distance :bearing 0}))]
-      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt 2000 :spd 100 :gda "G"}]
+      (let [adsb [{:fli "N12345" :lat 43.5 :lon -87.0 :alt config/airport-elevation :spd 1 :gda "G"}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
-            expected-line "N12345   C000002/GND/100  NEAR    "]
+            expected-line "N12345   C000002/GND/001  RAMP    "]
         (should= expected-line (:line (first result)))
         (should= config/out-of-fleet-color (:color (first result))))))
 
