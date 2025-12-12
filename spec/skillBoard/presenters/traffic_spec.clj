@@ -73,6 +73,50 @@
         (should= expected-line (:line (first result)))
         (should= config/out-of-fleet-color (:color (first result))))))
 
+   (it "generates LOW remark for flying aircraft below pattern altitude"
+     (with-redefs [atoms/test? (atom false)
+                   comm/polled-nearby-adsbs (atom [])
+                   comm/polled-aircraft (atom [])
+                   config/display-info (atom {:line-count 10})
+                   config/airport-lat-lon [42.0 -87.0]
+                   config/airport-elevation 100
+                   config/pattern-altitude 2000
+                   config/bearing-center "C"
+                   config/geofences []
+                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                   utils/find-location (fn [_ _ _ _] "LOCATION")
+                   nav/dist-and-bearing (fn [_ _ lat _lon]
+                                          (let [distance (abs (- lat 42.0))]
+                                            {:distance distance :bearing 0}))]
+       (let [adsb [{:fli "N12345" :lat 49.0 :lon -87.0 :alt 1400 :spd 100}]
+             scheduled []
+             result (traffic/make-traffic-screen adsb scheduled)
+             expected-line "N12345   C000007/014/100  LOW     "]
+         (should= expected-line (:line (first result)))
+         (should= config/out-of-fleet-color (:color (first result))))))
+
+   (it "generates PATN remark for nearby flying aircraft in pattern"
+     (with-redefs [atoms/test? (atom false)
+                   comm/polled-nearby-adsbs (atom [])
+                   comm/polled-aircraft (atom [])
+                   config/display-info (atom {:line-count 10})
+                   config/airport-lat-lon [42.0 -87.0]
+                   config/airport-elevation 100
+                   config/pattern-altitude 2000
+                   config/bearing-center "C"
+                   config/geofences []
+                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                   utils/find-location (fn [_ _ _ _] "LOCATION")
+                   nav/dist-and-bearing (fn [_ _ lat _lon]
+                                          (let [distance (abs (- lat 42.0))]
+                                            {:distance distance :bearing 0}))]
+       (let [adsb [{:fli "N12345" :lat 44.0 :lon -87.0 :alt 2200 :spd 100}]
+             scheduled []
+             result (traffic/make-traffic-screen adsb scheduled)
+             expected-line "N12345   C000002/022/100  PATN    "]
+         (should= expected-line (:line (first result)))
+         (should= config/out-of-fleet-color (:color (first result))))))
+
   (it "uses GND for aircraft with gda flag G"
     (with-redefs [atoms/test? (atom false)
                   comm/polled-nearby-adsbs (atom [])
