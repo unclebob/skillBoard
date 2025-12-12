@@ -144,3 +144,36 @@
                                        :max-alt 2000
                                        :name "NAME"}])))
   )
+(describe "generate-position-remark"
+  (it "returns RAMP for nearby on-ground low speed"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000]
+      (should= "RAMP" (utils/generate-position-remark 1 105 1 true 42 -87))))
+
+  (it "returns TAXI for nearby on-ground medium speed"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000]
+      (should= "TAXI" (utils/generate-position-remark 1 105 15 true 42 -87))))
+
+  (it "returns LOW for flying below pattern altitude"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000]
+      (should= "LOW " (utils/generate-position-remark 3 135 60 false 42 -87))))
+
+  (it "returns PATN for nearby flying in pattern"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000]
+      (should= "PATN" (utils/generate-position-remark 1 2150 60 false 42 -87))))
+
+  (it "returns NEAR for close aircraft"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000]
+      (should= "NEAR" (utils/generate-position-remark 3 3000 60 false 42 -87))))
+
+  (it "returns location for distant aircraft"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000
+                  config/geofences []
+                  utils/find-location (fn [_ _ _ _] "LOCATION")]
+      (should= "LOCATION" (utils/generate-position-remark 7 3000 60 false 42 -87))))
+  )
