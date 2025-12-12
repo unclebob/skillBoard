@@ -1,20 +1,18 @@
 (ns skillBoard.core
   (:require
-    [java-time.api :as time]
     [quil.core :as q]
     [quil.middleware :as m]
     [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.core-utils :as core-utils]
     [skillBoard.presenters.airports]
     [skillBoard.presenters.flights]
     [skillBoard.presenters.main :as presenter]
     [skillBoard.presenters.traffic]
     [skillBoard.presenters.weather]
     [skillBoard.split-flap :as split-flap]
-    [skillBoard.text-util :as text]
-    [skillBoard.time-util :as time-util]
-    [skillBoard.core-utils :as core-utils]))
+    [skillBoard.text-util :as text]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -45,14 +43,16 @@
            :clock-font clock-font)))
 
 (defn poll []
-  (comm/get-aircraft)
-  (comm/get-adsb-by-tail-numbers @comm/polled-aircraft)
-  (comm/get-flights)
-  (comm/get-reservations)
-  (comm/get-metars config/all-metars)
-  (comm/get-tafs config/all-metars)
-  (comm/get-nearby-adsb)
-  )
+  (try
+    (comm/get-aircraft)
+    (comm/get-adsb-by-tail-numbers @comm/polled-aircraft)
+    (comm/get-flights)
+    (comm/get-reservations)
+    (comm/get-metars config/all-metars)
+    (comm/get-tafs config/all-metars)
+    (comm/get-nearby-adsb)
+    (catch Exception e
+      (core-utils/log e))))
 
 (defn start-polling []
   (poll)
@@ -72,8 +72,7 @@
     ))
 
 (defn setup []
-  (prn "Setup..." (time-util/format-time (time/local-date-time)))
-  (core-utils/log "Skill Board started.")
+  (core-utils/log "Setup...")
   (load-fonts)
   (config/load-config)
   (load-display-info)
@@ -110,18 +109,23 @@
      :departure-icon (q/load-image "resources/flightlogo.png")}))
 
 (defn update-state [state]
-  (split-flap/do-update state))
+  (try
+    (split-flap/do-update state)
+    (catch Exception e
+      (core-utils/log e))))
 
 (defn draw-state [state]
-  (let [now (System/currentTimeMillis)]
-    (split-flap/draw state)
-    (when @atoms/test?
-      (swap! atoms/draw-time-accumulator + (- (System/currentTimeMillis) now))
-      (when (>= (- now @atoms/draw-time-start) 1000)
-        (prn "Draw time:" @atoms/draw-time-accumulator "ms")
-        (reset! atoms/draw-time-start now)
-        (reset! atoms/draw-time-accumulator 0))))
-  )
+  (try
+    (let [now (System/currentTimeMillis)]
+      (split-flap/draw state)
+      (when @atoms/test?
+        (swap! atoms/draw-time-accumulator + (- (System/currentTimeMillis) now))
+        (when (>= (- now @atoms/draw-time-start) 1000)
+          (prn "Draw time:" @atoms/draw-time-accumulator "ms")
+          (reset! atoms/draw-time-start now)
+          (reset! atoms/draw-time-accumulator 0))))
+    (catch Exception e
+      (core-utils/log e))))
 
 (defn on-close [_]
   (q/no-loop)
@@ -139,11 +143,11 @@
 (declare skillBoard)
 
 (defn -main [& args]
-  (println "skillBoard has begun.")
+  (core-utils/log "skillBoard has begun.")
   (let [args (set args)
         window? (some? (args "-w"))
         _ (reset! atoms/test? (some? (args "-t")))
-        _ (prn 'args args 'window? window? 'test? @atoms/test?)
+        _ (core-utils/log (str "args: " args ", window? " window? ", test? " @atoms/test?))
         ]
     (q/defsketch skillBoard
                  :title "Skill Board"

@@ -5,7 +5,8 @@
     [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.config :as config]
-    [skillBoard.navigation :as nav]))
+    [skillBoard.navigation :as nav]
+    [skillBoard.core-utils :as core-utils]))
 
 (defn get-json [url args save-atom com-errors error-name]
   (try
@@ -17,7 +18,7 @@
           @save-atom)
         (throw (ex-info (str "Failed to fetch " error-name) {:status status}))))
     (catch Exception e
-      (prn (str "Error fetching " error-name ": " (.getMessage e)))
+      (core-utils/log (str "Error fetching " error-name ": " (.getMessage e)))
       (swap! com-errors inc)
       @save-atom)))
 
