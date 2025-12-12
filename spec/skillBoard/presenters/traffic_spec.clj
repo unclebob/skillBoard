@@ -21,13 +21,11 @@
                   config/geofences []
                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
-                  nav/dist-and-bearing (fn [_ _ lat _lon]
-                                         (let [distance (abs (- lat 42.0))] ; simplify: distance = |lat - 42|
-                                           {:distance distance :bearing 0}))]
+                  nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
-            expected-line "N12345   C000003/GND/001  RAMP    "]
+            expected-line "N12345   C000001/GND/001  RAMP    "]
         (should= expected-line (:line (first result)))
         (should= config/out-of-fleet-color (:color (first result))))))
 
@@ -42,13 +40,11 @@
                   config/geofences []
                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
-                  nav/dist-and-bearing (fn [_ _ lat _lon]
-                                         (let [distance (abs (- lat 42.0))]
-                                           {:distance distance :bearing 0}))]
+                  nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:fli "N12345" :lat 44.0 :lon -87.0 :alt 105 :spd 10}]
             scheduled []
             result (traffic/make-traffic-screen adsb scheduled)
-            expected-line "N12345   C000002/GND/010  TAXI    "]
+            expected-line "N12345   C000001/GND/010  TAXI    "]
         (should= expected-line (:line (first result)))
         (should= config/out-of-fleet-color (:color (first result))))))
 
@@ -107,13 +103,11 @@
                    config/geofences []
                    utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                    utils/find-location (fn [_ _ _ _] "LOCATION")
-                   nav/dist-and-bearing (fn [_ _ lat _lon]
-                                          (let [distance (abs (- lat 42.0))]
-                                            {:distance distance :bearing 0}))]
+                   nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
        (let [adsb [{:fli "N12345" :lat 44.0 :lon -87.0 :alt 2200 :spd 100}]
              scheduled []
              result (traffic/make-traffic-screen adsb scheduled)
-             expected-line "N12345   C000002/022/100  PATN    "]
+             expected-line "N12345   C000001/022/100  PATN    "]
          (should= expected-line (:line (first result)))
          (should= config/out-of-fleet-color (:color (first result))))))
 
@@ -170,9 +164,7 @@
                   config/geofences []
                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
-                  nav/dist-and-bearing (fn [_ _ lat _lon]
-                                         (let [distance (abs (- lat 42.0))]
-                                           {:distance distance :bearing 0}))]
+                  nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:fli "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}]
             scheduled ["N12345"]
             result (traffic/make-traffic-screen adsb scheduled)]

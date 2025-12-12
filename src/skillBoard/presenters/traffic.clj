@@ -39,7 +39,7 @@
 
                 generate-remark
                 (fn []
-                  (let [nearby? (< distance 6)
+                  (let [nearby? (< distance 2)
                         low (+ config/airport-elevation 30)
                         pattern-low (- config/pattern-altitude 500)
                         pattern-high (+ config/pattern-altitude 500)
@@ -51,7 +51,7 @@
                           (and nearby? close-to-ground? (<= 2 gs 25)) ["TAXI" config/on-ground-color]
                           (and (< low alt pattern-low) flying-speed?) ["LOW " config/in-fleet-color]
                           (and nearby? (< pattern-low alt pattern-high) flying-speed?) ["PATN" config/in-fleet-color]
-                          (< distance 2) ["NEAR" config/in-fleet-color]
+                          (< distance 6) ["NEAR" config/in-fleet-color]
                           :else [(utils/find-location lat lon alt config/geofences) config/in-fleet-color])
                         out-of-fleet (not (fleet-aircraft tail-number))
                         color (if out-of-fleet config/out-of-fleet-color base-color)]
