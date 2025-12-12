@@ -11,9 +11,9 @@
 
 (defn make-traffic-screen [adsb-aircraft fleet-aircraft]
   (let [adsb-aircraft (if @atoms/test?
-                        [{:fli "N12345" :lat 42.5 :lon -87.8 :alt 2500 :gs 120}
-                         {:fli "N98765" :lat 42.4 :lon -87.9 :alt 728 :gs 2}
-                         {:fli "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :gs 100}
+                        [{:fli "N12345" :lat 42.5 :lon -87.8 :alt 2500 :spd 120}
+                         {:fli "N98765" :lat 42.4 :lon -87.9 :alt 728 :spd 2}
+                         {:fli "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :spd 100}
                          {:fli "N378MA" :lat 42.4221486 :lon -87.8679161 :alt 2000}]
                         adsb-aircraft)
         airport-lat-lon config/airport-lat-lon
@@ -39,23 +39,11 @@
 
                 generate-remark
                 (fn []
-                  (let [nearby? (< distance 2)
-                        low (+ config/airport-elevation 30)
-                        pattern-low (- config/pattern-altitude 500)
-                        pattern-high (+ config/pattern-altitude 500)
-                        flying-speed? (> gs 50)
-
-                        [position-remark base-color]
-                        (cond
-                          (and nearby? close-to-ground? (< gs 2)) ["RAMP" config/on-ground-color]
-                          (and nearby? close-to-ground? (<= 2 gs 25)) ["TAXI" config/on-ground-color]
-                          (and (< low alt pattern-low) flying-speed?) ["LOW " config/in-fleet-color]
-                          (and nearby? (< pattern-low alt pattern-high) flying-speed?) ["PATN" config/in-fleet-color]
-                          (< distance 6) ["NEAR" config/in-fleet-color]
-                          :else [(utils/find-location lat lon alt config/geofences) config/in-fleet-color])
+                  (let [remark (utils/generate-position-remark distance alt gs close-to-ground? lat lon)
+                        base-color (if (#{"RAMP" "TAXI"} remark) config/on-ground-color config/in-fleet-color)
                         out-of-fleet (not (fleet-aircraft tail-number))
                         color (if out-of-fleet config/out-of-fleet-color base-color)]
-                    [position-remark color]))
+                    [remark color]))
 
                 [remarks color] (generate-remark)
                 line (format "%-8s %-16s %-8s" tail-number brg-alt-gs remarks)]

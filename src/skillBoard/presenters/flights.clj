@@ -41,28 +41,15 @@
         (fn []
           (let
             [altitude (or altitude 0)
-             nearby? (< distance 2)
              ground-speed (or ground-speed 0)
              low (+ config/airport-elevation 30)
              on-ground? (or on-ground? (< altitude low))
-             pattern-low (- config/pattern-altitude 500)
-             pattern-high (+ config/pattern-altitude 500)
-             flying-speed? (> ground-speed 50)
-             max-taxi 25
-             min-taxi 2
-             [position-remark color]
-             (cond
-               (and nearby? on-ground? (< ground-speed 2)) ["RAMP" config/on-ground-color]
-               (and nearby? on-ground? (<= min-taxi ground-speed max-taxi)) ["TAXI" config/on-ground-color]
-               (and (< low altitude pattern-low) flying-speed?) ["LOW " config/scheduled-flight-color]
-               (and nearby? (< pattern-low altitude pattern-high) flying-speed?) ["PATN" config/scheduled-flight-color]
-               (< distance 6) ["NEAR" config/scheduled-flight-color]
-               :else [(utils/find-location lat lon altitude config/geofences) config/scheduled-flight-color])
-
+             remark (utils/generate-position-remark distance altitude ground-speed on-ground? lat lon)
+             base-color (if (#{"RAMP" "TAXI"} remark) config/on-ground-color config/scheduled-flight-color)
              unscheduled-remark (if unscheduled? "NO-CO" "     ")
-             color (if unscheduled? config/unscheduled-flight-color color)
+             color (if unscheduled? config/unscheduled-flight-color base-color)
              ]
-            [(format "%s %s" position-remark unscheduled-remark) color]))
+            [(format "%s %s" remark unscheduled-remark) color]))
 
         alt (cond
               on-ground? "GND"

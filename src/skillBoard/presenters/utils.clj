@@ -66,3 +66,20 @@
 
 (defn get-now []
   (System/currentTimeMillis))
+
+(defn generate-position-remark [distance alt gs on-ground? lat lon]
+  (let [nearby-threshold 2
+        near-threshold 6
+        low (+ config/airport-elevation 30)
+        pattern-low (- config/pattern-altitude 500)
+        pattern-high (+ config/pattern-altitude 500)
+        geofences config/geofences
+        nearby? (< distance nearby-threshold)
+        flying-speed? (> gs 50)]
+    (cond
+      (and nearby? on-ground? (< gs 2)) "RAMP"
+      (and nearby? on-ground? (<= 2 gs 25)) "TAXI"
+      (and (< low alt pattern-low) flying-speed?) "LOW "
+      (and nearby? (< pattern-low alt pattern-high) flying-speed?) "PATN"
+      (< distance near-threshold) "NEAR"
+      :else (find-location lat lon alt geofences))))
