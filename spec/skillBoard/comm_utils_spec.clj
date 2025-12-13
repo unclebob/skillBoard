@@ -4,6 +4,7 @@
     [java-time.api :as time]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.core-utils :as core-utils]
     [speclj.core :refer :all]
     ))
 
@@ -28,13 +29,13 @@
 
     (it "prints and counts API errors, returns saved data"
       (with-redefs [http/get (stub :get {:return {:status 500 :body "Server Error"}})
-                    prn (stub :prn)]
+                    core-utils/log (stub :log)]
         (reset! @save-atom :none)
         (should= :none (comm/get-json :url :args @save-atom @com-errors "test data"))
         (should-have-invoked :get
                              {:times 1
                               :with [:* :*]})
-        (should-have-invoked :prn
+        (should-have-invoked :log
                              {:times 1})
         (should= 1 @@com-errors)
         ))

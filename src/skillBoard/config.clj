@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20251212")
+(def version "20251213")
 
 ;Display configuration
 (def display-info (atom {}))                                ;determined after sketch started.
@@ -44,7 +44,7 @@
 (def airport-elevation 728.1)
 (def pattern-altitude 1728)
 (def bearing-center "UGN")
-(def nearby-altitude-range [700 4000])
+(def nearby-altitude-range [0 4000])
 (def nearby-distance 15)
 
 (def time-zone "America/Chicago")

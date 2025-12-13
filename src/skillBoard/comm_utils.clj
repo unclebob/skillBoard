@@ -5,7 +5,6 @@
     [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.config :as config]
-    [skillBoard.navigation :as nav]
     [skillBoard.core-utils :as core-utils]))
 
 (defn get-json [url args save-atom com-errors error-name]
@@ -124,8 +123,7 @@
     adsb-response))
 
 (defn get-nearby-adsb []
-  (let [[airport-lat airport-lon] config/airport-lat-lon
-        [min-alt max-alt] config/nearby-altitude-range
+  (let [[min-alt max-alt] config/nearby-altitude-range
         url (str "http://" config/radar-cape-ip "/aircraftlist.json")
         args {:accept :text
               :with-credentials? false
@@ -133,11 +131,9 @@
               :connection-timeout 2000}
         all-adsb (get-json url args polled-nearby-adsbs adsb-com-errors "nearby ADSB")
         nearby (filter (fn [aircraft]
-                         (let [lat (:lat aircraft)
-                               lon (:lon aircraft)
-                               alt (:alt aircraft)
-                               valid? (and (some? alt) (some? lat) (some? lon))
-                               dist (if valid? (:distance (nav/dist-and-bearing airport-lat airport-lon lat lon)) nil)]
+                         (let [alt (:alt aircraft)
+                               dist (:dis aircraft)
+                               valid? (and (some? alt) (some? dist))]
                            (and valid?
                                 (< dist config/nearby-distance)
                                 (>= alt min-alt)

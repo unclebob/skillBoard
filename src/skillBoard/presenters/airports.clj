@@ -3,11 +3,14 @@
     [quil.core :as q]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.navigation :as nav]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
 (defn make-flight-category-line [metar]
-  (let [{:keys [fltCat icaoId visib cover clouds wspd wgst]} metar
+  (let [{:keys [fltCat icaoId visib cover clouds wspd wgst lat lon]} metar
+        [airport-lat airport-lon] config/airport-lat-lon
+        dist (int (:distance (nav/dist-and-bearing lat lon airport-lat airport-lon)))
         base (if (= cover "CLR")
                "    "
                (:base (first clouds)))
@@ -21,7 +24,7 @@
         cover (if (nil? cover) "   " cover)
         base (if (nil? base) "     " base)
         wgst (if (nil? wgst) "   " (str "G" wgst))
-        ctgy-line (format "%4s %4s %3s %5s %3s %2s%3s" icaoId fltCat-display cover base visib wspd wgst)]
+        ctgy-line (format "%4s %4s %3s %5s %4s %2s%3s %03d" icaoId fltCat-display cover base visib wspd wgst dist)]
     {:line ctgy-line :color color}))
 
 (defn make-airports-screen []
@@ -43,4 +46,5 @@
     (q/text "SKY" (* flap-width 10) baseline)
     (q/text "BASE" (* flap-width 14) baseline)
     (q/text "VIS" (* flap-width 20) baseline)
-    (q/text "WIND" (* flap-width 24) baseline)))
+    (q/text "WIND" (* flap-width 25) baseline)
+    (q/text "DIST" (* flap-width 31) baseline)))

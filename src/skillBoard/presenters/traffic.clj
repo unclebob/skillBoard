@@ -61,7 +61,7 @@
   (make-traffic-screen @comm/polled-nearby-adsbs @comm/polled-aircraft))
 
 (defmethod screen/header-text :traffic [_]
-  "TRAFFIC")
+  "NEARBY TRAFFIC")
 
 (defmethod screen/display-column-headers :traffic [_ flap-width header-font]
   (let [baseline (screen/setup-headers header-font)]
