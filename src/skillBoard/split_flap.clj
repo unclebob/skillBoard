@@ -129,7 +129,7 @@
 (defn set-color [color]
   (condp = color
     :white (q/fill 255 255 255)
-    :red (q/fill 255 150 175)
+    :red (q/fill 255 125 125)
     :green (q/fill 175 255 175)
     :blue (q/fill 175 175 255)
     :magenta (q/fill 255 200 255)
@@ -151,14 +151,14 @@
 
         draw-char
         (fn [c cx cy color]
-          (set-color color)
-          (q/rect (+ cx backing-rect-top-left-x)
-                  (+ cy backing-rect-top-left-y)
-                  backing-rect-width
-                  backing-rect-height)
-
-          (q/fill 0 0 0)
-          (q/text (str c) cx cy))
+          (when (not= c \space)
+            (set-color color)
+            (q/rect (+ cx backing-rect-top-left-x)
+                    (+ cy backing-rect-top-left-y)
+                    backing-rect-width
+                    backing-rect-height)
+            (q/fill 0 0 0)
+            (q/text (str c) cx cy)))
 
         draw-line
         (fn [line color y]
