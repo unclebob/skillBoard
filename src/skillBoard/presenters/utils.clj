@@ -33,7 +33,9 @@
         [airport-lat airport-lon] config/airport-lat-lon
         dist1 (:distance (nav/dist-and-bearing airport-lat airport-lon lat1 lon1))
         dist2 (:distance (nav/dist-and-bearing airport-lat airport-lon lat2 lon2))]
-    (< dist1 dist2)))
+    (if (or (nil? dist1) (nil? dist2))
+      false
+      (< dist1 dist2))))
 
 (defn shorten-metar [metar]
   (let [metar-text (:rawOb metar)

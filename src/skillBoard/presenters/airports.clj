@@ -11,6 +11,7 @@
   (let [{:keys [fltCat icaoId visib cover clouds wspd wgst lat lon]} metar
         [airport-lat airport-lon] config/airport-lat-lon
         dist (int (:distance (nav/dist-and-bearing lat lon airport-lat airport-lon)))
+        dist (if (nil? dist) "---" (format "%03d" dist))
         base (if (= cover "CLR")
                "    "
                (:base (first clouds)))
@@ -24,7 +25,7 @@
         cover (if (nil? cover) "   " cover)
         base (if (nil? base) "     " base)
         wgst (if (nil? wgst) "   " (str "G" wgst))
-        ctgy-line (format "%4s %4s %3s %5s %4s %2s%3s %03d" icaoId fltCat-display cover base visib wspd wgst dist)]
+        ctgy-line (format "%4s %4s %3s %5s %4s %2s%3s %s" icaoId fltCat-display cover base visib wspd wgst dist)]
     {:line ctgy-line :color color}))
 
 (defn make-airports-screen []
