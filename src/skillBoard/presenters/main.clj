@@ -17,6 +17,7 @@
       (reset! screen-duration (:duration (first @config/screens)))
       (reset! screen-start-time time)
       (reset! atoms/change-screen? false)
+      (reset! atoms/screen-changed? true)
       (swap! config/screens rest))
     (screen/make @screen-type)
     ))

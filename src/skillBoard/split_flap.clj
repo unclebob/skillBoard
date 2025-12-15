@@ -257,10 +257,12 @@
         new-screen? (not= summary old-summary)
         new-screen-time (if new-screen? now time)
         flappers (cond
+                   atoms/screen-changed? []
                    new-screen? (make-flappers summary old-summary)
                    (> (- now new-screen-time) config/flap-duration) []
                    :else (update-flappers flappers)
                    )]
+    (reset! atoms/screen-changed? false)
     (assoc state :time new-screen-time
                  :lines summary
                  :flappers flappers)))
