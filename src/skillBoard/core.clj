@@ -112,7 +112,8 @@
   (try
     (split-flap/do-update state)
     (catch Exception e
-      (core-utils/log e))))
+      (core-utils/log e)
+      state)))
 
 (defn draw-state [state]
   (try
@@ -125,7 +126,8 @@
           (reset! atoms/draw-time-start now)
           (reset! atoms/draw-time-accumulator 0))))
     (catch Exception e
-      (core-utils/log e))))
+      (core-utils/log e)
+      state)))
 
 (defn on-close [_]
   (q/no-loop)

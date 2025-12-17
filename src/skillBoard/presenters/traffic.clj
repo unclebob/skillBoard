@@ -28,13 +28,13 @@
                 gs (:spd aircraft 0)
                 {:keys [bearing distance]} (nav/dist-and-bearing airport-lat airport-lon lat lon)
                 brg (if (nil? bearing) "---" (format "%03d" (math/round bearing)))
-                gs-rounded (math/round gs)
+                gs-rounded (if (nil? gs) "---" (format "%03d" (math/round gs)))
                 dist (if (nil? distance) "---" (format "%03d" (math/round distance)))
-                alt-hundreds (math/round (/ alt 100.0))
+                alt-hundreds (if (nil? alt) "---" (format "%03d" (math/round (/ alt 100.0))))
                 close-to-ground? (or (< (abs (- alt config/airport-elevation)) 30)
                                      (#{"G" "g"} (:gda aircraft "")))
-                alt-str (if close-to-ground? "GND" (format "%03d" alt-hundreds))
-                brg-alt-gs (format "%s%s%s/%s/%03d" config/bearing-center brg dist alt-str gs-rounded)
+                alt-str (if close-to-ground? "GND" alt-hundreds)
+                brg-alt-gs (format "%s%s%s/%s/%s" config/bearing-center brg dist alt-str gs-rounded)
                 tail-number (:fli aircraft)
 
                 generate-remark
