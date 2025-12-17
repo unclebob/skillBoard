@@ -29,6 +29,25 @@
         (should= expected-line (:line (first result)))
         (should= config/out-of-fleet-color (:color (first result))))))
 
+  (it "uses UNKNOWN if no tail number."
+    (with-redefs [atoms/test? (atom false)
+                  comm/polled-nearby-adsbs (atom [])
+                  comm/polled-aircraft (atom [])
+                  config/display-info (atom {:line-count 10})
+                  config/airport-lat-lon [42.0 -87.0]
+                  config/airport-elevation 100
+                  config/bearing-center "C"
+                  config/geofences []
+                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/find-location (fn [_ _ _ _] "LOCATION")
+                  nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
+      (let [adsb [{:lat 45.0 :lon -87.0 :alt 105 :spd 1}]
+            scheduled []
+            result (traffic/make-traffic-screen adsb scheduled)
+            expected-line "UNKNOWN  C000001/GND/001  RAMP    "]
+        (should= expected-line (:line (first result)))
+        (should= config/out-of-fleet-color (:color (first result))))))
+
   (it "generates TAXI remark for nearby on-ground medium speed aircraft"
     (with-redefs [atoms/test? (atom false)
                   comm/polled-nearby-adsbs (atom [])

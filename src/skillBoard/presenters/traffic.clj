@@ -36,6 +36,7 @@
                 alt-str (if close-to-ground? "GND" alt-hundreds)
                 brg-alt-gs (format "%s%s%s/%s/%s" config/bearing-center brg dist alt-str gs-rounded)
                 tail-number (:fli aircraft)
+                tail-number (if (nil? tail-number) "UNKNOWN" tail-number)
 
                 generate-remark
                 (fn []
