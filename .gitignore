@@ -8,3 +8,4 @@ out
 /.grok/
 /target/
 /log.txt
+/skillLog.txt
