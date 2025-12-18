@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20251217.1")
+(def version "20251218")
 
 ;Display configuration
 (def display-info (atom {}))                                ;determined after sketch started.
@@ -51,7 +51,6 @@
 
 ;other nearby airports
 (def taf-airport "KENW")
-(def secondary-metar-airports ["KENW" "KJVL"])
 (def all-metars ["KUGN" "KMKE" "KUES" "KBUU" "KJVL" "KPIA" "KFWA" "KSBN" "KMSN" "KMDW" "KENW" "KRFD" "KDKB" "KDPA" "KETB" "KVYS" "KBMI"])
 
 
