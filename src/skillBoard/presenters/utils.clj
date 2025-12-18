@@ -43,8 +43,7 @@
                       "NO-METAR"
                       (-> metar-text
                           (str/split #"RMK")
-                          first
-                          (subs 6)))
+                          first))
         final-metar (if (> (count short-metar) config/cols)
                       (subs short-metar 0 config/cols)
                       short-metar)

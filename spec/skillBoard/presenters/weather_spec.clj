@@ -52,4 +52,17 @@
     (should= [{:line "TAF KJFK", :color config/info-color}
               {:line "121130Z 1212/1318 27015KT 1/2SM OVC003 24/04 A3014", :color config/lifr-color}]
              (weather/split-taf "TAF KJFK 121130Z 1212/1318 27015KT 1/2SM OVC003 24/04 A3014")))
-)
+  )
+
+(describe "metar-history"
+  (context "remove-airport-code from metar"
+    (it "no metars"
+      (should= {:line "" :color :some-color}
+               (weather/remove-airport-code {:line "" :color :some-color})))
+
+    (it "one metar"
+      (should= {:line "METAR Whatever" :color :some-color}
+               (weather/remove-airport-code
+                 {:line "METAR KJFK Whatever" :color :some-color})))
+
+    ))

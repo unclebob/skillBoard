@@ -13,18 +13,18 @@
                    (Double/parseDouble (second (str/split vis-str #"/"))))
                 (Double/parseDouble vis-str))]
       vis)
-    10.0)) ; default to 10 if not found
+    10.0))                                                  ; default to 10 if not found
 
 (defn parse-taf-ceiling [line]
   (if (str/includes? line "CLR")
-    10000 ; clear, high ceiling
+    10000                                                   ; clear, high ceiling
     (if-let [[_ alt-str] (re-find #"(?:BKN|OVC)(\d{3})" line)]
-      (* (Integer/parseInt alt-str) 100) ; convert to feet
-      10000))) ; default high if no clouds
+      (* (Integer/parseInt alt-str) 100)                    ; convert to feet
+      10000)))                                              ; default high if no clouds
 
 (defn weather-color [line]
   (if (re-find #"^TAF" line)
-    config/info-color ; header line
+    config/info-color                                       ; header line
     (let [vis (parse-taf-visibility line)
           ceiling (parse-taf-ceiling line)]
       (utils/flight-category-color vis ceiling))))
@@ -38,14 +38,25 @@
         taf-lines (concat [taf-name] taf-items)]
     (map (fn [line] {:line line :color (weather-color line)}) taf-lines)))
 
+(defn remove-airport-code [metar-line]
+  (if (<= (count (:line metar-line)) 9)
+    metar-line
+    (let [line (:line metar-line)
+          prefix (subs line 0 5)
+          suffix (subs line 11)
+          new-line (str prefix " " suffix)]
+      (assoc metar-line :line new-line))
+    ))
+
 (defn make-taf-screen []
   (let [taf-response (get @comm/polled-tafs config/taf-airport)
-        primary-metar (utils/get-short-metar config/airport)
-        secondary-metars (map utils/get-short-metar config/secondary-metar-airports)
+        metar-history (map utils/shorten-metar @comm/polled-metar-history)
+        metar-history (map remove-airport-code metar-history)
         raw-tafs [(:rawTAF taf-response)]
         tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
-        blank-line {:line "" :color config/info-color}]
-    (concat tafs [blank-line primary-metar] secondary-metars)))
+        blank-line {:line "" :color config/info-color}
+        airport-id {:line (str config/airport " METAR HISTORY") :color config/info-color}]
+    (concat tafs [blank-line airport-id] metar-history)))
 
 (defmethod screen/make :taf [_]
   (make-taf-screen))

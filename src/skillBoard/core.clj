@@ -49,6 +49,7 @@
     (comm/get-flights)
     (comm/get-reservations)
     (comm/get-metars config/all-metars)
+    (comm/get-metar-history config/airport)
     (comm/get-tafs config/all-metars)
     (comm/get-nearby-adsb)
     (catch Exception e

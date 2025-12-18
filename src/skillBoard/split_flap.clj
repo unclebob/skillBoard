@@ -197,8 +197,8 @@
         display-com-errors
         (fn [pos]
           (cond
-            (> @comm/reservation-com-errors 6) (q/fill 255 0 0)
-            (> @comm/reservation-com-errors 3) (q/fill 255 165 0)
+            (> @comm/reservation-com-errors 3) (q/fill 255 0 0)
+            (> @comm/reservation-com-errors 1) (q/fill 255 165 0)
             :else (q/fill 0 255 0))
           (q/ellipse pos 20 10 10)
 
