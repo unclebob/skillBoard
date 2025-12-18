@@ -52,6 +52,7 @@
     (comm/get-metar-history config/airport)
     (comm/get-tafs config/all-metars)
     (comm/get-nearby-adsb)
+    (reset! atoms/log-traffic? true)
     (catch Exception e
       (core-utils/log e))))
 

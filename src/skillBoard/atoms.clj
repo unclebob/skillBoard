@@ -8,3 +8,4 @@
 (def draw-time-accumulator (atom 0))
 (def draw-time-start (atom (System/currentTimeMillis)))
 (def screen-changed? (atom true))
+(def log-traffic? (atom false))

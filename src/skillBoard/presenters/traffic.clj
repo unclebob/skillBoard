@@ -5,6 +5,7 @@
     [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.core-utils :as core-utils]
     [skillBoard.navigation :as nav]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
@@ -56,6 +57,11 @@
         displayed-items (take (dec total-lines) padded-aircraft)
         short-metar (utils/get-short-metar)
         final-screen (concat displayed-items [short-metar])]
+    (when @atoms/log-traffic?
+      (doseq [line (map #(get % :line) sorted-aircraft)]
+        (core-utils/log (str "Traffic: " line)))
+      (reset! atoms/log-traffic? false)
+      )
     final-screen))
 
 (defmethod screen/make :traffic [_]

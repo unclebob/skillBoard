@@ -30,13 +30,15 @@
       (utils/flight-category-color vis ceiling))))
 
 (defn split-taf [raw-taf]
-  (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
-        tafs (str/replace tafs #"PROB30 TEMPO" "PROB30 TEMPX")
-        tafs (str/replace tafs #"PROB40 TEMPO" "PROB40 TEMPX")
-        taf-items (map str/trim (str/split tafs #"(?=FM|BECMG|PROB[34]0 TEMPX|PROB[34]0 \d|TEMPO)"))
-        taf-items (map #(str/replace % "TEMPX" "TEMPO") taf-items)
-        taf-lines (concat [taf-name] taf-items)]
-    (map (fn [line] {:line line :color (weather-color line)}) taf-lines)))
+  (if (nil? raw-taf)
+    {}
+    (let [[_ taf-name tafs] (re-find #"(TAF (?:COR )?(?:AMD )?\w+)(.*)" raw-taf)
+          tafs (str/replace tafs #"PROB30 TEMPO" "PROB30 TEMPX")
+          tafs (str/replace tafs #"PROB40 TEMPO" "PROB40 TEMPX")
+          taf-items (map str/trim (str/split tafs #"(?=FM|BECMG|PROB[34]0 TEMPX|PROB[34]0 \d|TEMPO)"))
+          taf-items (map #(str/replace % "TEMPX" "TEMPO") taf-items)
+          taf-lines (concat [taf-name] taf-items)]
+      (map (fn [line] {:line line :color (weather-color line)}) taf-lines))))
 
 (defn remove-airport-code [metar-line]
   (if (<= (count (:line metar-line)) 9)
