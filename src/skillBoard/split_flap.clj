@@ -250,14 +250,22 @@
     (draw-flappers)
     ))
 
+(defn blank-line []
+  {:line (apply str (repeat config/cols " ") ) :color nil})
+
+(defn blank-screen []
+  (repeat (:line-count @config/display-info) (blank-line)))
+
 (defn do-update [{:keys [time flappers lines] :as state}]
   (let [now (System/currentTimeMillis)
         old-summary lines
-        summary (presenter/make-screen)
+        summary (if @atoms/screen-changed?
+                  (blank-screen)
+                  (presenter/make-screen))
         new-screen? (not= summary old-summary)
         new-screen-time (if new-screen? now time)
         flappers (cond
-                   atoms/screen-changed? []
+                   @atoms/screen-changed? (make-flappers summary (blank-screen))
                    new-screen? (make-flappers summary old-summary)
                    (> (- now new-screen-time) config/flap-duration) []
                    :else (update-flappers flappers)

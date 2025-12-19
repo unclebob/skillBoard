@@ -14,7 +14,7 @@
 (def label-height-fraction 0.03)
 (def sf-char-gap 0.08)
 (def sf-line-gap 0.25)
-(def flap-duration 3500)                                    ;milliseconds
+(def flap-duration 3000)                                    ;milliseconds
 (def frame-rate 15)
 
 ;colors
