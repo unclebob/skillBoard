@@ -12,10 +12,10 @@
 
 (defn make-traffic-screen [adsb-aircraft fleet-aircraft]
   (let [adsb-aircraft (if @atoms/test?
-                        [{:fli "N12345" :lat 42.5 :lon -87.8 :alt 2500 :spd 120}
-                         {:fli "N98765" :lat 42.4 :lon -87.9 :alt 728 :spd 2}
-                         {:fli "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :spd 100}
-                         {:fli "N378MA" :lat 42.4221486 :lon -87.8679161 :alt 2000}]
+                        [{:reg "N12345" :lat 42.5 :lon -87.8 :alt 2500 :spd 120}
+                         {:reg "N98765" :lat 42.4 :lon -87.9 :alt 728 :spd 2}
+                         {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :spd 100}
+                         {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :alt 2000}]
                         adsb-aircraft)
         airport-lat-lon config/airport-lat-lon
         [airport-lat airport-lon] airport-lat-lon
@@ -36,7 +36,7 @@
                                      (#{"G" "g"} (:gda aircraft "")))
                 alt-str (if close-to-ground? "GND" alt-hundreds)
                 brg-alt-gs (format "%s%s%s/%s/%s" config/bearing-center brg dist alt-str gs-rounded)
-                tail-number (:fli aircraft)
+                tail-number (:reg aircraft)
                 tail-number (if (nil? tail-number) "UNKNOWN" tail-number)
 
                 generate-remark
