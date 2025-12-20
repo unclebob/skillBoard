@@ -1,16 +1,24 @@
 # skillBoard
 
+## Table of Contents
+- [To Run the Skill Board](#to-run-the-skill-board)
+- [Theory of Operation](#theory-of-operation)
+- [Screens](#screens)
+- [To Update to a New Version](#to-update-to-a-new-version)
+- [Configuration](#configuration)
+
 ## To run the Skill Board
     cd ~/skillBoard
     clojure -M:run
 
 Be patient.  
 
-## To exit the program
-Hit the escape key several times and then wait 30s.  The program will shut down.
+### To exit the program
+Hit the escape key.
 
 ## Theory of Operation
-The system polls FSP, Aviation Weather, and Radarcape once every 30 seconds or so. 
+The system polls FSP, Aviation Weather, and Radarcape once every 60 seconds or so
+as specified in `config/seconds-between-internet-polls`. 
 
 If FSP communication fails for some reason (which it does) the system will remember
 the last batch of data it got.
@@ -26,14 +34,14 @@ chronological order.  Reservations that have been checked in are removed.
 
 ADSB data from Radarcape are collected for every tail number listed as "Active" in FSP.  
 The ADSB data are associated, by tail number, with checked out reservations.
-If no reservation for that tail number is checked out then the ADSB data will show as `UNRSV`
+If no reservation for that tail number is checked out then the ADSB data will show as `NO-CO`
 in the remarks.  
 
 GPS altitude is displayed in 100s of feet.  If the ADSB transmitter is in "ground" mode,
 then Altitude will be displayed as `GND`.
 
 The ADSB position of the aircraft is compared against the list of geofences in the 
-`src/skillBoard/config.cljc` file (see below).  If a match is found it is shown in the
+`src/skillBoard/config.clj` file (see below).  If a match is found it is shown in the
 remarks field.
 
 ### REMARKS
@@ -45,19 +53,47 @@ and has a ground speed between 2 and 25kts.
  * `RAMP` The aircraft is within 2NM of the airport, is in ground mode, or is below 30' AGL,
 and has a ground speed less than 2kts.
 
+### Status Lights
+The three status lights next to the clock on the upper right of the screen correspond to
+the three internet data sources.  Top is FlightSchedulePro, middle is Radarcape, bottom is
+Aviation Weather.  Green means data is being received.  Orange means one failed attempt.  
+Red means two or more consecutive failures.
 
+## Screens
+The display cycles between four different screens as specified in `config/screens`.  
+The four screens are:
+
+### Flight Operations Screen
+![screenshot](images/Flight%20Operations%20Screen.jpg)
+   * Presents all the reserved flights for today and the past six hours.
+     * Flights in white (`config/scheduled-flight-color`) are scheduled flights.
+     * Flights in green (`config/on-ground-color`) are flights that are on the ground.
+     * Flights in yellow (`config/unscheduled-flight-color`) are flights that are in the air but not checked out.
+### Weather Screen
+![screenshot](images/Weather%20Screen.jpg)     
+   * Presents the TAF for `config/taf-airport` 
+   * and the METAR history for `config/airport`.
+### Flight Category Screen
+![screenshot](images/Flight%20Category%20Screen.jpg)
+   * Presents the flight category, clouds, visibility, wind, 
+     and distance for the airports specified in `config/flight-category-airports`.
+### Nearby Traffic Screen
+![screenshot](images/Nearby%20Traffic%20Screen.jpg)
+   * Presents the traffic in the region specified by `config/nearby-altitude-range` and `config/nearby-distance`.
+     * Traffic in white (`config/in-fleet-color`) are flights of aircraft in the fleet.
+     * Traffic in yellow (`config/out-of-fleet-color`) are flights of aircraft not in the fleet.
+     * Traffic in green (`config/on-ground-color`) are on the ground.
+
+Screens can be manually changed by hitting the space bar.
+ 
 ## To Update to a new version.
     git reset --hard
     git pull
 
-Edit `~/deps.edn` to change the version number of `quil/quil` to `"3.1.0"`.  This is necessary
-because the runtime environment on the mac mini is incompatible with the runtime environment of
-the development system.
-
 ## Configuration
 There are two files that configure the system.  
 
-### `~/private/config`
+### `private/config`
 This file holds information that should be kept secure.  The format is:
 
     {
@@ -65,94 +101,8 @@ This file holds information that should be kept secure.  The format is:
     :fsp-operator-id "<the fsp operator id>"
     }
 
-### `~/src/skillBoard/config.cljc`
-This file holds information that describes the local environment.
-The format is as follows and ought to be self explanatory
+### `src/skillBoard/config.clj`
+This file holds information that describes the local environment and the display behavior.
 
-    (ns skillBoard.config)
-    
-    (def config (atom nil))
-    
-    (defn load-config []
-      (reset! config (read-string (slurp "private/config"))))
-    
-    ;-- System Configuration
-    
-    ;Display configuration
-    (def cols 63) ;The number of columns in the display
-    (def flights 18) ; The number of flights to display
-    
-    ;Home airport configuration
-    (def airport "KUGN")
-    (def airport-lat-lon [42.4221486 -87.8679161])
-    (def time-zone "America/Chicago")
-    (def airport-elevation 728.1)
-    (def pattern-altitude 1728)
-    
-    ;Wider area configuration.  
-    ; 
-    ;Named geofences each of which describes a cylinder of airspace. 
-    ;a flight in one of those cylinders will show the name in the remarks. 
-    (def geofences [{:name "KUGN"
-                     :lat 42.4221486
-                     :lon -87.8679161
-                     :radius 4
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "KENW"
-                     :lat 42.5960633
-                     :lon -87.9273236
-                     :radius 4
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "C89"
-                     :lat 42.7032500
-                     :lon -87.9589722
-                     :radius 3
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "57C"
-                     :lat 42.7971667
-                     :lon -88.3726111
-                     :radius 3
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "KBUU"
-                     :lat 42.6907171
-                     :lon -88.3046825
-                     :radius 3
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "10C"
-                     :lat 42.4028889
-                     :lon -88.3751111
-                     :radius 3
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "C81"
-                     :lat 42.3246111
-                     :lon -88.0740881
-                     :radius 3
-                     :min-alt 1000
-                     :max-alt 3200}
-                    {:name "3CK"
-                     :lat 42.2068611
-                     :lon -88.3226944
-                     :radius 3
-                     :min-alt 1000
-                     :max-alt 3200}
-    
-                    {:name "PRAC"
-                     :lat 42.54
-                     :lon -88.49
-                     :radius 8
-                     :min-alt 1000
-                     :max-alt 7000}
-                    ])
-    
-    
-    
-
-   
 
 
