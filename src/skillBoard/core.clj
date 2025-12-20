@@ -48,9 +48,9 @@
     (comm/get-adsb-by-tail-numbers @comm/polled-aircraft)
     (comm/get-flights)
     (comm/get-reservations)
-    (comm/get-metars config/all-metars)
+    (comm/get-metars config/flight-category-airports)
     (comm/get-metar-history config/airport)
-    (comm/get-tafs config/all-metars)
+    (comm/get-tafs config/taf-airport)
     (comm/get-nearby-adsb)
     (reset! atoms/log-traffic? true)
     (catch Exception e

@@ -51,8 +51,7 @@
 
 ;other nearby airports
 (def taf-airport "KENW")
-(def all-metars ["KUGN" "KMKE" "KUES" "KBUU" "KJVL" "KPIA" "KFWA" "KSBN" "KMSN" "KMDW" "KENW" "KRFD" "KDKB" "KDPA" "KETB" "KVYS" "KBMI"])
-
+(def flight-category-airports ["KUGN" "KMKE" "KUES" "KBUU" "KJVL" "KPIA" "KFWA" "KSBN" "KMSN" "KMDW" "KENW" "KRFD" "KDKB" "KDPA" "KETB" "KVYS" "KBMI"])
 
 ;Internet configuration
 (def radar-cape-ip "10.10.40.60")
