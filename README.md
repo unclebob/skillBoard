@@ -66,6 +66,10 @@ The four screens are:
 ### Flight Operations Screen
 ![screenshot](images/Flight%20Operations%20Screen.jpg)
    * Presents all the reserved flights for today and the past six hours.
+     * Crew includes Instructor and Student names.
+     * `BRG/ALT/GS` are the bearing, altitude (in 100s of feet), and ground speed from the Radarcape ADSB data.
+        The bearing is in the form `XXXBBBDDD` where `XXX` is the airport from which the bearing is taken,
+        `BBB` is the bearing from that airport in degrees, and `DDD` is the distance in NM from that airport.
      * Flights in white (`config/scheduled-flight-color`) are scheduled flights.
      * Flights in green (`config/on-ground-color`) are flights that are on the ground.
      * Flights in yellow (`config/unscheduled-flight-color`) are flights that are in the air but not checked out.
