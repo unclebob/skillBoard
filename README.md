@@ -50,7 +50,7 @@ remarks field.
  * `PATN` The aircraft is within 2NM of the airport and is within 500' of pattern altitude.
  * `TAXI` The aircraft is within 2NM of the airport, is in ground mode, or is below 30' AGL, 
 and has a ground speed between 2 and 25kts.
- * `RAMP` The aircraft is within 2NM of the airport, is in ground mode, or is below 30' AGL,
+ * `RAMP` The aircraft is withgit sin 2NM of the airport, is in ground mode, or is below 30' AGL,
 and has a ground speed less than 2kts.
 
 ### Status Lights
