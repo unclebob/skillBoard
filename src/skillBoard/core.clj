@@ -117,16 +117,20 @@
       (core-utils/log e)
       state)))
 
+(def frame-count (atom 0))
+
 (defn draw-state [state]
   (try
     (let [now (System/currentTimeMillis)]
       (split-flap/draw state)
       (when @atoms/test?
+        (swap! frame-count inc)
         (swap! atoms/draw-time-accumulator + (- (System/currentTimeMillis) now))
         (when (>= (- now @atoms/draw-time-start) 1000)
-          (prn "Draw time:" @atoms/draw-time-accumulator "ms")
+          (prn "Draw time:" @atoms/draw-time-accumulator "ms, fsp:" @frame-count)
           (reset! atoms/draw-time-start now)
-          (reset! atoms/draw-time-accumulator 0))))
+          (reset! atoms/draw-time-accumulator 0)
+          (reset! frame-count 0))))
     (catch Exception e
       (core-utils/log e)
       state)))

@@ -188,11 +188,12 @@
 
         draw-flappers
         (fn []
+          (q/fill 0 0 0)
           (doseq [{:keys [at from]} flappers]
             (let [[col row] at]
-              (draw-char from
-                         (* col flap-width)
-                         (+ (* row flap-height) label-margin) nil))))
+              (q/text (str from)
+                      (* col flap-width)
+                      (+ (* row flap-height) label-margin)))))
 
         display-com-errors
         (fn [pos]
@@ -251,7 +252,7 @@
     ))
 
 (defn blank-line []
-  {:line (apply str (repeat config/cols " ") ) :color nil})
+  {:line (apply str (repeat config/cols " ")) :color nil})
 
 (defn blank-screen []
   (repeat (:line-count @config/display-info) (blank-line)))
