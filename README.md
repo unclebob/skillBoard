@@ -1,20 +1,12 @@
-# skillBoard
+# SkillBoard
 
-## Table of Contents
-- [To Run the Skill Board](#to-run-the-skill-board)
-- [Theory of Operation](#theory-of-operation)
-- [Screens](#screens)
-- [To Update to a New Version](#to-update-to-a-new-version)
-- [Configuration](#configuration)
-
-## To run the Skill Board
-    cd ~/skillBoard
-    clojure -M:run
-
-Be patient.  
-
-### To exit the program
-Hit the escape key.
+SkillBoard is a Clojure-based real-time aviation display system designed for flight training
+facilities. It runs as a continuous display, designed for a large wall screen, providing instructors and students with
+situational awareness for flight operations.  It integrates data from multiple sources including FlightSchedulePro for
+reservation management, Aviation Weather for meteorological information, and Radarcape for ADSB
+aircraft tracking in order to display current flight
+schedules, weather conditions, flight categories, and nearby traffic on a cycling multi-screen
+interface.
 
 ## Theory of Operation
 The system polls FSP, Aviation Weather, and Radarcape once every 60 seconds or so
@@ -89,7 +81,16 @@ The four screens are:
      * Traffic in green (`config/on-ground-color`) are on the ground.
 
 Screens can be manually changed by hitting the space bar.
- 
+
+## To run the Skill Board
+    cd ~/skillBoard
+    clojure -M:run
+
+Be patient.  
+
+### To exit the program
+Hit the escape key.
+
 ## To Update to a new version.
     git reset --hard
     git pull
