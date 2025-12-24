@@ -25,6 +25,7 @@
         cover (if (nil? cover) "   " cover)
         base (if (nil? base) "     " base)
         wgst (if (nil? wgst) "   " (str "G" wgst))
+        wspd (if (nil? wspd) "--" wspd)
         ctgy-line (format "%4s %4s %3s %5s %4s %2s%3s %s" icaoId fltCat-display cover base visib wspd wgst dist)]
     {:line ctgy-line :color color}))
 
