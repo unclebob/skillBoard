@@ -9,3 +9,6 @@ out
 /target/
 /log.txt
 /skillLog.txt
+/error.log
+/status.log
+/.claude/
