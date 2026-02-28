@@ -70,8 +70,8 @@
 (defmethod screen/header-text :traffic [_]
   "NEARBY TRAFFIC")
 
-(defmethod screen/display-column-headers :traffic [_ flap-width header-font]
-  (let [baseline (screen/setup-headers header-font)]
+(defmethod screen/display-column-headers :traffic [_ flap-width header-font label-font-size]
+  (let [baseline (screen/setup-headers header-font label-font-size)]
     (q/text "AIRCRAFT" 0 baseline)
     (q/text "BRG/ALT/GS" (* flap-width 9) baseline)
     (q/text "REMARKS" (* flap-width 27) baseline)))

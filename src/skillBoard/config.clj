@@ -15,7 +15,8 @@
 (def sf-char-gap 0.08)
 (def sf-line-gap 0.25)
 (def flap-duration 3000)                                    ;milliseconds
-(def frame-rate 15)
+(def frame-rate 30)
+(def flap-steps-per-update 1)
 
 ;colors
 (def in-fleet-color :white)
@@ -279,4 +280,3 @@
                  :min-alt 1000
                  :max-alt 10000}
                 ])
-

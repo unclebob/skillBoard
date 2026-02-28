@@ -66,5 +66,5 @@
 (defmethod screen/header-text :taf [_]
   "WEATHER")
 
-(defmethod screen/display-column-headers :taf [_ _flap-width _header-font]
+(defmethod screen/display-column-headers :taf [_ _flap-width _header-font _label-font-size]
   nil)

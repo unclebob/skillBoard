@@ -131,8 +131,8 @@
 (defmethod screen/header-text :flights [_]
   "FLIGHT OPERATIONS")
 
-(defmethod screen/display-column-headers :flights [_ flap-width header-font]
-  (let [baseline (screen/setup-headers header-font)]
+(defmethod screen/display-column-headers :flights [_ flap-width header-font label-font-size]
+  (let [baseline (screen/setup-headers header-font label-font-size)]
     (q/text "TIME" 0 baseline)
     (q/text "AIRCRAFT" (* flap-width 7) baseline)
     (q/text "CREW" (* flap-width 14) baseline)

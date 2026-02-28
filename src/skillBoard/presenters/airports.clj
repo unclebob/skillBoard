@@ -41,8 +41,8 @@
 (defmethod screen/header-text :airports [_]
   "FLIGHT CATEGORY")
 
-(defmethod screen/display-column-headers :airports [_ flap-width header-font]
-  (let [baseline (screen/setup-headers header-font)]
+(defmethod screen/display-column-headers :airports [_ flap-width header-font label-font-size]
+  (let [baseline (screen/setup-headers header-font label-font-size)]
     (q/text "AIRPORT" 0 baseline)
     (q/text "CATGRY" (* flap-width 5) baseline)
     (q/text "SKY" (* flap-width 10) baseline)
