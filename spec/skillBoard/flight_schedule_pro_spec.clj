@@ -26,7 +26,6 @@
                  :start-time @now
                  :pilot-name ["pilot first name" "pilot last name"]
                  :instructor-name ["instructor first name" "instructor last name"]
-                 :reservation-status "reservation status"
                  :checked-in-on @now
                  :checked-out-on @now
                  }
@@ -53,7 +52,6 @@
                  :start-time @now
                  :pilot-name nil
                  :instructor-name nil
-                 :reservation-status "reservation status"
                  :checked-in-on nil
                  :checked-out-on nil
                  }]

@@ -3,26 +3,40 @@
     [clojure.string]
     [clojure.string :as str]
     [java-time.api :as time]
+    [skillBoard.core-utils :as core-utils]
     [skillBoard.time-util :as time-util]))
+
+(defn- log-nil [field reservation]
+  (let [res-id (:reservationId reservation)
+        tail (:tailNumber (:aircraft reservation))
+        start (:startTime reservation)]
+    (core-utils/log :error
+      (str "Reservation has nil " field
+           " [id=" res-id " tail=" tail " start=" start "]"))))
 
 (defn unpack-reservations [{:keys [items]}]
   (if (empty? items)
     []
     (for [reservation items]
-      {:reservation-id (:reservationId reservation)
-       :tail-number (:tailNumber (:aircraft reservation))
-       :activity-type (:name (:activityType reservation))
-       :start-time (time-util/parse-time (:startTime reservation))
-       :pilot-name (when-let [pilot (first (:pilots reservation))]
-                     [(:firstName pilot)
-                      (:lastName pilot)])
-       :instructor-name (when-let [instructor (:instructor reservation)]
-                          [(:firstName instructor) (:lastName instructor)])
-       :reservation-status (:name (:reservationStatus reservation))
-       :checked-in-on (when-let [checked-in (:checkedInOn reservation)]
-                        (time-util/parse-time checked-in))
-       :checked-out-on (when-let [checked-out (:checkedOutOn reservation)]
-                         (time-util/parse-time checked-out))})))
+      (let [res-id (:reservationId reservation)
+            _ (when (nil? res-id) (log-nil "reservationId" reservation))
+            activity (:name (:activityType reservation))
+            _ (when (nil? activity) (log-nil "activityType" reservation))
+            start-time (time-util/parse-time (:startTime reservation))
+            _ (when (nil? start-time) (log-nil "startTime" reservation))]
+        {:reservation-id res-id
+         :tail-number (:tailNumber (:aircraft reservation))
+         :activity-type activity
+         :start-time start-time
+         :pilot-name (when-let [pilot (first (:pilots reservation))]
+                       [(:firstName pilot)
+                        (:lastName pilot)])
+         :instructor-name (when-let [instructor (:instructor reservation)]
+                            [(:firstName instructor) (:lastName instructor)])
+         :checked-in-on (when-let [checked-in (:checkedInOn reservation)]
+                          (time-util/parse-time checked-in))
+         :checked-out-on (when-let [checked-out (:checkedOutOn reservation)]
+                           (time-util/parse-time checked-out))}))))
 
 (defn unpack-flights [{:keys [items]}]
   (if (empty? items)
