@@ -59,7 +59,7 @@
         final-screen (concat displayed-items [short-metar])]
     (when @atoms/log-traffic?
       (doseq [line (map #(get % :line) sorted-aircraft)]
-        (core-utils/log (str "Traffic: " line)))
+        (core-utils/log :status (str "Traffic: " line)))
       (reset! atoms/log-traffic? false)
       )
     final-screen))

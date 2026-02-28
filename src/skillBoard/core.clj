@@ -54,7 +54,7 @@
     (comm/get-nearby-adsb)
     (reset! atoms/log-traffic? true)
     (catch Exception e
-      (core-utils/log e))))
+      (core-utils/log :error e))))
 
 (defn start-polling []
   (poll)
@@ -74,7 +74,7 @@
     ))
 
 (defn setup []
-  (core-utils/log "Setup...")
+  (core-utils/log :status "Setup...")
   (load-fonts)
   (config/load-config)
   (load-display-info)
@@ -114,7 +114,7 @@
   (try
     (split-flap/do-update state)
     (catch Exception e
-      (core-utils/log e)
+      (core-utils/log :error e)
       state)))
 
 (def frame-count (atom 0))
@@ -132,13 +132,13 @@
           (reset! atoms/draw-time-accumulator 0)
           (reset! frame-count 0))))
     (catch Exception e
-      (core-utils/log e)
+      (core-utils/log :error e)
       state)))
 
 (defn on-close [_]
   (q/no-loop)
   (q/exit)                                                  ; Exit the sketch
-  (println "Skill Board closed.")
+  (core-utils/log :status "Skill Board closed.")
   (System/exit 0))
 
 (defn key-released [state event]
@@ -151,11 +151,12 @@
 (declare skillBoard)
 
 (defn -main [& args]
-  (core-utils/log "skillBoard has begun.")
+  (core-utils/log :status "skillBoard has begun.")
   (let [args (set args)
         window? (some? (args "-w"))
         _ (reset! atoms/test? (some? (args "-t")))
-        _ (core-utils/log (str "args: " args ", window? " window? ", test? " @atoms/test?))
+        _ (reset! atoms/log-stdout? (nil? (args "--no-stdout")))
+        _ (core-utils/log :status (str "args: " args ", window? " window? ", test? " @atoms/test?))
         ]
     (q/defsketch skillBoard
                  :title "Skill Board"

@@ -9,3 +9,4 @@
 (def draw-time-start (atom (System/currentTimeMillis)))
 (def screen-changed? (atom true))
 (def log-traffic? (atom false))
+(def log-stdout? (atom true))
