@@ -19,8 +19,7 @@
 
 (def ^:private log-files
   {:status "status.log"
-   :error "error.log"
-   :profile "profile.log"})
+   :error "error.log"})
 
 (defn log
   ([arg] (log :status arg))

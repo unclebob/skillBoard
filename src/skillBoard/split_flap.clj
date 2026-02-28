@@ -252,8 +252,7 @@
 
 (defn draw [{:keys [sf-font sf-font-size clock-font clock-font-size lines flappers
                     font-width font-height header-font header-font-size label-font-size] :as state}]
-  (let [profile? @atoms/test?
-        line-colors (mapv :color lines)
+  (let [line-colors (mapv :color lines)
         now (time-util/get-HHmm (time-util/local-to-utc (time/local-date-time)))
         now (if @atoms/clock-pulse now (string/replace now ":" " "))
         flap-width (+ font-width (:sf-char-gap @config/display-info))
@@ -285,18 +284,9 @@
                            sf-font-size]
                 rerender? (or (not size-match?) (not= key layer-key))]
             (when rerender?
-              (let [t0 (System/nanoTime)
-                    {:keys [line-char-count line-rect-count line-text-count]}
-                    (render-lines-layer! layer lines sf-font sf-font-size flap-width flap-height label-margin
-                                         backing-rect-top-left-x backing-rect-top-left-y
-                                         backing-rect-width backing-rect-height)
-                    rerender-ms (/ (- (System/nanoTime) t0) 1e6)]
-                (when profile?
-                  (swap! atoms/render-lines-rerender-count inc)
-                  (swap! atoms/render-lines-rerender-time-accumulator + rerender-ms)
-                  (swap! atoms/render-lines-char-count-accumulator + line-char-count)
-                  (swap! atoms/render-lines-rect-count-accumulator + line-rect-count)
-                  (swap! atoms/render-lines-text-count-accumulator + line-text-count))))
+              (render-lines-layer! layer lines sf-font sf-font-size flap-width flap-height label-margin
+                                   backing-rect-top-left-x backing-rect-top-left-y
+                                   backing-rect-width backing-rect-height))
             (reset! lines-layer-cache {:key layer-key :layer layer})
             (q/image layer 0 0)))
 
@@ -383,26 +373,10 @@
           (screen/display-column-headers @presenter/screen-type flap-width header-font label-font-size)
           (display-time))]
 
-    (let [t0 (System/nanoTime)]
-      (q/background 30)
-      (when profile?
-        (swap! atoms/render-background-time-accumulator + (/ (- (System/nanoTime) t0) 1e6))))
-
-    (let [t0 (System/nanoTime)]
-      (draw-header)
-      (when profile?
-        (swap! atoms/render-header-time-accumulator + (/ (- (System/nanoTime) t0) 1e6))))
-
-    (let [t0 (System/nanoTime)]
-      (draw-lines)
-      (when profile?
-        (swap! atoms/render-lines-time-accumulator + (/ (- (System/nanoTime) t0) 1e6))))
-
-    (let [t0 (System/nanoTime)]
-      (draw-flappers)
-      (when profile?
-        (swap! atoms/render-flappers-time-accumulator + (/ (- (System/nanoTime) t0) 1e6))
-        (swap! atoms/render-flapper-text-count-accumulator + (count flappers))))
+    (q/background 30)
+    (draw-header)
+    (draw-lines)
+    (draw-flappers)
     ))
 
 (defn blank-line []
@@ -419,34 +393,19 @@
                   (presenter/make-screen))
         new-screen? (not= summary old-summary)
         new-screen-time (if new-screen? now time)
-        [flappers mode elapsed-ms]
+        flappers
         (cond
           @atoms/screen-changed?
-          (let [t0 (System/nanoTime)
-                next-flappers (make-flappers summary (blank-screen))]
-            [next-flappers :make (/ (- (System/nanoTime) t0) 1e6)])
+          (make-flappers summary (blank-screen))
 
           new-screen?
-          (let [t0 (System/nanoTime)
-                next-flappers (make-flappers summary old-summary)]
-            [next-flappers :make (/ (- (System/nanoTime) t0) 1e6)])
+          (make-flappers summary old-summary)
 
           (> (- now new-screen-time) config/flap-duration)
-          [[] :idle 0.0]
+          []
 
           :else
-          (let [t0 (System/nanoTime)
-                next-flappers (update-flappers flappers)]
-            [next-flappers :update (/ (- (System/nanoTime) t0) 1e6)]))]
-    (when @atoms/test?
-      (condp = mode
-        :make (do
-                (swap! atoms/flapper-make-count inc)
-                (swap! atoms/flapper-make-time-accumulator + elapsed-ms))
-        :update (do
-                  (swap! atoms/flapper-update-count inc)
-                  (swap! atoms/flapper-update-time-accumulator + elapsed-ms))
-        nil))
+          (update-flappers flappers))]
     (reset! atoms/screen-changed? false)
     (assoc state :time new-screen-time
                  :lines summary
