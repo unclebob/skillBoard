@@ -10,7 +10,9 @@
 (defn get-json [url args save-atom com-errors error-name]
   (try
     (let [{:keys [status body]} (http/get url args)
-          body (json/read-str body :key-fn keyword)]
+          body (if (nil? body)
+                 (throw (ex-info (str "Nil body fetching " error-name) {}))
+                 (json/read-str body :key-fn keyword))]
       (if (= status 200)
         (do
           (reset! save-atom body)
@@ -18,7 +20,7 @@
           @save-atom)
         (throw (ex-info (str "Failed to fetch " error-name) {:status status}))))
     (catch Exception e
-      (core-utils/log (str "Error fetching " error-name ": " (.getMessage e)))
+      (core-utils/log :error (str "Error fetching " error-name ": " (.getMessage e)))
       (swap! com-errors inc)
       @save-atom)))
 
