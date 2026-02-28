@@ -151,7 +151,7 @@
 (declare skillBoard)
 
 (defn -main [& args]
-  (core-utils/log :status "skillBoard has begun.")
+  (core-utils/log :status (str "skillBoard v" config/version " has begun."))
   (let [args (set args)
         window? (some? (args "-w"))
         _ (reset! atoms/test? (some? (args "-t")))
