@@ -68,3 +68,7 @@
 
 (defmethod screen/display-column-headers :taf [_ _flap-width _header-font _label-font-size]
   nil)
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:30:05.220056-05:00", :module-hash "-37358912", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 7, :hash "1580021120"} {:id "defn/parse-taf-visibility", :kind "defn", :line 9, :end-line 16, :hash "-1921450894"} {:id "defn/parse-taf-ceiling", :kind "defn", :line 18, :end-line 23, :hash "430755056"} {:id "defn/weather-color", :kind "defn", :line 25, :end-line 30, :hash "-1648758696"} {:id "defn/split-taf", :kind "defn", :line 32, :end-line 41, :hash "-659386333"} {:id "defn/remove-airport-code", :kind "defn", :line 43, :end-line 51, :hash "-519134946"} {:id "defn/make-taf-screen", :kind "defn", :line 53, :end-line 61, :hash "-398287311"} {:id "defmethod/screen/make/:taf", :kind "defmethod", :line 63, :end-line 64, :hash "-289838186"} {:id "defmethod/screen/header-text/:taf", :kind "defmethod", :line 66, :end-line 67, :hash "840642812"} {:id "defmethod/screen/display-column-headers/:taf", :kind "defmethod", :line 69, :end-line 70, :hash "290734131"}]}
+;; clj-mutate-manifest-end

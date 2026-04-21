@@ -59,3 +59,7 @@
 
 (defn find-font-size-for-height [font desired-height]
   (find-font-size-for font desired-height get-height))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:28:20.295957-05:00", :module-hash "773971037", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "817663"} {:id "defn/wrap", :kind "defn", :line 8, :end-line 20, :hash "1695522556"} {:id "defn-/get-width", :kind "defn-", :line 23, :end-line 25, :hash "-1366678868"} {:id "defn-/get-height", :kind "defn-", :line 27, :end-line 29, :hash "943069941"} {:id "defn/find-font-size-for", :kind "defn", :line 31, :end-line 55, :hash "1325442964"} {:id "defn/find-font-size-for-width", :kind "defn", :line 57, :end-line 58, :hash "-2128981233"} {:id "defn/find-font-size-for-height", :kind "defn", :line 60, :end-line 61, :hash "469964023"}]}
+;; clj-mutate-manifest-end

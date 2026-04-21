@@ -95,3 +95,7 @@
   (let [sorted-reservations (sort #(time/before? (:start-time %1) (:start-time %2)) reservations)
         active-reservations (filter-active-reservations sorted-reservations flights)]
     (remove-superceded-reservations active-reservations)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:36:55.002058-05:00", :module-hash "-915679060", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 7, :hash "-921036285"} {:id "defn-/log-nil", :kind "defn-", :line 9, :end-line 15, :hash "954393681"} {:id "defn/unpack-reservations", :kind "defn", :line 17, :end-line 39, :hash "479340997"} {:id "defn/unpack-flights", :kind "defn", :line 41, :end-line 52, :hash "2141357073"} {:id "defn/remove-superceded-reservations", :kind "defn", :line 56, :end-line 75, :hash "588118744"} {:id "defn/filter-active-reservations", :kind "defn", :line 77, :end-line 92, :hash "-34988166"} {:id "defn/sort-and-filter-reservations", :kind "defn", :line 94, :end-line 97, :hash "-1375307845"}]}
+;; clj-mutate-manifest-end
