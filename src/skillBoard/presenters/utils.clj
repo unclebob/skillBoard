@@ -88,3 +88,7 @@
                 (find-location lat lon alt geofences)
                 "")))
     ""))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:31:59.021241-05:00", :module-hash "1060291016", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "39766719"} {:id "defn/blank?", :kind "defn", :line 8, :end-line 8, :hash "-835881654"} {:id "defn/flight-category-color", :kind "defn", :line 10, :end-line 15, :hash "-434047759"} {:id "defn/find-location", :kind "defn", :line 17, :end-line 26, :hash "554132529"} {:id "defn/by-distance", :kind "defn", :line 28, :end-line 38, :hash "1618629985"} {:id "defn/shorten-metar", :kind "defn", :line 40, :end-line 58, :hash "610315720"} {:id "defn/get-short-metar", :kind "defn", :line 60, :end-line 66, :hash "1506290657"} {:id "defn/get-now", :kind "defn", :line 68, :end-line 69, :hash "1200166253"} {:id "defn/generate-position-remark", :kind "defn", :line 71, :end-line 90, :hash "-1651199381"}]}
+;; clj-mutate-manifest-end

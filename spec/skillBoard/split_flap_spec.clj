@@ -1,5 +1,7 @@
 (ns skillBoard.split-flap-spec
   (:require
+    [skillBoard.atoms :as atoms]
+    [skillBoard.presenters.main :as presenter]
     [skillBoard.split-flap :as split-flap]
     [speclj.core :refer :all]))
 
@@ -79,3 +81,52 @@
     (should= "ab " (split-flap/pad-and-trim-line "ab" 3))
     (should= "abc" (split-flap/pad-and-trim-line "abcd" 3))
     ))
+
+(describe "state update"
+  (before
+    (reset! atoms/screen-changed? false))
+
+  (it "builds a blank transition when the screen changed flag is set"
+    (let [blank [{:line "blank"}]
+          flappers [{:at [0 0] :from \space :to \A}]]
+      (reset! atoms/screen-changed? true)
+      (with-redefs [split-flap/current-time-ms (fn [] 1000)
+                    split-flap/blank-screen (fn [] blank)
+                    split-flap/make-flappers (fn [new old] [{:new new :old old}])]
+        (should= {:time 1000
+                  :lines blank
+                  :flappers [{:new blank :old blank}]}
+                 (select-keys (split-flap/do-update {:time 500
+                                                      :lines [{:line "old"}]
+                                                      :flappers flappers})
+                              [:time :lines :flappers]))
+        (should= false @atoms/screen-changed?))))
+
+  (it "builds flappers from old to new lines when the presenter changes"
+    (with-redefs [split-flap/current-time-ms (fn [] 1000)
+                  presenter/make-screen (fn [] [{:line "new"}])
+                  split-flap/make-flappers (fn [new old] [{:new new :old old}])]
+      (should= {:time 1000
+                :lines [{:line "new"}]
+                :flappers [{:new [{:line "new"}] :old [{:line "old"}]}]}
+               (select-keys (split-flap/do-update {:time 500
+                                                    :lines [{:line "old"}]
+                                                    :flappers [{:existing true}]})
+                            [:time :lines :flappers]))))
+
+  (it "clears flappers after the flap duration expires"
+    (with-redefs [split-flap/current-time-ms (fn [] 10000)
+                  presenter/make-screen (fn [] [{:line "same"}])]
+      (should= []
+               (:flappers (split-flap/do-update {:time 0
+                                                  :lines [{:line "same"}]
+                                                  :flappers [{:existing true}]})))))
+
+  (it "advances existing flappers while the screen is unchanged and active"
+    (with-redefs [split-flap/current-time-ms (fn [] 1000)
+                  presenter/make-screen (fn [] [{:line "same"}])
+                  split-flap/update-flappers (fn [flappers] (conj flappers {:advanced true}))]
+      (should= [{:existing true} {:advanced true}]
+               (:flappers (split-flap/do-update {:time 900
+                                                  :lines [{:line "same"}]
+                                                  :flappers [{:existing true}]}))))))

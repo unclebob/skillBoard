@@ -50,3 +50,7 @@
     (q/text "VIS" (* flap-width 20) baseline)
     (q/text "WIND" (* flap-width 25) baseline)
     (q/text "DIST" (* flap-width 31) baseline)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:31:01.192191-05:00", :module-hash "393878034", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 8, :hash "1524412144"} {:id "defn/make-flight-category-line", :kind "defn", :line 10, :end-line 30, :hash "-1105333052"} {:id "defn/make-airports-screen", :kind "defn", :line 32, :end-line 36, :hash "453534776"} {:id "defmethod/screen/make/:airports", :kind "defmethod", :line 38, :end-line 39, :hash "-107903511"} {:id "defmethod/screen/header-text/:airports", :kind "defmethod", :line 41, :end-line 42, :hash "349942679"} {:id "defmethod/screen/display-column-headers/:airports", :kind "defmethod", :line 44, :end-line 52, :hash "-1500263610"}]}
+;; clj-mutate-manifest-end

@@ -164,3 +164,7 @@
                  :on-close on-close
                  :key-released key-released
                  :host "skillBoard")))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:35:30.187402-05:00", :module-hash "1353705591", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 15, :hash "-1516553074"} {:id "defn/load-display-info", :kind "defn", :line 17, :end-line 32, :hash "160311322"} {:id "defn-/load-fonts", :kind "defn-", :line 34, :end-line 43, :hash "-386456934"} {:id "defn/poll", :kind "defn", :line 45, :end-line 57, :hash "-1126242934"} {:id "defn/start-polling", :kind "defn", :line 59, :end-line 74, :hash "1253494332"} {:id "defn/setup", :kind "defn", :line 76, :end-line 117, :hash "1513703913"} {:id "defn/update-state", :kind "defn", :line 119, :end-line 124, :hash "260310114"} {:id "defn/draw-state", :kind "defn", :line 126, :end-line 131, :hash "-681475998"} {:id "defn/on-close", :kind "defn", :line 133, :end-line 137, :hash "1530647094"} {:id "defn/key-released", :kind "defn", :line 139, :end-line 144, :hash "-2145750210"} {:id "form/10/declare", :kind "declare", :line 146, :end-line 146, :hash "955651229"} {:id "defn/-main", :kind "defn", :line 148, :end-line 166, :hash "940659401"}]}
+;; clj-mutate-manifest-end

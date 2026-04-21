@@ -30,3 +30,7 @@
 
   ;; Example usage:
   ;; (haversine 40.7128 -74.0060 38.9072 -77.0369)  ; Example: NYC to DC
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:34:58.090833-05:00", :module-hash "1324684070", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "13784615"} {:id "defn/dist-and-bearing", :kind "defn", :line 3, :end-line 29, :hash "-1262143304"}]}
+;; clj-mutate-manifest-end
