@@ -71,4 +71,18 @@
       (gherkin/write-json! (.getPath features-dir) json-file)
       (should= "JSON"
                (get-in (json/read-str (slurp json-file) :key-fn keyword)
-                       [:features 0 :name])))))
+                       [:features 0 :name]))))
+
+  (it "uses default paths from the command line entry point"
+    (let [called (atom nil)]
+      (with-redefs [gherkin/write-json! (fn [features-dir output-file]
+                                          (reset! called [features-dir output-file]))]
+        (gherkin/-main)
+        (should= ["features" "target/generated-acceptance/features.json"] @called))))
+
+  (it "uses supplied paths from the command line entry point"
+    (let [called (atom nil)]
+      (with-redefs [gherkin/write-json! (fn [features-dir output-file]
+                                          (reset! called [features-dir output-file]))]
+        (gherkin/-main "custom/features" "target/custom.json")
+        (should= ["custom/features" "target/custom.json"] @called)))))

@@ -62,3 +62,7 @@
         json-file (or json-file "target/generated-acceptance/features.json")
         output-dir (or output-dir "target/generated-acceptance/spec")]
     (println (generate-from-features! features-dir json-file output-dir))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T10:18:56.621612-05:00", :module-hash "-1561864771", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "1565034674"} {:id "defn-/clj-string", :kind "defn-", :line 8, :end-line 9, :hash "-1682028529"} {:id "defn-/scenario-cases", :kind "defn-", :line 11, :end-line 22, :hash "1861494188"} {:id "defn-/generated-spec", :kind "defn-", :line 24, :end-line 44, :hash "131864670"} {:id "defn/read-json", :kind "defn", :line 46, :end-line 47, :hash "-771530597"} {:id "defn/generate!", :kind "defn", :line 49, :end-line 54, :hash "-1346362561"} {:id "defn/generate-from-features!", :kind "defn", :line 56, :end-line 58, :hash "637885583"} {:id "defn/-main", :kind "defn", :line 60, :end-line 64, :hash "956112964"}]}
+;; clj-mutate-manifest-end

@@ -38,4 +38,23 @@
           (let [form (read reader false ::eof)]
             (if (= ::eof form)
               (should (> forms-read 0))
-              (recur (inc forms-read)))))))))
+              (recur (inc forms-read))))))))
+
+  (it "generates from default command line paths"
+    (let [called (atom nil)]
+      (with-redefs [generator/generate-from-features! (fn [features-dir json-file output-dir]
+                                                        (reset! called [features-dir json-file output-dir])
+                                                        "target/generated-acceptance/spec/skillBoard/generated_acceptance_spec.clj")]
+        (should= nil (generator/-main))
+        (should= ["features"
+                  "target/generated-acceptance/features.json"
+                  "target/generated-acceptance/spec"]
+                 @called))))
+
+  (it "generates from supplied command line paths"
+    (let [called (atom nil)]
+      (with-redefs [generator/generate-from-features! (fn [features-dir json-file output-dir]
+                                                        (reset! called [features-dir json-file output-dir])
+                                                        "target/custom/spec/skillBoard/generated_acceptance_spec.clj")]
+        (should= nil (generator/-main "custom/features" "target/custom.json" "target/custom/spec"))
+        (should= ["custom/features" "target/custom.json" "target/custom/spec"] @called)))))
