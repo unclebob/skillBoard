@@ -52,8 +52,8 @@ Aviation Weather.  Green means data is being received.  Orange means one failed 
 Red means two or more consecutive failures.
 
 ## Screens
-The display cycles between four different screens as specified in `config/screens`.  
-The four screens are:
+The display cycles through eight configured slots in `config/screens`: Flights, TAF, Wind Map,
+Traffic, Flights, TAF, Flight Category, and Traffic.  Those slots show five screen types:
 
 ### Flight Operations Screen
 ![screenshot](images/Flight%20Operations%20Screen.jpg)
@@ -69,6 +69,11 @@ The four screens are:
 ![screenshot](images/Weather%20Screen.jpg)     
    * Presents the TAF for `config/taf-airport` 
    * and the METAR history for `config/airport`.
+### Wind Map Screen
+   * Presents an animated 200 NM wind field centered on `config/airport`.
+   * Uses cached wind grid data when available and falls back to a synthetic field.
+   * Fetches 10 meter surface wind speed and direction from Open-Meteo's GFS/HRRR JSON API and converts it to local vectors.
+   * Plots all nearby METAR-reporting airports and labels only Class B, Class C, and Class D airports.
 ### Flight Category Screen
 ![screenshot](images/Flight%20Category%20Screen.jpg)
    * Presents the flight category, clouds, visibility, wind, 
@@ -108,5 +113,3 @@ This file holds information that should be kept secure.  The format is:
 
 ### `src/skillBoard/config.clj`
 This file holds information that describes the local environment and the display behavior.
-
-

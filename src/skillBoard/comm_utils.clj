@@ -5,7 +5,10 @@
     [clojure.string :as str]
     [java-time.api :as time]
     [skillBoard.config :as config]
-    [skillBoard.core-utils :as core-utils]))
+    [skillBoard.core-utils :as core-utils])
+  (:import
+    (java.io ByteArrayInputStream)
+    (java.util.zip GZIPInputStream ZipInputStream)))
 
 (defn get-json [url args save-atom com-errors error-name]
   (try
@@ -32,9 +35,14 @@
 (def polled-aircraft (atom {}))
 
 (def polled-metars (atom {}))
+(def polled-nearby-metars (atom {}))
+(def polled-airspace-classes (atom {}))
 (def polled-metar-history (atom {}))
 (def polled-tafs (atom {}))
 (def weather-com-errors (atom 0))
+
+(def nearby-metar-cache-url "https://aviationweather.gov/data/cache/metars.cache.csv.gz")
+(def class-airspace-cache-url "https://nfdc.faa.gov/webContent/28DaySub/extra/16_Apr_2026_CLS_ARSP_CSV.zip")
 
 (def polled-adsbs (atom {}))
 (def adsb-com-errors (atom 0))
@@ -102,6 +110,134 @@
                        {(:icaoId metar-response) metar-response})]
       (reset! polled-metars metar-dict)
       metar-dict)))
+
+(defn csv-fields [line]
+  (loop [chars (seq line)
+         field []
+         fields []
+         quoted? false]
+    (if-let [ch (first chars)]
+      (cond
+        (and (= \" ch) quoted? (= \" (second chars)))
+        (recur (nnext chars) (conj field ch) fields quoted?)
+
+        (= \" ch)
+        (recur (next chars) field fields (not quoted?))
+
+        (and (= \, ch) (not quoted?))
+        (recur (next chars) [] (conj fields (apply str field)) quoted?)
+
+        :else
+        (recur (next chars) (conj field ch) fields quoted?))
+      (conj fields (apply str field)))))
+
+(defn- blank->nil [s]
+  (when-not (or (str/blank? s) (= "null" s))
+    s))
+
+(defn- parse-double-field [s]
+  (when-let [value (blank->nil s)]
+    (Double/parseDouble value)))
+
+(defn csv->maps [csv-text]
+  (let [lines (remove str/blank? (str/split-lines csv-text))
+        headers (map keyword (csv-fields (first lines)))]
+    (map #(zipmap headers (csv-fields %)) (rest lines))))
+
+(defn metar-cache-record->metar [record]
+  (when-let [station-id (blank->nil (:station_id record))]
+    (when-let [lat (parse-double-field (:latitude record))]
+      (when-let [lon (parse-double-field (:longitude record))]
+        {:icaoId station-id
+         :lat lat
+         :lon lon
+         :fltCat (blank->nil (:flight_category record))
+         :rawOb (:raw_text record)}))))
+
+(defn- distance-nm [[center-lat center-lon] {:keys [lat lon]}]
+  (let [lat-nm (* 60.0 (- lat center-lat))
+        lon-nm (* 60.0 (Math/cos (Math/toRadians center-lat)) (- lon center-lon))]
+    (Math/sqrt (+ (* lat-nm lat-nm) (* lon-nm lon-nm)))))
+
+(defn nearby-metars [metars center radius-nm]
+  (->> metars
+       (filter #(<= (distance-nm center %) radius-nm))
+       (sort-by :icaoId)))
+
+(defn- gzip-bytes->string [bytes]
+  (with-open [stream (GZIPInputStream. (ByteArrayInputStream. bytes))]
+    (slurp stream)))
+
+(defn- zip-entry->string [bytes entry-name]
+  (with-open [zip (ZipInputStream. (ByteArrayInputStream. bytes))]
+    (loop [entry (.getNextEntry zip)]
+      (cond
+        (nil? entry) nil
+        (= entry-name (.getName entry)) (slurp zip)
+        :else (recur (.getNextEntry zip))))))
+
+(defn get-nearby-metars []
+  (try
+    (let [{:keys [status body]} (http/get nearby-metar-cache-url
+                                          {:accept :octet-stream
+                                           :as :byte-array
+                                           :socket-timeout 5000
+                                           :connection-timeout 5000})]
+      (if (= 200 status)
+        (let [all-metars (keep metar-cache-record->metar (csv->maps (gzip-bytes->string body)))
+              metars (nearby-metars all-metars config/airport-lat-lon config/wind-map-radius-nm)
+              metar-dict (into {} (map (fn [m] [(:icaoId m) m]) metars))]
+          (reset! polled-nearby-metars metar-dict)
+          (reset! weather-com-errors 0)
+          metar-dict)
+        (throw (ex-info "Failed to fetch nearby METAR cache" {:status status}))))
+    (catch Exception e
+      (core-utils/log :error (str "Error fetching nearby METAR cache: " (.getMessage e)))
+      (swap! weather-com-errors inc)
+      @polled-nearby-metars)))
+
+(defn- truthy-flag? [value]
+  (= "Y" (str/upper-case (or value ""))))
+
+(defn airport-id->icao-id [airport-id]
+  (let [airport-id (str/upper-case airport-id)]
+    (if (and (= 3 (count airport-id))
+             (re-matches #"[A-Z][A-Z0-9]{2}" airport-id))
+      (str "K" airport-id)
+      airport-id)))
+
+(defn airspace-record->class [record]
+  (cond
+    (truthy-flag? (:CLASS_B_AIRSPACE record)) "B"
+    (truthy-flag? (:CLASS_C_AIRSPACE record)) "C"
+    (truthy-flag? (:CLASS_D_AIRSPACE record)) "D"
+    :else nil))
+
+(defn airspace-record->entry [record]
+  (when-let [airspace-class (airspace-record->class record)]
+    [(airport-id->icao-id (:ARPT_ID record)) airspace-class]))
+
+(defn class-airspace-records->classes [records]
+  (into {} (keep airspace-record->entry records)))
+
+(defn get-airspace-classes []
+  (try
+    (let [{:keys [status body]} (http/get class-airspace-cache-url
+                                          {:accept :octet-stream
+                                           :as :byte-array
+                                           :socket-timeout 5000
+                                           :connection-timeout 5000})]
+      (if (= 200 status)
+        (let [csv (zip-entry->string body "CLS_ARSP.csv")
+              classes (class-airspace-records->classes (csv->maps csv))]
+          (reset! polled-airspace-classes classes)
+          (reset! weather-com-errors 0)
+          classes)
+        (throw (ex-info "Failed to fetch class airspace cache" {:status status}))))
+    (catch Exception e
+      (core-utils/log :error (str "Error fetching class airspace cache: " (.getMessage e)))
+      (swap! weather-com-errors inc)
+      @polled-airspace-classes)))
 
 ;{"KBMI" {:rawOb "METAR KBMI 181456Z 18023KT 1 1/2SM BR OVC003 08/08 A2951 RMK AO2 PK WND 17028/1456 SLP996 60001 T00830083 58026", :wdir 180, :qcField 4, :temp 8.3, :visib 1.5, :wspd 23, :name "Bloomington Rgnl, IL, US", :wxString "BR", :cover "OVC", :metarType "METAR", :obsTime 1766069760, :elev 262, :receiptTime "2025-12-18T14:57:17.197Z", :reportTime "2025-12-18T15:00:00.000Z", :pcp3hr 0.01, :lon -88.9144, :icaoId "KBMI", :lat 40.4777, :clouds [{:cover "OVC", :base 300}], :presTend -2.6, :slp 999.6, :dewp 8.3, :altim 999.4, :fltCat "LIFR"},
 ; "KMDW" {:rawOb "METAR KMDW 181453Z 19022G33KT 8SM -RA OVC008 08/07 A2950 RMK AO2 PK WND 21037/1354 SLP995 P0000 60002 T00830072 58025", :wdir 190, :qcField 4, :temp 8.3, :visib 8, :wspd 22, :name "Chicago/Midway Intl, IL, US", :wxString "-RA", :cover "OVC", :metarType "METAR", :wgst 33, :obsTime 1766069580, :elev 186, :receiptTime "2025-12-18T14:56:31.777Z", :reportTime "2025-12-18T15:00:00.000Z", :pcp3hr 0.02, :lon -87.7552, :icaoId "KMDW", :lat 41.7841, :clouds [{:cover "OVC", :base 800}], :presTend -2.5, :slp 999.5, :precip 0.005, :dewp 7.2, :altim 999.1, :fltCat "IFR"}}

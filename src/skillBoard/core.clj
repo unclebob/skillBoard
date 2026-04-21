@@ -11,8 +11,10 @@
     [skillBoard.presenters.main :as presenter]
     [skillBoard.presenters.traffic]
     [skillBoard.presenters.weather]
+    [skillBoard.presenters.wind-map]
     [skillBoard.split-flap :as split-flap]
-    [skillBoard.text-util :as text]))
+    [skillBoard.text-util :as text]
+    [skillBoard.wind-data :as wind-data]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -49,9 +51,12 @@
     (comm/get-flights)
     (comm/get-reservations)
     (comm/get-metars config/flight-category-airports)
+    (comm/get-nearby-metars)
+    (comm/get-airspace-classes)
     (comm/get-metar-history config/airport)
     (comm/get-tafs config/taf-airport)
     (comm/get-nearby-adsb)
+    (wind-data/refresh-wind-grid!)
     (reset! atoms/log-traffic? true)
     (catch Exception e
       (core-utils/log :error e))))

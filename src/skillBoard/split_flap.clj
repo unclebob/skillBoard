@@ -226,10 +226,10 @@
   (let [gw (max 1 (int (Math/ceil flap-width)))
         gh (max 1 (int (Math/ceil flap-height)))]
     (reduce (fn [glyphs color]
-              (reduce (fn [glyphs c]
+                      (reduce (fn [glyphs c]
                         (let [glyph (q/create-graphics gw gh)]
-                          (.beginDraw glyph)
                           (.noSmooth glyph)
+                          (.beginDraw glyph)
                           (.clear glyph)
                           (.textFont glyph sf-font)
                           (.textSize glyph sf-font-size)
@@ -411,9 +411,12 @@
         now (draw-now-text)
         geometry (draw-geometry font-width font-height)]
     (q/background 30)
-    (draw-header! state header-font header-font-size label-font-size clock-font clock-font-size now geometry)
-    (draw-lines! lines sf-font sf-font-size geometry)
-    (draw-flappers! flappers line-colors sf-font sf-font-size geometry)))
+    (if (screen/draw-body @presenter/screen-type state)
+      (draw-header! state header-font header-font-size label-font-size clock-font clock-font-size now geometry)
+      (do
+        (draw-header! state header-font header-font-size label-font-size clock-font clock-font-size now geometry)
+        (draw-lines! lines sf-font sf-font-size geometry)
+        (draw-flappers! flappers line-colors sf-font sf-font-size geometry)))))
 
 (defn blank-line []
   {:line (apply str (repeat config/cols " ")) :color nil})

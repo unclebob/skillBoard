@@ -35,6 +35,10 @@
   (atom (cycle
           [{:duration 40 :screen :flights}
            {:duration 20 :screen :taf}
+           {:duration 30 :screen :wind-map}
+           {:duration 20 :screen :traffic}
+           {:duration 40 :screen :flights}
+           {:duration 20 :screen :taf}
            {:duration 20 :screen :airports}
            {:duration 20 :screen :traffic}])))
 
@@ -47,6 +51,10 @@
 (def bearing-center "UGN")
 (def nearby-altitude-range [0 4000])
 (def nearby-distance 15)
+
+;Wind map configuration
+(def wind-map-radius-nm 200)
+(def wind-map-particle-count 300)
 
 (def time-zone "America/Chicago")
 

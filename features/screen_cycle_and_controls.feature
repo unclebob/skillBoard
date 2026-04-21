@@ -6,6 +6,10 @@ Feature: Screen cycle and keyboard controls
       | screen            | duration_seconds |
       | Flight Operations | 40               |
       | Weather           | 20               |
+      | Wind Map          | 30               |
+      | Nearby Traffic    | 20               |
+      | Flight Operations | 40               |
+      | Weather           | 20               |
       | Flight Category   | 20               |
       | Nearby Traffic    | 20               |
 
@@ -13,6 +17,16 @@ Feature: Screen cycle and keyboard controls
     When SkillBoard prepares the display
     Then the current screen is "Flight Operations"
     And the screen duration is 40 seconds
+
+  Scenario: The Wind Map screen animates a local wind field
+    Given Open-Meteo wind grid data is available for a 200 NM radius around KUGN
+    And AviationWeather METAR cache data is available for airports within 200 NM of KUGN
+    When the Wind Map screen is displayed
+    Then the display shows KUGN at the center of the map
+    And the display animates wind particles using the local wind vectors
+    And the display plots all nearby METAR-reporting airports in flight category colors
+    And the display labels only Class B, Class C, and Class D airports
+    And the display labels the wind data source and radius
 
   Scenario: A screen advances after its configured duration
     Given the current screen is "Flight Operations"
@@ -32,7 +46,7 @@ Feature: Screen cycle and keyboard controls
     Given the current screen is "Weather"
     When the operator releases the space bar
     And the display refreshes
-    Then the current screen becomes "Flight Category"
+    Then the current screen becomes "Wind Map"
     And the manual screen change request is cleared
 
   Scenario: The displayed clock blinks once per second
@@ -47,4 +61,3 @@ Feature: Screen cycle and keyboard controls
     Then SkillBoard logs that it closed
     And the display loop stops
     And the application exits
-

@@ -6,7 +6,10 @@
     [skillBoard.config :as config]
     [skillBoard.core-utils :as core-utils]
     [speclj.core :refer :all]
-    ))
+    )
+  (:import
+    (java.io ByteArrayOutputStream)
+    (java.util.zip GZIPOutputStream ZipEntry ZipOutputStream)))
 
 
 (declare save-atom com-errors)
@@ -140,3 +143,104 @@
                     :connection-timeout 2000}
                    @captured-args)))))
   )
+
+(defn gzip-bytes [text]
+  (let [out (ByteArrayOutputStream.)
+        bytes (.getBytes text "UTF-8")]
+    (with-open [gzip (GZIPOutputStream. out)]
+      (.write gzip bytes 0 (alength bytes)))
+    (.toByteArray out)))
+
+(defn zip-bytes [entry-name text]
+  (let [out (ByteArrayOutputStream.)
+        bytes (.getBytes text "UTF-8")]
+    (with-open [zip (ZipOutputStream. out)]
+      (.putNextEntry zip (ZipEntry. entry-name))
+      (.write zip bytes 0 (alength bytes))
+      (.closeEntry zip))
+    (.toByteArray out)))
+
+(describe "nearby METAR cache"
+  (with-stubs)
+
+  (it "parses quoted CSV fields"
+    (should= ["METAR KUGN 211853Z, AUTO" "KUGN" "42.4255"]
+             (comm/csv-fields "\"METAR KUGN 211853Z, AUTO\",KUGN,42.4255")))
+
+  (it "converts METAR cache records to the display shape"
+    (should= {:icaoId "KUGN"
+              :lat 42.4255
+              :lon -87.8634
+              :fltCat "MVFR"
+              :rawOb "METAR KUGN"}
+             (comm/metar-cache-record->metar {:station_id "KUGN"
+                                               :latitude "42.4255"
+                                               :longitude "-87.8634"
+                                               :flight_category "MVFR"
+                                               :raw_text "METAR KUGN"})))
+
+  (it "filters METARs to the configured radius"
+    (let [metars [{:icaoId "KUGN" :lat 42.4255 :lon -87.8634}
+                  {:icaoId "KORD" :lat 41.9786 :lon -87.9048}
+                  {:icaoId "KLAX" :lat 33.9425 :lon -118.4081}]]
+      (should= ["KORD" "KUGN"]
+               (map :icaoId (comm/nearby-metars metars config/airport-lat-lon 200)))))
+
+  (it "fetches the compressed METAR cache and stores nearby airports"
+    (let [csv "raw_text,station_id,observation_time,latitude,longitude,flight_category\n\"METAR KUGN\",KUGN,2026-04-21T18:00:00.000Z,42.4255,-87.8634,VFR\n\"METAR KLAX\",KLAX,2026-04-21T18:00:00.000Z,33.9425,-118.4081,IFR\n"
+          captured-url (atom nil)]
+      (with-redefs [http/get (fn [url _args]
+                               (reset! captured-url url)
+                               {:status 200
+                                :body (gzip-bytes csv)})
+                    comm/polled-nearby-metars (atom {})
+                    comm/weather-com-errors (atom 1)]
+        (should= {"KUGN" {:icaoId "KUGN"
+                          :lat 42.4255
+                          :lon -87.8634
+                          :fltCat "VFR"
+                          :rawOb "METAR KUGN"}}
+                 (comm/get-nearby-metars))
+        (should= comm/nearby-metar-cache-url @captured-url)
+        (should= 0 @comm/weather-com-errors)))))
+
+(describe "class airspace cache"
+  (it "normalizes NASR airport ids to METAR ids"
+    (should= "KORD" (comm/airport-id->icao-id "ORD"))
+    (should= "K06C" (comm/airport-id->icao-id "K06C"))
+    (should= "CYYZ" (comm/airport-id->icao-id "CYYZ")))
+
+  (it "selects B, C, and D airspace classes in priority order"
+    (should= "B" (comm/airspace-record->class {:CLASS_B_AIRSPACE "Y"
+                                                :CLASS_C_AIRSPACE "Y"
+                                                :CLASS_D_AIRSPACE "Y"}))
+    (should= "C" (comm/airspace-record->class {:CLASS_C_AIRSPACE "Y"
+                                                :CLASS_D_AIRSPACE "Y"}))
+    (should= "D" (comm/airspace-record->class {:CLASS_D_AIRSPACE "Y"}))
+    (should-be-nil (comm/airspace-record->class {:CLASS_E_AIRSPACE "Y"})))
+
+  (it "builds a lookup of B, C, and D airports"
+    (should= {"KORD" "B"
+              "KMKE" "C"
+              "KUGN" "D"}
+             (comm/class-airspace-records->classes
+               [{:ARPT_ID "ORD" :CLASS_B_AIRSPACE "Y"}
+                {:ARPT_ID "MKE" :CLASS_C_AIRSPACE "Y"}
+                {:ARPT_ID "UGN" :CLASS_D_AIRSPACE "Y"}
+                {:ARPT_ID "ENW" :CLASS_E_AIRSPACE "Y"}])))
+
+  (it "fetches the compressed class airspace cache"
+    (let [csv "\"EFF_DATE\",\"ARPT_ID\",\"CLASS_B_AIRSPACE\",\"CLASS_C_AIRSPACE\",\"CLASS_D_AIRSPACE\",\"CLASS_E_AIRSPACE\"\n\"2026/04/16\",\"ORD\",\"Y\",\"\",\"\",\"\"\n\"2026/04/16\",\"MKE\",\"\",\"Y\",\"\",\"\"\n\"2026/04/16\",\"UGN\",\"\",\"\",\"Y\",\"\"\n"
+          captured-url (atom nil)]
+      (with-redefs [http/get (fn [url _args]
+                               (reset! captured-url url)
+                               {:status 200
+                                :body (zip-bytes "CLS_ARSP.csv" csv)})
+                    comm/polled-airspace-classes (atom {})
+                    comm/weather-com-errors (atom 1)]
+        (should= {"KORD" "B"
+                  "KMKE" "C"
+                  "KUGN" "D"}
+                 (comm/get-airspace-classes))
+        (should= comm/class-airspace-cache-url @captured-url)
+        (should= 0 @comm/weather-com-errors)))))
