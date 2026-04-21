@@ -4,8 +4,11 @@
     [skillBoard.atoms :as atoms]
     [skillBoard.config :as config]
     [skillBoard.comm-utils :as comm]
+    [skillBoard.core-utils :as core-utils]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
     [skillBoard.navigation :as nav]
+    [quil.core :as q]
     [speclj.core :refer :all]))
 
 (describe "make-traffic-screen"
@@ -254,3 +257,36 @@
 
   ; Add more test cases here
 )
+
+(describe "traffic presenter side effects"
+  (it "logs traffic once when the log flag is set"
+    (let [logs (atom [])]
+      (reset! atoms/log-traffic? true)
+      (with-redefs [atoms/test? (atom false)
+                    config/display-info (atom {:line-count 3})
+                    config/airport-lat-lon [42.0 -87.0]
+                    config/airport-elevation 100
+                    config/bearing-center "C"
+                    config/geofences []
+                    utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                    utils/find-location (fn [_ _ _ _] "LOCATION")
+                    nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})
+                    core-utils/log (fn [level message] (swap! logs conj [level message]))]
+        (traffic/make-traffic-screen [{:reg "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}] [])
+        (should= false @atoms/log-traffic?)
+        (should= [[:status "Traffic: N12345   C000001/GND/001  RAMP    "]]
+                 @logs)))))
+
+(describe "traffic column headers"
+  (it "draws each traffic column label at the expected flap offsets"
+    (let [calls (atom [])]
+      (with-redefs [config/display-info (atom {:top-margin 20 :label-height 10})
+                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (screen/display-column-headers :traffic 10 :font 8)
+        (should-contain [:text "AIRCRAFT" 0 24.0] @calls)
+        (should-contain [:text "BRG/ALT/GS" 90 24.0] @calls)
+        (should-contain [:text "REMARKS" 270 24.0] @calls)))))
