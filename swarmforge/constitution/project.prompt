@@ -1,0 +1,5 @@
+# Project Rules
+
+SkillBoard is a Clojure real-time aviation wall display for flight training facilities. Preserve the documented behavior for reservations, ADS-B association, weather displays, source failure handling, status lights, screen cycling, and keyboard controls; changes to those externally visible behaviors require acceptance coverage.
+
+Treat aviation classifications, time windows, polling behavior, and failure modes as project-critical logic. Keep credentials in `private/config` private and do not commit secrets or generated runtime state.
