@@ -4,9 +4,11 @@
     [skillBoard.flight-schedule-pro :as fsp]
     [skillBoard.atoms :as atoms]
     [skillBoard.presenters.flights :as flights]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
     [skillBoard.radar-cape :as radar-cape]
     [skillBoard.time-util :as time-util]
+    [quil.core :as q]
     [speclj.core :refer :all]))
 
 (describe "presenter functions"
@@ -174,3 +176,20 @@
                               {:line "METAR" :color config/info-color}])]
         (should= expected (flights/make-flights-screen [] [])))))
 )
+
+(describe "flight column headers"
+  (it "draws each flight column label at the expected flap offsets"
+    (let [calls (atom [])]
+      (with-redefs [config/display-info (atom {:top-margin 20 :label-height 10})
+                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (screen/display-column-headers :flights 10 :font 8)
+        (should-contain [:text "TIME" 0 24.0] @calls)
+        (should-contain [:text "AIRCRAFT" 70 24.0] @calls)
+        (should-contain [:text "CREW" 140 24.0] @calls)
+        (should-contain [:text "OUT" 260 24.0] @calls)
+        (should-contain [:text "BRG/ALT/GS" 330 24.0] @calls)
+        (should-contain [:text "REMARKS" 510 24.0] @calls)))))

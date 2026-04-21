@@ -59,15 +59,16 @@
 (defn get-next-char [c]
   (get next-char c \space))
 
+(defn- remaining-flapper [col row type c]
+  (if (= type :old)
+    {:at [col row] :to \space :from c}
+    {:at [col row] :from \space :to c}))
+
 (defn add-remaining-flappers [flappers remainder col row type]
-  (if (empty? remainder)
-    flappers
-    (recur (conj flappers {:at [col row]
-                           (if (= type :old) :to :from) \space
-                           (if (= type :old) :from :to) (first remainder)})
-           (rest remainder)
-           (inc col) row type))
-  )
+  (into flappers
+        (map-indexed (fn [idx c]
+                       (remaining-flapper (+ col idx) row type c))
+                     remainder)))
 
 (defn make-flappers-for-line [new-line old-line row flappers]
   (loop [new-line (:line new-line)
@@ -87,20 +88,13 @@
                  (conj flappers {:at [col row] :from char-old :to char-new})))))))
 
 (defn make-flappers [new-report old-report]
-  (loop [new-report new-report
-         old-report old-report
-         row 0
-         flappers []]
-    (cond
-      (and (empty? new-report) (empty? old-report)) flappers
-      :else
-      (recur (rest new-report)
-             (rest old-report)
-             (inc row)
-             (make-flappers-for-line (first new-report)
-                                     (first old-report)
-                                     row
-                                     flappers)))))
+  (reduce (fn [flappers row]
+            (make-flappers-for-line (nth new-report row nil)
+                                    (nth old-report row nil)
+                                    row
+                                    flappers))
+          []
+          (range (max (count new-report) (count old-report)))))
 
 (defn update-flappers [flappers]
   (let [advance-toward
@@ -196,6 +190,9 @@
                         backing-rect-top-left-x backing-rect-top-left-y
                         backing-rect-width backing-rect-height)))
 
+(defn- add-rendered-count [counts rendered-count]
+  (update-vals counts #(+ % rendered-count)))
+
 (defn- render-lines-layer! [layer lines sf-font sf-font-size flap-width flap-height label-margin
                             backing-rect-top-left-x backing-rect-top-left-y
                             backing-rect-width backing-rect-height]
@@ -205,26 +202,17 @@
   (.textFont layer sf-font)
   (.textSize layer sf-font-size)
   (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/TOP)
-  (loop [remaining-lines lines
-         y 0
-         line-char-count 0
-         line-rect-count 0
-         line-text-count 0]
-    (if (empty? remaining-lines)
-      (do
-        (.endDraw layer)
-        {:line-char-count line-char-count
-         :line-rect-count line-rect-count
-         :line-text-count line-text-count})
-      (let [{:keys [line color]} (first remaining-lines)
-            rendered-count (render-report-line! layer line color y flap-width flap-height label-margin
-                                                backing-rect-top-left-x backing-rect-top-left-y
-                                                backing-rect-width backing-rect-height)]
-        (recur (rest remaining-lines)
-               (inc y)
-               (+ line-char-count rendered-count)
-               (+ line-rect-count rendered-count)
-               (+ line-text-count rendered-count))))))
+  (let [counts (reduce (fn [counts [y {:keys [line color]}]]
+                         (let [rendered-count (render-report-line! layer line color y flap-width flap-height label-margin
+                                                                   backing-rect-top-left-x backing-rect-top-left-y
+                                                                   backing-rect-width backing-rect-height)]
+                           (add-rendered-count counts rendered-count)))
+                       {:line-char-count 0
+                        :line-rect-count 0
+                        :line-text-count 0}
+                       (map-indexed vector lines))]
+    (.endDraw layer)
+    counts))
 
 (defn- flapper-char-set []
   (->> (concat (keys next-char) (vals next-char))
@@ -377,11 +365,13 @@
   [[3 [255 0 0]]
    [1 [255 165 0]]])
 
+(def default-status-light-rgb [0 255 0])
+
 (defn- status-light-rgb [errors]
   (or (some (fn [[threshold rgb]]
               (when (> errors threshold) rgb))
             status-light-thresholds)
-      [0 255 0]))
+      default-status-light-rgb))
 
 (defn- draw-status-light! [pos y errors]
   (let [[r g b] (status-light-rgb errors)]
@@ -472,5 +462,5 @@
                  :flappers flappers)))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-04-21T11:14:38.140134-05:00", :module-hash "1288394638", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 12, :hash "1920259433"} {:id "def/next-char", :kind "def", :line 14, :end-line 57, :hash "-1113363380"} {:id "defn/get-next-char", :kind "defn", :line 59, :end-line 60, :hash "-2009754732"} {:id "defn/add-remaining-flappers", :kind "defn", :line 62, :end-line 70, :hash "-259913949"} {:id "defn/make-flappers-for-line", :kind "defn", :line 72, :end-line 87, :hash "-1150675378"} {:id "defn/make-flappers", :kind "defn", :line 89, :end-line 103, :hash "925688221"} {:id "defn/update-flappers", :kind "defn", :line 105, :end-line 126, :hash "-737275604"} {:id "defn/header-text", :kind "defn", :line 128, :end-line 129, :hash "114439821"} {:id "defn/pad-and-trim-line", :kind "defn", :line 131, :end-line 133, :hash "776748785"} {:id "def/color-rgb", :kind "def", :line 135, :end-line 142, :hash "-923251396"} {:id "def/default-color-rgb", :kind "def", :line 144, :end-line 144, :hash "400843010"} {:id "defn-/color-components", :kind "defn-", :line 146, :end-line 147, :hash "487777990"} {:id "defn/set-color", :kind "defn", :line 149, :end-line 151, :hash "-1661480124"} {:id "def/lines-layer-cache", :kind "def", :line 153, :end-line 153, :hash "-1174342755"} {:id "def/flapper-glyph-cache", :kind "def", :line 154, :end-line 154, :hash "768445455"} {:id "defn-/set-layer-color", :kind "defn-", :line 156, :end-line 158, :hash "470209911"} {:id "defn-/render-visible-line-char!", :kind "defn-", :line 160, :end-line 170, :hash "-929574463"} {:id "defn-/render-line-char!", :kind "defn-", :line 172, :end-line 178, :hash "316695977"} {:id "defn-/render-line-chars!", :kind "defn-", :line 180, :end-line 188, :hash "-479351971"} {:id "defn-/render-report-line!", :kind "defn-", :line 190, :end-line 197, :hash "1392765341"} {:id "defn-/render-lines-layer!", :kind "defn-", :line 199, :end-line 227, :hash "1464229563"} {:id "defn-/flapper-char-set", :kind "defn-", :line 229, :end-line 233, :hash "-1556162328"} {:id "defn-/render-flapper-glyphs!", :kind "defn-", :line 235, :end-line 262, :hash "-23427186"} {:id "defn-/draw-now-text", :kind "defn-", :line 264, :end-line 266, :hash "-1928031187"} {:id "defn-/draw-geometry", :kind "defn-", :line 268, :end-line 278, :hash "762353633"} {:id "defn-/lines-layer-key", :kind "defn-", :line 280, :end-line 289, :hash "-1079152757"} {:id "defn-/current-lines-layer", :kind "defn-", :line 291, :end-line 299, :hash "-943945809"} {:id "defn-/draw-lines!", :kind "defn-", :line 301, :end-line 315, :hash "1184045821"} {:id "defn-/glyph-key", :kind "defn-", :line 317, :end-line 325, :hash "310858416"} {:id "defn-/cached-glyphs", :kind "defn-", :line 327, :end-line 341, :hash "416450688"} {:id "defn-/flapper-position", :kind "defn-", :line 343, :end-line 346, :hash "-968831626"} {:id "defn-/draw-uncached-flapper!", :kind "defn-", :line 348, :end-line 358, :hash "-540675139"} {:id "defn-/draw-flapper!", :kind "defn-", :line 360, :end-line 368, :hash "972610288"} {:id "defn-/draw-flappers!", :kind "defn-", :line 370, :end-line 374, :hash "1756293776"} {:id "def/status-light-thresholds", :kind "def", :line 376, :end-line 378, :hash "2121939427"} {:id "defn-/status-light-rgb", :kind "defn-", :line 380, :end-line 384, :hash "1281867651"} {:id "defn-/draw-status-light!", :kind "defn-", :line 386, :end-line 389, :hash "-1943852759"} {:id "defn-/display-com-errors!", :kind "defn-", :line 391, :end-line 394, :hash "-855560315"} {:id "defn-/display-time!", :kind "defn-", :line 396, :end-line 403, :hash "-1770118503"} {:id "defn-/draw-header!", :kind "defn-", :line 405, :end-line 416, :hash "935010868"} {:id "defn/draw", :kind "defn", :line 418, :end-line 426, :hash "-1133446758"} {:id "defn/blank-line", :kind "defn", :line 428, :end-line 429, :hash "-1220779777"} {:id "defn/blank-screen", :kind "defn", :line 431, :end-line 432, :hash "234994382"} {:id "defn/current-time-ms", :kind "defn", :line 434, :end-line 435, :hash "1840988419"} {:id "defn-/screen-summary", :kind "defn-", :line 437, :end-line 440, :hash "1926277654"} {:id "defn-/next-screen-time", :kind "defn-", :line 442, :end-line 443, :hash "824504023"} {:id "defn-/flap-duration-expired?", :kind "defn-", :line 445, :end-line 446, :hash "-598238773"} {:id "defn-/next-flappers", :kind "defn-", :line 448, :end-line 460, :hash "2066365699"} {:id "defn/do-update", :kind "defn", :line 462, :end-line 472, :hash "-510576541"}]}
+;; {:version 1, :tested-at "2026-04-21T11:34:56.015723-05:00", :module-hash "-128456467", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 12, :hash "1920259433"} {:id "def/next-char", :kind "def", :line 14, :end-line 57, :hash "-1113363380"} {:id "defn/get-next-char", :kind "defn", :line 59, :end-line 60, :hash "-2009754732"} {:id "defn-/remaining-flapper", :kind "defn-", :line 62, :end-line 65, :hash "956020619"} {:id "defn/add-remaining-flappers", :kind "defn", :line 67, :end-line 71, :hash "-1424815926"} {:id "defn/make-flappers-for-line", :kind "defn", :line 73, :end-line 88, :hash "-1150675378"} {:id "defn/make-flappers", :kind "defn", :line 90, :end-line 97, :hash "-1702311483"} {:id "defn/update-flappers", :kind "defn", :line 99, :end-line 120, :hash "-737275604"} {:id "defn/header-text", :kind "defn", :line 122, :end-line 123, :hash "114439821"} {:id "defn/pad-and-trim-line", :kind "defn", :line 125, :end-line 127, :hash "776748785"} {:id "def/color-rgb", :kind "def", :line 129, :end-line 136, :hash "-923251396"} {:id "def/default-color-rgb", :kind "def", :line 138, :end-line 138, :hash "400843010"} {:id "defn-/color-components", :kind "defn-", :line 140, :end-line 141, :hash "487777990"} {:id "defn/set-color", :kind "defn", :line 143, :end-line 145, :hash "-1661480124"} {:id "def/lines-layer-cache", :kind "def", :line 147, :end-line 147, :hash "-1174342755"} {:id "def/flapper-glyph-cache", :kind "def", :line 148, :end-line 148, :hash "768445455"} {:id "defn-/set-layer-color", :kind "defn-", :line 150, :end-line 152, :hash "470209911"} {:id "defn-/render-visible-line-char!", :kind "defn-", :line 154, :end-line 164, :hash "-929574463"} {:id "defn-/render-line-char!", :kind "defn-", :line 166, :end-line 172, :hash "316695977"} {:id "defn-/render-line-chars!", :kind "defn-", :line 174, :end-line 182, :hash "-479351971"} {:id "defn-/render-report-line!", :kind "defn-", :line 184, :end-line 191, :hash "1392765341"} {:id "defn-/add-rendered-count", :kind "defn-", :line 193, :end-line 194, :hash "666732482"} {:id "defn-/render-lines-layer!", :kind "defn-", :line 196, :end-line 215, :hash "-112768291"} {:id "defn-/flapper-char-set", :kind "defn-", :line 217, :end-line 221, :hash "-1958648659"} {:id "defn-/render-flapper-glyphs!", :kind "defn-", :line 223, :end-line 250, :hash "-23427186"} {:id "defn-/draw-now-text", :kind "defn-", :line 252, :end-line 254, :hash "-1928031187"} {:id "defn-/draw-geometry", :kind "defn-", :line 256, :end-line 266, :hash "762353633"} {:id "defn-/lines-layer-key", :kind "defn-", :line 268, :end-line 277, :hash "-1079152757"} {:id "defn-/current-lines-layer", :kind "defn-", :line 279, :end-line 287, :hash "-943945809"} {:id "defn-/draw-lines!", :kind "defn-", :line 289, :end-line 303, :hash "1184045821"} {:id "defn-/glyph-key", :kind "defn-", :line 305, :end-line 313, :hash "310858416"} {:id "defn-/cached-glyphs", :kind "defn-", :line 315, :end-line 329, :hash "416450688"} {:id "defn-/flapper-position", :kind "defn-", :line 331, :end-line 334, :hash "-968831626"} {:id "defn-/draw-uncached-flapper!", :kind "defn-", :line 336, :end-line 346, :hash "-540675139"} {:id "defn-/draw-flapper!", :kind "defn-", :line 348, :end-line 356, :hash "972610288"} {:id "defn-/draw-flappers!", :kind "defn-", :line 358, :end-line 362, :hash "1756293776"} {:id "def/status-light-thresholds", :kind "def", :line 364, :end-line 366, :hash "2121939427"} {:id "def/default-status-light-rgb", :kind "def", :line 368, :end-line 368, :hash "-1410728437"} {:id "defn-/status-light-rgb", :kind "defn-", :line 370, :end-line 374, :hash "-1313487399"} {:id "defn-/draw-status-light!", :kind "defn-", :line 376, :end-line 379, :hash "-1943852759"} {:id "defn-/display-com-errors!", :kind "defn-", :line 381, :end-line 384, :hash "-855560315"} {:id "defn-/display-time!", :kind "defn-", :line 386, :end-line 393, :hash "-1770118503"} {:id "defn-/draw-header!", :kind "defn-", :line 395, :end-line 406, :hash "935010868"} {:id "defn/draw", :kind "defn", :line 408, :end-line 416, :hash "-1133446758"} {:id "defn/blank-line", :kind "defn", :line 418, :end-line 419, :hash "-1220779777"} {:id "defn/blank-screen", :kind "defn", :line 421, :end-line 422, :hash "234994382"} {:id "defn/current-time-ms", :kind "defn", :line 424, :end-line 425, :hash "1840988419"} {:id "defn-/screen-summary", :kind "defn-", :line 427, :end-line 430, :hash "1926277654"} {:id "defn-/next-screen-time", :kind "defn-", :line 432, :end-line 433, :hash "824504023"} {:id "defn-/flap-duration-expired?", :kind "defn-", :line 435, :end-line 436, :hash "-598238773"} {:id "defn-/next-flappers", :kind "defn-", :line 438, :end-line 450, :hash "2066365699"} {:id "defn/do-update", :kind "defn", :line 452, :end-line 462, :hash "-510576541"}]}
 ;; clj-mutate-manifest-end
