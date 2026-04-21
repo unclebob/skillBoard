@@ -42,7 +42,7 @@ remarks field.
  * `PATN` The aircraft is within 2NM of the airport and is within 500' of pattern altitude.
  * `TAXI` The aircraft is within 2NM of the airport, is in ground mode, or is below 30' AGL, 
 and has a ground speed between 2 and 25kts.
- * `RAMP` The aircraft is withgit sin 2NM of the airport, is in ground mode, or is below 30' AGL,
+ * `RAMP` The aircraft is within 2NM of the airport, is in ground mode, or is below 30' AGL,
 and has a ground speed less than 2kts.
 
 ### Status Lights
@@ -91,7 +91,7 @@ Be patient.
 ### To exit the program
 Hit the escape key.
 
-## To Update to a new version.
+## To update to a new version
     git reset --hard
     git pull
 
@@ -108,6 +108,5 @@ This file holds information that should be kept secure.  The format is:
 
 ### `src/skillBoard/config.clj`
 This file holds information that describes the local environment and the display behavior.
-
 
 
