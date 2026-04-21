@@ -1,25 +1,43 @@
 (ns skillBoard.presenters.wind-map
   (:require
     [clojure.data.json :as json]
-    [clojure.math :as math]
     [quil.core :as q]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.presenters.wind-map.particles :as wind-particles]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.wind-data :as wind-data]))
 
-(def particles (atom []))
-(def particle-field-size (atom nil))
 (def state-outlines-cache (atom nil))
 (def static-map-layer-cache (atom {:key nil :layer nil}))
-(def animation-seconds-per-frame 390)
-(def particle-segment-min-length 5)
-(def particle-segment-max-length 34)
-(def particle-segment-pixels-per-knot 1.2)
-(def particle-fade-in-ms 500)
-(def particle-fade-out-ms 500)
-(def particle-min-life-ms 2000)
-(def particle-max-life-ms 3000)
+
+(def particles wind-particles/particles)
+(def particle-field-size wind-particles/particle-field-size)
+(def animation-seconds-per-frame wind-particles/animation-seconds-per-frame)
+(def particle-segment-min-length wind-particles/particle-segment-min-length)
+(def particle-segment-max-length wind-particles/particle-segment-max-length)
+(def particle-segment-pixels-per-knot wind-particles/particle-segment-pixels-per-knot)
+(def particle-fade-in-ms wind-particles/particle-fade-in-ms)
+(def particle-fade-out-ms wind-particles/particle-fade-out-ms)
+(def particle-min-life-ms wind-particles/particle-min-life-ms)
+(def particle-max-life-ms wind-particles/particle-max-life-ms)
+(def particle-coordinate wind-particles/particle-coordinate)
+(def project-point wind-particles/project-point)
+(def unproject-point wind-particles/unproject-point)
+(def nearest-wind wind-particles/nearest-wind)
+(def interpolated-wind wind-particles/interpolated-wind)
+(def wind-speed wind-particles/wind-speed)
+(def particle-opacity wind-particles/particle-opacity)
+(def particle-dead? wind-particles/particle-dead?)
+(def random-particle wind-particles/random-particle)
+(def initial-particle wind-particles/initial-particle)
+(def make-particles wind-particles/make-particles)
+(def ensure-particles! wind-particles/ensure-particles!)
+(def wind-color wind-particles/wind-color)
+(def step-particle wind-particles/step-particle)
+(def particle-segment-length wind-particles/particle-segment-length)
+(def particle-segment-end wind-particles/particle-segment-end)
+(def draw-particle! wind-particles/draw-particle!)
 
 (def state-labels
   {"Wisconsin" "WI"
@@ -31,22 +49,6 @@
    "Ohio" "OH"})
 
 (def nearby-state-names (set (keys state-labels)))
-
-(defn- fractional-part [n]
-  (- n (Math/floor n)))
-
-(defn particle-coordinate [index size salt]
-  (* size (fractional-part (* (inc index) salt))))
-
-(defn project-point [{:keys [top bottom left right]} width height lat lon]
-  (let [x (* width (/ (- lon left) (- right left)))
-        y (* height (/ (- top lat) (- top bottom)))]
-    [x y]))
-
-(defn unproject-point [{:keys [top bottom left right]} width height x y]
-  (let [lon (+ left (* (/ x width) (- right left)))
-        lat (- top (* (/ y height) (- top bottom)))]
-    [lat lon]))
 
 (defn- lon-lat->lat-lon [[lon lat]]
   [lat lon])
@@ -83,130 +85,6 @@
   (or @state-outlines-cache
       (reset! state-outlines-cache (load-state-outlines))))
 
-(defn nearest-wind [grid lat lon]
-  (let [points (:points grid)]
-    (if (empty? points)
-      {:u 0 :v 0}
-      (apply min-key
-             (fn [{point-lat :lat point-lon :lon}]
-               (+ (math/pow (- point-lat lat) 2)
-                  (math/pow (- point-lon lon) 2)))
-             points))))
-
-(defn- wind-distance [lat lon point]
-  (max 0.25 (wind-data/nm-distance [lat lon] [(:lat point) (:lon point)])))
-
-(defn interpolated-wind [grid lat lon]
-  (let [points (:points grid)]
-    (if (empty? points)
-      {:u 0 :v 0}
-      (let [nearby (take 6 (sort-by #(wind-distance lat lon %) points))
-            weighted (map (fn [{:keys [u v] :as point}]
-                            (let [distance (wind-distance lat lon point)
-                                  weight (/ 1.0 (* distance distance))]
-                              {:u (* u weight)
-                               :v (* v weight)
-                               :weight weight}))
-                          nearby)
-            total-weight (reduce + (map :weight weighted))]
-        {:u (/ (reduce + (map :u weighted)) total-weight)
-         :v (/ (reduce + (map :v weighted)) total-weight)}))))
-
-(defn wind-speed [{:keys [u v]}]
-  (Math/sqrt (+ (* u u) (* v v))))
-
-(defn- wind-pixel-delta
-  [{:keys [top bottom left right]} width height {:keys [u v]}]
-  (let [center-lat (/ (+ top bottom) 2.0)
-        horizontal-nm (* 60.0 (Math/cos (Math/toRadians center-lat)) (- right left))
-        vertical-nm (* 60.0 (- top bottom))
-        hours-per-frame (/ animation-seconds-per-frame 3600.0)
-        px-per-nm-x (/ width horizontal-nm)
-        px-per-nm-y (/ height vertical-nm)]
-    [(* u hours-per-frame px-per-nm-x)
-     (* v hours-per-frame px-per-nm-y)]))
-
-(defn particle-opacity [now {:keys [born-at life-ms]}]
-  (let [elapsed (- now born-at)
-        life-ms (or life-ms particle-min-life-ms)
-        fade-out-start (- life-ms particle-fade-out-ms)]
-    (cond
-      (< elapsed 0) 0.0
-      (< elapsed particle-fade-in-ms) (/ (double elapsed) particle-fade-in-ms)
-      (< elapsed fade-out-start) 1.0
-      (< elapsed life-ms) (/ (double (- life-ms elapsed)) particle-fade-out-ms)
-      :else 0.0)))
-
-(defn particle-dead? [now particle]
-  (>= (- now (:born-at particle)) (:life-ms particle particle-min-life-ms)))
-
-(defn random-particle [bounds grid width height seed now]
-  (let [x (rand width)
-        y (rand height)
-        life-ms (+ particle-min-life-ms (rand (- particle-max-life-ms particle-min-life-ms)))]
-    {:x x
-     :y y
-     :seed seed
-     :born-at now
-     :life-ms life-ms
-     :age 0
-     :opacity 0.0}))
-
-(defn initial-particle [bounds grid width height seed now]
-  (let [initial-age-ms (rand 1000)
-        particle (random-particle bounds grid width height seed (- now initial-age-ms))]
-    (assoc particle
-      :age (long initial-age-ms)
-      :opacity (particle-opacity now particle))))
-
-(defn make-particles [count bounds grid width height now]
-  (vec (for [i (range count)]
-         (initial-particle bounds grid width height i now))))
-
-(defn- reset-particles! [bounds grid width height now]
-  (reset! particles (make-particles config/wind-map-particle-count bounds grid width height now))
-  (reset! particle-field-size [width height])
-  nil)
-
-(defn ensure-particles! [bounds grid width height now]
-  (let [field-size [width height]]
-    (when (or (empty? @particles)
-              (not= field-size @particle-field-size))
-      (reset-particles! bounds grid width height now))))
-
-(defn wind-color [speed]
-  (cond
-    (< speed 5) [155 210 255 205]
-    (< speed 15) [165 255 190 220]
-    (< speed 25) [255 242 125 235]
-    :else [255 135 135 245]))
-
-(defn- out-of-bounds? [width height x y]
-  (or (< x 0)
-      (> x width)
-      (< y 0)
-      (> y height)))
-
-(defn step-particle [bounds grid width height now particle]
-  (if (particle-dead? now particle)
-    (random-particle bounds grid width height (:seed particle 0) now)
-    (let [[lat lon] (unproject-point bounds width height (:x particle) (:y particle))
-        {:keys [u v] :as wind} (interpolated-wind grid lat lon)
-        [dx dy] (wind-pixel-delta bounds width height {:u u :v v})
-        x (+ (:x particle) dx)
-        y (- (:y particle) dy)
-        age (inc (:age particle 0))]
-      (if (out-of-bounds? width height x y)
-        (random-particle bounds grid width height (:seed particle 0) now)
-        (assoc particle
-          :x x
-          :y y
-          :u u
-          :v v
-          :speed (wind-speed wind)
-          :opacity (particle-opacity now particle)
-          :age age)))))
-
 (defn make-wind-map-screen []
   [{:line "SURFACE WINDS" :color config/info-color}
    {:line "OPEN-METEO 10M WIND FIELD" :color config/info-color}])
@@ -228,23 +106,27 @@
   (or (:header-font @config/display-info)
       (:annotation-font @config/display-info)))
 
+(def flight-category-colors
+  {"VFR" config/vfr-color
+   "MVFR" config/mvfr-color
+   "IFR" config/ifr-color
+   "LIFR" config/lifr-color})
+
 (defn flight-category-color [flt-cat]
-  (case flt-cat
-    "VFR" config/vfr-color
-    "MVFR" config/mvfr-color
-    "IFR" config/ifr-color
-    "LIFR" config/lifr-color
-    config/info-color))
+  (get flight-category-colors flt-cat config/info-color))
+
+(def color-rgb-values
+  {:green [0 255 0]
+   :blue [70 150 255]
+   :red [255 60 60]
+   :magenta [255 0 255]
+   :yellow [255 235 90]
+   :white [255 255 255]})
+
+(def default-color-rgb [255 255 255])
 
 (defn color-rgb [color]
-  (case color
-    :green [0 255 0]
-    :blue [70 150 255]
-    :red [255 60 60]
-    :magenta [255 0 255]
-    :yellow [255 235 90]
-    :white [255 255 255]
-    [255 255 255]))
+  (get color-rgb-values color default-color-rgb))
 
 (defn draw-airport! [bounds width height]
   (let [[lat lon] config/airport-lat-lon
@@ -440,27 +322,6 @@
     (reset! static-map-layer-cache {:key layer-key :layer layer})
     layer))
 
-(defn particle-segment-length [speed]
-  (min particle-segment-max-length
-       (max particle-segment-min-length
-            (* speed particle-segment-pixels-per-knot))))
-
-(defn particle-segment-end [{:keys [x y u v speed]}]
-  (let [speed (or speed (wind-speed {:u (or u 0) :v (or v 0)}))
-        length (if (pos? speed) (particle-segment-length speed) 0)
-        unit-x (if (pos? speed) (/ (or u 0) speed) 0)
-        unit-y (if (pos? speed) (/ (or v 0) speed) 0)]
-    [(+ x (* unit-x length))
-     (- y (* unit-y length))]))
-
-(defn draw-particle! [particle]
-  (let [[r g b a] (wind-color (:speed particle 0))
-        a (* a (:opacity particle 1.0))
-        [x2 y2] (particle-segment-end particle)]
-    (q/stroke-weight 2)
-    (q/stroke r g b a)
-    (q/line (:x particle) (:y particle) x2 y2)))
-
 (defn draw-wind-map! []
   (let [grid (wind-data/current-grid)
         bounds (wind-data/radius-bounds (:center grid) (:radius-nm grid))
@@ -479,3 +340,7 @@
 (defmethod screen/draw-body :wind-map [_ _state]
   (draw-wind-map!)
   true)
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-04-21T15:38:31.068973-05:00", :module-hash "-1547214145", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 9, :hash "-413269193"} {:id "def/state-outlines-cache", :kind "def", :line 11, :end-line 11, :hash "-350688288"} {:id "def/static-map-layer-cache", :kind "def", :line 12, :end-line 12, :hash "620140335"} {:id "def/particles", :kind "def", :line 14, :end-line 14, :hash "155048396"} {:id "def/particle-field-size", :kind "def", :line 15, :end-line 15, :hash "818318783"} {:id "def/animation-seconds-per-frame", :kind "def", :line 16, :end-line 16, :hash "1555334293"} {:id "def/particle-segment-min-length", :kind "def", :line 17, :end-line 17, :hash "588459670"} {:id "def/particle-segment-max-length", :kind "def", :line 18, :end-line 18, :hash "910308292"} {:id "def/particle-segment-pixels-per-knot", :kind "def", :line 19, :end-line 19, :hash "-1831478383"} {:id "def/particle-fade-in-ms", :kind "def", :line 20, :end-line 20, :hash "-644840462"} {:id "def/particle-fade-out-ms", :kind "def", :line 21, :end-line 21, :hash "722293244"} {:id "def/particle-min-life-ms", :kind "def", :line 22, :end-line 22, :hash "-1530051359"} {:id "def/particle-max-life-ms", :kind "def", :line 23, :end-line 23, :hash "890007799"} {:id "def/particle-coordinate", :kind "def", :line 24, :end-line 24, :hash "-2059248895"} {:id "def/project-point", :kind "def", :line 25, :end-line 25, :hash "-2085532950"} {:id "def/unproject-point", :kind "def", :line 26, :end-line 26, :hash "-1727549963"} {:id "def/nearest-wind", :kind "def", :line 27, :end-line 27, :hash "-1892100238"} {:id "def/interpolated-wind", :kind "def", :line 28, :end-line 28, :hash "-1309347192"} {:id "def/wind-speed", :kind "def", :line 29, :end-line 29, :hash "2078800266"} {:id "def/particle-opacity", :kind "def", :line 30, :end-line 30, :hash "-123347195"} {:id "def/particle-dead?", :kind "def", :line 31, :end-line 31, :hash "-1516087527"} {:id "def/random-particle", :kind "def", :line 32, :end-line 32, :hash "-1857084068"} {:id "def/initial-particle", :kind "def", :line 33, :end-line 33, :hash "-1627751345"} {:id "def/make-particles", :kind "def", :line 34, :end-line 34, :hash "1951808604"} {:id "def/ensure-particles!", :kind "def", :line 35, :end-line 35, :hash "1714997095"} {:id "def/wind-color", :kind "def", :line 36, :end-line 36, :hash "2035026331"} {:id "def/step-particle", :kind "def", :line 37, :end-line 37, :hash "279771128"} {:id "def/particle-segment-length", :kind "def", :line 38, :end-line 38, :hash "-1573784694"} {:id "def/particle-segment-end", :kind "def", :line 39, :end-line 39, :hash "1832291123"} {:id "def/draw-particle!", :kind "def", :line 40, :end-line 40, :hash "-1522966060"} {:id "def/state-labels", :kind "def", :line 42, :end-line 49, :hash "410376313"} {:id "def/nearby-state-names", :kind "def", :line 51, :end-line 51, :hash "-153375614"} {:id "defn-/lon-lat->lat-lon", :kind "defn-", :line 53, :end-line 54, :hash "-34246038"} {:id "defn-/polygon-rings", :kind "defn-", :line 56, :end-line 60, :hash "1249934570"} {:id "defn-/outline-bounds", :kind "defn-", :line 62, :end-line 69, :hash "-613673615"} {:id "defn-/feature->outline", :kind "defn-", :line 71, :end-line 76, :hash "2070406857"} {:id "defn/load-state-outlines", :kind "defn", :line 78, :end-line 82, :hash "-1405659647"} {:id "defn/state-outlines", :kind "defn", :line 84, :end-line 86, :hash "-740183215"} {:id "defn/make-wind-map-screen", :kind "defn", :line 88, :end-line 90, :hash "-1916581111"} {:id "defmethod/screen/make/:wind-map", :kind "defmethod", :line 92, :end-line 93, :hash "1602119916"} {:id "defmethod/screen/header-text/:wind-map", :kind "defmethod", :line 95, :end-line 96, :hash "-829791532"} {:id "defmethod/screen/display-column-headers/:wind-map", :kind "defmethod", :line 98, :end-line 99, :hash "-723555036"} {:id "defn-/map-label-font", :kind "defn-", :line 101, :end-line 103, :hash "-1362124108"} {:id "defn-/airport-label-font", :kind "defn-", :line 105, :end-line 107, :hash "-2024494817"} {:id "def/flight-category-colors", :kind "def", :line 109, :end-line 113, :hash "1208642753"} {:id "defn/flight-category-color", :kind "defn", :line 115, :end-line 116, :hash "-1340670323"} {:id "def/color-rgb-values", :kind "def", :line 118, :end-line 124, :hash "-980395204"} {:id "def/default-color-rgb", :kind "def", :line 126, :end-line 126, :hash "-181122293"} {:id "defn/color-rgb", :kind "defn", :line 128, :end-line 129, :hash "-1165963766"} {:id "defn/draw-airport!", :kind "defn", :line 131, :end-line 140, :hash "987622579"} {:id "defn/flight-category-airport-markers", :kind "defn", :line 142, :end-line 166, :hash "-237429149"} {:id "defn/label-airport?", :kind "defn", :line 168, :end-line 169, :hash "919873300"} {:id "defn/draw-flight-category-airport!", :kind "defn", :line 171, :end-line 185, :hash "-1344100387"} {:id "defn/draw-flight-category-airports!", :kind "defn", :line 187, :end-line 189, :hash "996898366"} {:id "defn/marker-layer-key", :kind "defn", :line 191, :end-line 192, :hash "1553508954"} {:id "defn/static-map-layer-key", :kind "defn", :line 194, :end-line 200, :hash "-173616304"} {:id "defn-/current-static-map-layer", :kind "defn-", :line 202, :end-line 208, :hash "630663816"} {:id "defn-/bounds-intersect?", :kind "defn-", :line 210, :end-line 214, :hash "-544654738"} {:id "defn-/ring-center", :kind "defn-", :line 216, :end-line 219, :hash "-1771243540"} {:id "defn/draw-state-outline!", :kind "defn", :line 221, :end-line 239, :hash "-346684475"} {:id "defn/draw-state-outlines!", :kind "defn", :line 241, :end-line 243, :hash "1141578969"} {:id "defn-/layer-text-font!", :kind "defn-", :line 245, :end-line 247, :hash "-1469010749"} {:id "defn-/draw-layer-flight-category-airport!", :kind "defn-", :line 249, :end-line 262, :hash "-681805799"} {:id "defn-/draw-layer-flight-category-airports!", :kind "defn-", :line 264, :end-line 266, :hash "-1911938762"} {:id "defn-/draw-layer-state-outline!", :kind "defn-", :line 268, :end-line 285, :hash "-1316286081"} {:id "defn-/draw-layer-state-outlines!", :kind "defn-", :line 287, :end-line 289, :hash "-104854079"} {:id "defn-/draw-layer-source-label!", :kind "defn-", :line 291, :end-line 299, :hash "597317914"} {:id "defn/draw-source-label!", :kind "defn", :line 301, :end-line 307, :hash "-818530098"} {:id "defn-/render-static-map-layer!", :kind "defn-", :line 309, :end-line 314, :hash "-528502862"} {:id "defn/static-map-layer", :kind "defn", :line 316, :end-line 323, :hash "-1697418385"} {:id "defn/draw-wind-map!", :kind "defn", :line 325, :end-line 338, :hash "868089126"} {:id "defmethod/screen/draw-body/:wind-map", :kind "defmethod", :line 340, :end-line 342, :hash "965218688"}]}
+;; clj-mutate-manifest-end
