@@ -8,10 +8,14 @@
         org.clojure/data.json {:mvn/version "2.5.1"}
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         }
- :aliases {:test {:extra-paths ["spec"]
-                  :main-opts ["-m" "speclj.main" "-c"]}
-           :spec {:main-opts ["-m" "speclj.main" "-c"]
-                  :extra-paths ["spec"]}
+ :aliases {:test {:extra-paths ["spec" "target/generated-acceptance/spec"]
+                  :main-opts ["-m" "speclj.main" "-c" "spec" "target/generated-acceptance/spec"]}
+           :spec {:main-opts ["-m" "speclj.main" "-c" "spec" "target/generated-acceptance/spec"]
+                  :extra-paths ["spec" "target/generated-acceptance/spec"]}
+           :acceptance {:main-opts ["-m" "speclj.main" "-c" "target/generated-acceptance/spec"]
+                        :extra-paths ["target/generated-acceptance/spec"]}
+           :gherkin-json {:main-opts ["-m" "skillBoard.gherkin"]}
+           :generate-acceptance {:main-opts ["-m" "skillBoard.acceptance-generator"]}
            :skillBoard {:main-opts [-m skillBoard.core]}
            :run {:main-opts [-m skillBoard.core]}
            :cljs {:main-opts ["-m" "cljs.main"
@@ -21,6 +25,11 @@
            :cov {:main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec"]
                  :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}}
                  :extra-paths ["spec"]}
+           :scrap {:main-opts ["-m" "scrap.core"]
+                   :extra-deps {io.github.unclebob/scrap
+                                {:git/url "https://github.com/unclebob/scrap.git"
+                                 :git/sha "f793b28906d3c60e30b128e1ec08df6269a72b13"}}
+                   :extra-paths ["spec"]}
            :mutate {:main-opts ["-m" "clj-mutate.core"]
                     :extra-deps {io.github.unclebob/clj-mutate
                                  {:git/url "https://github.com/unclebob/clj-mutate.git"
@@ -36,6 +45,10 @@
                                 {:git/url "https://github.com/unclebob/speclj-structure-check.git"
                                  :git/sha "7cc804c4e99b3482ca1d8a26b735ed41751a03ab"}}
                    :extra-paths ["spec"]}
+           :spec-check {:main-opts ["-m" "speclj-structure-check.core"]
+                        :extra-deps {io.github.unclebob/speclj-structure-check
+                                     {:git/url "https://github.com/unclebob/speclj-structure-check.git"
+                                      :git/sha "7cc804c4e99b3482ca1d8a26b735ed41751a03ab"}}
+                        :extra-paths ["spec"]}
            }
  }
-
