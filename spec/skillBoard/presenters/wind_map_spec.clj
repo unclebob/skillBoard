@@ -3,7 +3,40 @@
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenters.wind-map :as wind-map]
+    [skillBoard.presenters.wind-map.particles :as particles]
+    [skillBoard.wind-data :as wind-data]
+    [quil.core :as q]
     [speclj.core :refer :all]))
+
+(defn- fake-graphics
+  ([calls] (fake-graphics calls 600 400))
+  ([calls width height]
+   (let [graphics (proxy [processing.core.PGraphics] []
+                    (beginDraw [] (swap! calls conj [:begin-draw]))
+                    (endDraw [] (swap! calls conj [:end-draw]))
+                    (beginShape [] (swap! calls conj [:begin-shape]))
+                    (endShape [] (swap! calls conj [:end-shape]))
+                    (noFill [] (swap! calls conj [:no-fill]))
+                    (stroke
+                      ([gray] (swap! calls conj [:stroke gray]))
+                      ([r g b] (swap! calls conj [:stroke r g b]))
+                      ([r g b a] (swap! calls conj [:stroke r g b a])))
+                    (strokeWeight [weight] (swap! calls conj [:stroke-weight weight]))
+                    (fill
+                      ([gray] (swap! calls conj [:fill gray]))
+                      ([r g b] (swap! calls conj [:fill r g b]))
+                      ([r g b a] (swap! calls conj [:fill r g b a])))
+                    (ellipse [x y w h] (swap! calls conj [:ellipse x y w h]))
+                    (textFont [font] (swap! calls conj [:text-font font]))
+                    (textAlign
+                      ([align-x] (swap! calls conj [:text-align align-x]))
+                      ([align-x align-y] (swap! calls conj [:text-align align-x align-y])))
+                    (textSize [size] (swap! calls conj [:text-size size]))
+                    (text [text x y] (swap! calls conj [:text text x y]))
+                    (vertex [x y] (swap! calls conj [:vertex x y])))]
+     (set! (.-width graphics) width)
+     (set! (.-height graphics) height)
+     graphics)))
 
 (describe "wind map presenter"
   (it "initializes particles across the current drawing bounds"
@@ -33,13 +66,13 @@
   (it "initializes particles when empty or size changes"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
           grid {:points [{:lat 42.0 :lon -87.0 :u 1 :v 0}]}]
-      (with-redefs [wind-map/particles (atom [{:x -1 :y -1}])
-                    wind-map/particle-field-size (atom [600 400])]
+      (with-redefs [particles/particles (atom [{:x -1 :y -1}])
+                    particles/particle-field-size (atom [600 400])]
         (wind-map/ensure-particles! bounds grid 600 400 5000)
-        (should= [{:x -1 :y -1}] @wind-map/particles)
+        (should= [{:x -1 :y -1}] @particles/particles)
         (wind-map/ensure-particles! bounds grid 601 400 5000)
-        (should= config/wind-map-particle-count (count @wind-map/particles))
-        (should= [601 400] @wind-map/particle-field-size))))
+        (should= config/wind-map-particle-count (count @particles/particles))
+        (should= [601 400] @particles/particle-field-size))))
 
   (it "fades particles in, holds them, fades them out by their own lifetime, then marks them dead"
     (let [particle {:born-at 1000 :life-ms 2500}]
@@ -72,7 +105,11 @@
 
   (it "converts configured marker color keywords to RGB"
     (should= [0 255 0] (wind-map/color-rgb config/vfr-color))
+    (should= [70 150 255] (wind-map/color-rgb :blue))
     (should= [255 60 60] (wind-map/color-rgb config/ifr-color))
+    (should= [255 0 255] (wind-map/color-rgb :magenta))
+    (should= [255 235 90] (wind-map/color-rgb :yellow))
+    (should= [255 255 255] (wind-map/color-rgb :white))
     (should= [255 255 255] (wind-map/color-rgb :unknown)))
 
   (it "creates flight category airport markers from nearby polled metars"
@@ -137,10 +174,24 @@
       (should= 303.6 (double x2))
       (should= 195.2 (double y2))))
 
+  (it "uses a zero-length segment when wind speed is zero"
+    (should= [300 200]
+             (wind-map/particle-segment-end {:x 300 :y 200 :u 0 :v 0 :speed 0})))
+
+  (it "maps wind speeds to particle colors"
+    (should= [155 210 255 205] (wind-map/wind-color 4))
+    (should= [165 255 190 220] (wind-map/wind-color 14))
+    (should= [255 242 125 235] (wind-map/wind-color 24))
+    (should= [255 135 135 245] (wind-map/wind-color 25)))
+
   (it "scales particle line segment length with wind speed"
     (should= 5 (wind-map/particle-segment-length 0))
     (should= 12.0 (wind-map/particle-segment-length 10))
     (should= 34 (wind-map/particle-segment-length 100)))
+
+  (it "computes repeatable particle coordinates from fractional salt"
+    (should= 50.0 (wind-map/particle-coordinate 0 100 1.5))
+    (should= 25.0 (wind-map/particle-coordinate 1 100 1.125)))
 
   (it "projects and unprojects coordinates"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
@@ -161,11 +212,17 @@
       (should= {:lat 43.0 :lon -88.0 :u 9 :v 8}
                (wind-map/nearest-wind grid 42.9 -88.1))))
 
+  (it "uses calm wind when nearest wind has no points"
+    (should= {:u 0 :v 0} (wind-map/nearest-wind {:points []} 42.0 -87.0)))
+
   (it "interpolates nearby wind vectors"
     (let [grid {:points [{:lat 42.0 :lon -87.0 :u 10 :v 0}
                          {:lat 42.0 :lon -88.0 :u 0 :v 10}]}]
       (should= {:u 5.0 :v 5.0}
                (wind-map/interpolated-wind grid 42.0 -87.5))))
+
+  (it "uses calm wind when interpolation has no points"
+    (should= {:u 0 :v 0} (wind-map/interpolated-wind {:points []} 42.0 -87.0)))
 
   (it "computes wind speed"
     (should= 5.0 (wind-map/wind-speed {:u 3 :v 4})))
@@ -218,4 +275,127 @@
   (it "provides fallback text for split-flap summaries"
     (should= [{:line "SURFACE WINDS" :color config/info-color}
               {:line "OPEN-METEO 10M WIND FIELD" :color config/info-color}]
-             (wind-map/make-wind-map-screen))))
+             (wind-map/make-wind-map-screen)))
+
+  (it "draws airport, marker, outline, particle, and source label with Quil calls"
+    (let [calls (atom [])
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          outline {:name "WI"
+                   :bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+                   :rings [[[44.0 -90.0] [44.0 -84.0] [40.0 -84.0] [40.0 -90.0]]]}
+          marker {:airport "KUGN" :lat 42.0 :lon -87.0 :color config/vfr-color :airspace-class "D"}]
+      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/stroke (fn [& args] (swap! calls conj (into [:stroke] args)))
+                    q/stroke-weight (fn [& args] (swap! calls conj (into [:stroke-weight] args)))
+                    q/ellipse (fn [& args] (swap! calls conj (into [:ellipse] args)))
+                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))
+                    q/no-fill (fn [& args] (swap! calls conj (into [:no-fill] args)))
+                    q/begin-shape (fn [& args] (swap! calls conj (into [:begin-shape] args)))
+                    q/end-shape (fn [& args] (swap! calls conj (into [:end-shape] args)))
+                    q/vertex (fn [& args] (swap! calls conj (into [:vertex] args)))
+                    q/line (fn [& args] (swap! calls conj (into [:line] args)))]
+        (wind-map/draw-airport! bounds 600 400)
+        (wind-map/draw-flight-category-airport! bounds 600 400 marker)
+        (wind-map/draw-state-outline! bounds 600 400 outline)
+        (wind-map/draw-source-label! {:source :synthetic :radius-nm 150} 400)
+        (wind-map/draw-particle! {:x 300 :y 200 :u 3 :v 4 :speed 5 :opacity 0.5})
+        (should (some (fn [[op _ _ w h]]
+                        (and (= :ellipse op)
+                             (= 10.0 (double w))
+                             (= 10.0 (double h))))
+                      @calls))
+        (should (some (fn [[op x y w h]]
+                        (and (= :ellipse op)
+                             (= 300.0 (double x))
+                             (= 200.0 (double y))
+                             (= 11.0 (double w))
+                             (= 11.0 (double h))))
+                      @calls))
+        (should-contain [:text "KUGN" 308.0 200.0] @calls)
+        (should-contain [:text "WI" 300.0 200.0] @calls)
+        (should-contain [:text "Source: synthetic  Radius: 150 NM" 20 380] @calls)
+        (should-contain [:line 300 200 303.6 195.2] @calls))))
+
+  (it "skips drawing unlabeled or coordinate-less airport markers"
+    (let [calls (atom [])
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}]
+      (with-redefs [q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/stroke (fn [& args] (swap! calls conj (into [:stroke] args)))
+                    q/stroke-weight (fn [& args] (swap! calls conj (into [:stroke-weight] args)))
+                    q/ellipse (fn [& args] (swap! calls conj (into [:ellipse] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (wind-map/draw-flight-category-airport! bounds 600 400 {:airport "KAAA" :color :green})
+        (wind-map/draw-flight-category-airport! bounds 600 400 {:airport "KBBB" :lat 42.0 :lon -87.0 :color :green})
+        (should-not (some #(= [:text "KAAA"] (take 2 %)) @calls))
+        (should-not (some #(= [:text "KBBB"] (take 2 %)) @calls)))))
+
+  (it "draws layer-backed airports, outlines, and source labels"
+    (let [calls (atom [])
+          layer (fake-graphics calls)
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          outline {:name "IL"
+                   :bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+                   :rings [[[44.0 -90.0] [44.0 -84.0] [40.0 -84.0] [40.0 -90.0]]]}
+          marker {:airport "KORD" :lat 42.0 :lon -87.0 :color :yellow :airspace-class "B"}]
+      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+                    wind-map/state-outlines (fn [] [outline])]
+        (#'wind-map/draw-layer-flight-category-airport! layer bounds 600 400 marker)
+        (#'wind-map/draw-layer-flight-category-airport! layer bounds 600 400 {:airport "KAAA" :color :green})
+        (#'wind-map/draw-layer-state-outline! layer bounds 600 400 outline)
+        (#'wind-map/draw-layer-state-outlines! layer bounds 600 400)
+        (#'wind-map/draw-layer-source-label! layer {:source :open-meteo :radius-nm 200} 400)
+        (should-contain [:ellipse 300.0 200.0 11.0 11.0] @calls)
+        (should-contain [:text "KORD" 308.0 200.0] @calls)
+        (should-contain [:text "IL" 300.0 200.0] @calls)
+        (should-contain [:text "Source: open-meteo  Radius: 200 NM" 20.0 380.0] @calls))))
+
+  (it "draws the cached map layer before updated particles"
+    (let [calls (atom [])
+          particle-store (atom [{:id 1}])
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          grid {:center [42.0 -87.0] :radius-nm 100}]
+      (with-redefs [wind-data/current-grid (fn [] grid)
+                    wind-data/radius-bounds (fn [center radius-nm]
+                                              (swap! calls conj [:bounds center radius-nm])
+                                              bounds)
+                    q/width (fn [] 600)
+                    q/height (fn [] 400)
+                    wind-map/particles particle-store
+                    wind-map/flight-category-airport-markers (fn [] [{:airport "KORD"}])
+                    wind-map/static-map-layer (fn [received-bounds width height received-grid markers]
+                                                (swap! calls conj [:layer received-bounds width height received-grid markers])
+                                                :layer)
+                    wind-map/ensure-particles! (fn [received-bounds received-grid width height now]
+                                                 (swap! calls conj [:ensure received-bounds received-grid width height (integer? now)]))
+                    wind-map/step-particle (fn [received-bounds received-grid width height now particle]
+                                             (swap! calls conj [:step received-bounds received-grid width height (integer? now) particle])
+                                             (assoc particle :updated true))
+                    q/image (fn [& args] (swap! calls conj (into [:image] args)))
+                    wind-map/draw-particle! (fn [particle] (swap! calls conj [:particle particle]))]
+        (wind-map/draw-wind-map!)
+        (should-contain [:bounds [42.0 -87.0] 100] @calls)
+        (should-contain [:layer bounds 600 400 grid [{:airport "KORD"}]] @calls)
+        (should-contain [:image :layer 0 0] @calls)
+        (should-contain [:particle {:id 1 :updated true}] @calls)
+        (should= [{:id 1 :updated true}] @particle-store))))
+
+  (it "reuses and rerenders static map layers by cache key"
+    (let [calls (atom [])
+          layer (fake-graphics calls)
+          renders (atom 0)
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          grid {:source :synthetic :radius-nm 100}
+          markers []]
+      (with-redefs-fn {#'wind-map/static-map-layer-cache (atom {:key nil :layer nil})
+                       #'q/create-graphics (fn [_ _] layer)
+                       #'wind-map/render-static-map-layer! (fn [& _] (swap! renders inc))}
+        (fn []
+          (should= layer (wind-map/static-map-layer bounds 600 400 grid markers))
+          (should= layer (wind-map/static-map-layer bounds 600 400 grid markers))
+          (should= 1 @renders)
+          (should= layer (wind-map/static-map-layer bounds 601 400 grid markers))
+          (should= 2 @renders))))))
