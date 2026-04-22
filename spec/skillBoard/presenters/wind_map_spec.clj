@@ -174,6 +174,16 @@
       (should= 303.6 (double x2))
       (should= 195.2 (double y2))))
 
+  (it "scales particle line segments with the drawing area"
+    (should= 1.0 (wind-map/particle-segment-screen-scale 600 400))
+    (should= 5.0 (wind-map/particle-segment-length 600 400 0))
+    (should= 10.0 (wind-map/particle-segment-length 1200 800 0))
+    (should= 24.0 (wind-map/particle-segment-length 1200 800 10))
+    (should= 68.0 (wind-map/particle-segment-length 1200 800 100))
+    (let [[x2 y2] (wind-map/particle-segment-end 1200 800 {:x 300 :y 200 :u 3 :v 4 :speed 5})]
+      (should= 307.2 (double x2))
+      (should= 190.4 (double y2))))
+
   (it "uses a zero-length segment when wind speed is zero"
     (should= [300 200]
              (wind-map/particle-segment-end {:x 300 :y 200 :u 0 :v 0 :speed 0})))
@@ -185,9 +195,9 @@
     (should= [255 135 135 245] (wind-map/wind-color 25)))
 
   (it "scales particle line segment length with wind speed"
-    (should= 5 (wind-map/particle-segment-length 0))
+    (should= 5.0 (wind-map/particle-segment-length 0))
     (should= 12.0 (wind-map/particle-segment-length 10))
-    (should= 34 (wind-map/particle-segment-length 100)))
+    (should= 34.0 (wind-map/particle-segment-length 100)))
 
   (it "computes repeatable particle coordinates from fractional salt"
     (should= 50.0 (wind-map/particle-coordinate 0 100 1.5))
@@ -302,7 +312,7 @@
         (wind-map/draw-flight-category-airport! bounds 600 400 marker)
         (wind-map/draw-state-outline! bounds 600 400 outline)
         (wind-map/draw-source-label! {:source :synthetic :radius-nm 150} 400)
-        (wind-map/draw-particle! {:x 300 :y 200 :u 3 :v 4 :speed 5 :opacity 0.5})
+        (wind-map/draw-particle! 600 400 {:x 300 :y 200 :u 3 :v 4 :speed 5 :opacity 0.5})
         (should (some (fn [[op _ _ w h]]
                         (and (= :ellipse op)
                              (= 10.0 (double w))
@@ -375,12 +385,13 @@
                                              (swap! calls conj [:step received-bounds received-grid width height (integer? now) particle])
                                              (assoc particle :updated true))
                     q/image (fn [& args] (swap! calls conj (into [:image] args)))
-                    wind-map/draw-particle! (fn [particle] (swap! calls conj [:particle particle]))]
+                    wind-map/draw-particle! (fn [width height particle]
+                                              (swap! calls conj [:particle width height particle]))]
         (wind-map/draw-wind-map!)
         (should-contain [:bounds [42.0 -87.0] 100] @calls)
         (should-contain [:layer bounds 600 400 grid [{:airport "KORD"}]] @calls)
         (should-contain [:image :layer 0 0] @calls)
-        (should-contain [:particle {:id 1 :updated true}] @calls)
+        (should-contain [:particle 600 400 {:id 1 :updated true}] @calls)
         (should= [{:id 1 :updated true}] @particle-store))))
 
   (it "reuses and rerenders static map layers by cache key"

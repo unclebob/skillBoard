@@ -11,6 +11,7 @@
 (def particle-segment-min-length 5)
 (def particle-segment-max-length 34)
 (def particle-segment-pixels-per-knot 1.2)
+(def particle-segment-base-screen-size 400)
 (def particle-fade-in-ms 500)
 (def particle-fade-out-ms 500)
 (def particle-min-life-ms 2000)
@@ -165,26 +166,39 @@
           :opacity (particle-opacity now particle)
           :age age)))))
 
-(defn particle-segment-length [speed]
-  (min particle-segment-max-length
-       (max particle-segment-min-length
-            (* speed particle-segment-pixels-per-knot))))
+(defn particle-segment-screen-scale [width height]
+  (/ (double (min width height)) particle-segment-base-screen-size))
 
-(defn particle-segment-end [{:keys [x y u v speed] :or {u 0 v 0}}]
-  (let [speed (if (some? speed) speed (wind-speed {:u u :v v}))]
-    (if (pos? speed)
-      (let [length (particle-segment-length speed)]
-        [(+ x (* (/ u speed) length))
-         (- y (* (/ v speed) length))])
-      [x y])))
+(defn particle-segment-length
+  ([speed]
+   (particle-segment-length 600 400 speed))
+  ([width height speed]
+   (let [screen-scale (particle-segment-screen-scale width height)]
+     (min (* particle-segment-max-length screen-scale)
+          (max (* particle-segment-min-length screen-scale)
+               (* speed particle-segment-pixels-per-knot screen-scale))))))
 
-(defn draw-particle! [particle]
-  (let [[r g b a] (wind-color (:speed particle 0))
-        a (* a (:opacity particle 1.0))
-        [x2 y2] (particle-segment-end particle)]
-    (q/stroke-weight 2)
-    (q/stroke r g b a)
-    (q/line (:x particle) (:y particle) x2 y2)))
+(defn particle-segment-end
+  ([particle]
+   (particle-segment-end 600 400 particle))
+  ([width height {:keys [x y u v speed] :or {u 0 v 0}}]
+   (let [speed (if (some? speed) speed (wind-speed {:u u :v v}))]
+     (if (pos? speed)
+       (let [length (particle-segment-length width height speed)]
+         [(+ x (* (/ u speed) length))
+          (- y (* (/ v speed) length))])
+       [x y]))))
+
+(defn draw-particle!
+  ([particle]
+   (draw-particle! (q/width) (q/height) particle))
+  ([width height particle]
+   (let [[r g b a] (wind-color (:speed particle 0))
+         a (* a (:opacity particle 1.0))
+         [x2 y2] (particle-segment-end width height particle)]
+     (q/stroke-weight 2)
+     (q/stroke r g b a)
+     (q/line (:x particle) (:y particle) x2 y2))))
 
 ;; clj-mutate-manifest-begin
 ;; {:version 1, :tested-at "2026-04-21T15:37:29.192711-05:00", :module-hash "974971153", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "605353130"} {:id "def/particles", :kind "def", :line 8, :end-line 8, :hash "-805035099"} {:id "def/particle-field-size", :kind "def", :line 9, :end-line 9, :hash "-1679469677"} {:id "def/animation-seconds-per-frame", :kind "def", :line 10, :end-line 10, :hash "636313673"} {:id "def/particle-segment-min-length", :kind "def", :line 11, :end-line 11, :hash "671707306"} {:id "def/particle-segment-max-length", :kind "def", :line 12, :end-line 12, :hash "-1062122780"} {:id "def/particle-segment-pixels-per-knot", :kind "def", :line 13, :end-line 13, :hash "602699003"} {:id "def/particle-fade-in-ms", :kind "def", :line 14, :end-line 14, :hash "1336373797"} {:id "def/particle-fade-out-ms", :kind "def", :line 15, :end-line 15, :hash "1556980209"} {:id "def/particle-min-life-ms", :kind "def", :line 16, :end-line 16, :hash "609523084"} {:id "def/particle-max-life-ms", :kind "def", :line 17, :end-line 17, :hash "670977351"} {:id "defn-/fractional-part", :kind "defn-", :line 19, :end-line 20, :hash "720073750"} {:id "defn/particle-coordinate", :kind "defn", :line 22, :end-line 23, :hash "-337514268"} {:id "defn/project-point", :kind "defn", :line 25, :end-line 28, :hash "-1445133276"} {:id "defn/unproject-point", :kind "defn", :line 30, :end-line 33, :hash "-1531146905"} {:id "defn/nearest-wind", :kind "defn", :line 35, :end-line 43, :hash "-1823228980"} {:id "defn-/wind-distance", :kind "defn-", :line 45, :end-line 46, :hash "-895157327"} {:id "defn/interpolated-wind", :kind "defn", :line 48, :end-line 62, :hash "1971759617"} {:id "defn/wind-speed", :kind "defn", :line 64, :end-line 65, :hash "-963648133"} {:id "defn-/wind-pixel-delta", :kind "defn-", :line 67, :end-line 76, :hash "-1769679956"} {:id "defn-/visible-particle-opacity", :kind "defn-", :line 78, :end-line 83, :hash "-23369782"} {:id "defn/particle-opacity", :kind "defn", :line 85, :end-line 90, :hash "-1712976452"} {:id "defn/particle-dead?", :kind "defn", :line 92, :end-line 93, :hash "-139136810"} {:id "defn/random-particle", :kind "defn", :line 95, :end-line 105, :hash "-45960960"} {:id "defn/initial-particle", :kind "defn", :line 107, :end-line 112, :hash "1303165161"} {:id "defn/make-particles", :kind "defn", :line 114, :end-line 116, :hash "-675656271"} {:id "defn-/reset-particles!", :kind "defn-", :line 118, :end-line 121, :hash "-1046136234"} {:id "defn/ensure-particles!", :kind "defn", :line 123, :end-line 127, :hash "1971030647"} {:id "def/wind-color-thresholds", :kind "def", :line 129, :end-line 132, :hash "593332343"} {:id "def/strong-wind-color", :kind "def", :line 134, :end-line 134, :hash "-918366031"} {:id "defn/wind-color", :kind "defn", :line 136, :end-line 140, :hash "300582635"} {:id "defn-/out-of-bounds?", :kind "defn-", :line 142, :end-line 146, :hash "1290138187"} {:id "defn/step-particle", :kind "defn", :line 148, :end-line 166, :hash "769620711"} {:id "defn/particle-segment-length", :kind "defn", :line 168, :end-line 171, :hash "1511418725"} {:id "defn/particle-segment-end", :kind "defn", :line 173, :end-line 179, :hash "218024992"} {:id "defn/draw-particle!", :kind "defn", :line 181, :end-line 187, :hash "689326613"}]}

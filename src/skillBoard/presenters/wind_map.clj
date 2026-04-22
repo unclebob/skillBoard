@@ -17,6 +17,7 @@
 (def particle-segment-min-length wind-particles/particle-segment-min-length)
 (def particle-segment-max-length wind-particles/particle-segment-max-length)
 (def particle-segment-pixels-per-knot wind-particles/particle-segment-pixels-per-knot)
+(def particle-segment-screen-scale wind-particles/particle-segment-screen-scale)
 (def particle-fade-in-ms wind-particles/particle-fade-in-ms)
 (def particle-fade-out-ms wind-particles/particle-fade-out-ms)
 (def particle-min-life-ms wind-particles/particle-min-life-ms)
@@ -335,7 +336,7 @@
     (reset! particles updated)
     (q/image layer 0 0)
     (doseq [particle updated]
-      (draw-particle! particle))))
+      (draw-particle! width height particle))))
 
 (defmethod screen/draw-body :wind-map [_ _state]
   (draw-wind-map!)
