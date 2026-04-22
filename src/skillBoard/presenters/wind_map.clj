@@ -23,6 +23,7 @@
 (def particle-segment-max-length wind-particles/particle-segment-max-length)
 (def particle-segment-pixels-per-knot wind-particles/particle-segment-pixels-per-knot)
 (def particle-segment-screen-scale wind-particles/particle-segment-screen-scale)
+(def particle-motion-screen-scale wind-particles/particle-motion-screen-scale)
 (def particle-fade-in-ms wind-particles/particle-fade-in-ms)
 (def particle-fade-out-ms wind-particles/particle-fade-out-ms)
 (def particle-min-life-ms wind-particles/particle-min-life-ms)

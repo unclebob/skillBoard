@@ -15,6 +15,8 @@
 (def particle-segment-max-length 34)
 (def particle-segment-pixels-per-knot 0.6)
 (def particle-segment-base-screen-size 400)
+(def particle-motion-base-screen-size 400)
+(def particle-motion-speed-scale (/ 1.0 6.0))
 (def particle-fade-in-ms 500)
 (def particle-fade-out-ms 500)
 (def particle-min-life-ms 2000)
@@ -70,6 +72,9 @@
 (defn wind-speed [{:keys [u v]}]
   (Math/sqrt (+ (* u u) (* v v))))
 
+(defn particle-motion-screen-scale [width height]
+  (/ (double (min width height)) particle-motion-base-screen-size))
+
 (defn- wind-pixel-factors
   [{:keys [top bottom left right]} width height]
   (let [center-lat (/ (+ top bottom) 2.0)
@@ -77,9 +82,10 @@
         vertical-nm (* 60.0 (- top bottom))
         hours-per-frame (/ animation-seconds-per-frame 3600.0)
         px-per-nm-x (/ width horizontal-nm)
-        px-per-nm-y (/ height vertical-nm)]
-    {:dx-per-knot (* hours-per-frame px-per-nm-x)
-     :dy-per-knot (* hours-per-frame px-per-nm-y)}))
+        px-per-nm-y (/ height vertical-nm)
+        screen-scale (particle-motion-screen-scale width height)]
+    {:dx-per-knot (* hours-per-frame px-per-nm-x screen-scale particle-motion-speed-scale)
+     :dy-per-knot (* hours-per-frame px-per-nm-y screen-scale particle-motion-speed-scale)}))
 
 (defn- wind-pixel-delta
   ([{:keys [u v]} {:keys [dx-per-knot dy-per-knot]}]

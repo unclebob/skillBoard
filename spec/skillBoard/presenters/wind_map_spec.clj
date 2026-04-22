@@ -196,6 +196,23 @@
       (should= 306.0 (double x2))
       (should= 192.0 (double y2))))
 
+  (it "scales particle motion with the drawing area"
+    (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          base-frame (wind-map/particle-frame bounds {:points []} 600 400)
+          high-res-frame (wind-map/particle-frame bounds {:points []} 1200 800)]
+      (should= 1.0 (wind-map/particle-motion-screen-scale 600 400))
+      (should= 2.0 (wind-map/particle-motion-screen-scale 1200 800))
+      (should= (* 4 (:dx-per-knot base-frame)) (:dx-per-knot high-res-frame))
+      (should= (* 4 (:dy-per-knot base-frame)) (:dy-per-knot high-res-frame))))
+
+  (it "compresses particle velocity after screen scaling"
+    (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          reduced-frame (wind-map/particle-frame bounds {:points []} 600 400)]
+      (with-redefs [particles/particle-motion-speed-scale 1.0]
+        (let [full-speed-frame (wind-map/particle-frame bounds {:points []} 600 400)]
+          (should= (* (/ 1.0 6.0) (:dx-per-knot full-speed-frame)) (:dx-per-knot reduced-frame))
+          (should= (* (/ 1.0 6.0) (:dy-per-knot full-speed-frame)) (:dy-per-knot reduced-frame))))))
+
   (it "uses a zero-length segment when wind speed is zero"
     (should= [300 200]
              (wind-map/particle-segment-end {:x 300 :y 200 :u 0 :v 0 :speed 0})))
@@ -330,9 +347,10 @@
 
   (it "replaces particles that leave the map instead of wrapping them"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
-          grid {:points [{:lat 42.0 :lon -87.0 :u 10000 :v 0}]}
+          grid {:points [{:lat 42.0 :lon -87.0 :u 100000 :v 0}]}
           particle {:x 599 :y 200 :seed 5 :age 3 :born-at 1000}]
       (with-redefs [rand (fn [size] (* size 0.5))]
+        (reset! wind-map/wind-field-cache {:key nil :field nil})
         (let [replacement (wind-map/step-particle bounds grid 600 400 2500 particle)]
           (should= 300.0 (:x replacement))
           (should= 200.0 (:y replacement))
