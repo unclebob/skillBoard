@@ -1,6 +1,8 @@
 (ns skillBoard.wind-data-spec
   (:require
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.core-utils :as core-utils]
     [skillBoard.wind-data :as wind-data]
     [speclj.core :refer :all]))
 
@@ -44,6 +46,7 @@
                               :wind_direction_10m [270.0]}}]
           grid (wind-data/open-meteo-response->grid [42.0 -87.0] 200 points response)]
       (should= :open-meteo-gfs-hrrr (:source grid))
+      (should (integer? (:generated-at-ms grid)))
       (should= 2 (count (:points grid)))
       (let [{:keys [lat lon u v]} (first (:points grid))]
         (should= 42.0 lat)
@@ -62,9 +65,29 @@
         (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! (+ 1000 1200000)))
         (should= [:poll :poll] @polls))))
 
+  (it "marks Open-Meteo healthy after successful refresh without changing aviation weather errors"
+    (with-redefs [wind-data/polled-wind-grid (atom nil)
+                  comm/weather-com-errors (atom 4)
+                  comm/open-meteo-ok? (atom false)
+                  wind-data/fetch-open-meteo-grid (fn [] {:source :open-meteo-gfs})]
+      (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid!))
+      (should= true @comm/open-meteo-ok?)
+      (should= 4 @comm/weather-com-errors)))
+
+  (it "marks Open-Meteo unhealthy after refresh failures without changing aviation weather errors"
+    (with-redefs [wind-data/polled-wind-grid (atom :last-good-grid)
+                  comm/weather-com-errors (atom 3)
+                  comm/open-meteo-ok? (atom true)
+                  core-utils/log (fn [& _])
+                  wind-data/fetch-open-meteo-grid (fn [] (throw (ex-info "rate limited" {})))]
+      (should= :last-good-grid (wind-data/refresh-wind-grid!))
+      (should= false @comm/open-meteo-ok?)
+      (should= 3 @comm/weather-com-errors)))
+
   (it "creates a synthetic fallback grid"
     (let [grid (wind-data/synthetic-grid)]
       (should= :synthetic (:source grid))
+      (should (integer? (:generated-at-ms grid)))
       (should= config/wind-map-radius-nm (:radius-nm grid))
       (should-not-be empty? (:points grid))))
 

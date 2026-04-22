@@ -378,10 +378,20 @@
     (q/fill r g b)
     (q/ellipse pos y 10 10)))
 
+(defn- weather-status-light-rgb []
+  (if @comm/open-meteo-ok?
+    (status-light-rgb @comm/weather-com-errors)
+    [255 0 0]))
+
+(defn- draw-weather-status-light! [pos]
+  (let [[r g b] (weather-status-light-rgb)]
+    (q/fill r g b)
+    (q/ellipse pos 50 10 10)))
+
 (defn- display-com-errors! [pos]
   (draw-status-light! pos 20 @comm/reservation-com-errors)
   (draw-status-light! pos 35 @comm/adsb-com-errors)
-  (draw-status-light! pos 50 @comm/weather-com-errors))
+  (draw-weather-status-light! pos))
 
 (defn- display-time! [clock-font clock-font-size now]
   (q/text-font clock-font)

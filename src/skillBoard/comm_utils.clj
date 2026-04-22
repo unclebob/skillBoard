@@ -40,6 +40,7 @@
 (def polled-metar-history (atom {}))
 (def polled-tafs (atom {}))
 (def weather-com-errors (atom 0))
+(def open-meteo-ok? (atom true))
 
 (def nearby-metar-cache-url "https://aviationweather.gov/data/cache/metars.cache.csv.gz")
 (def class-airspace-cache-url "https://nfdc.faa.gov/webContent/28DaySub/extra/16_Apr_2026_CLS_ARSP_CSV.zip")

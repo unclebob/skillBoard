@@ -117,6 +117,7 @@
     (reset! comm/reservation-com-errors 0)
     (reset! comm/adsb-com-errors 2)
     (reset! comm/weather-com-errors 4)
+    (reset! comm/open-meteo-ok? true)
     (reset! atoms/clock-pulse true)
     (reset! presenter/screen-type :test))
 
@@ -210,6 +211,11 @@
         (should= [255 0 0] (#'split-flap/status-light-rgb 4))
         (should= [255 165 0] (#'split-flap/status-light-rgb 2))
         (should= [0 255 0] (#'split-flap/status-light-rgb 0))
+        (reset! comm/weather-com-errors 0)
+        (reset! comm/open-meteo-ok? true)
+        (should= [0 255 0] (#'split-flap/weather-status-light-rgb))
+        (reset! comm/open-meteo-ok? false)
+        (should= [255 0 0] (#'split-flap/weather-status-light-rgb))
         (should (some #(= :layer-rect (first %)) @calls))
         (should (some #(= :rect (first %)) @calls))))))
 

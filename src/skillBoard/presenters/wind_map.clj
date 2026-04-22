@@ -12,6 +12,8 @@
 (def static-map-layer-cache (atom {:key nil :layer nil}))
 (def airport-marker-cache (atom {:time 0 :markers nil}))
 (def airport-marker-cache-ms 1000)
+(def stale-wind-data-ms (* 2 60 60 1000))
+(def stale-wind-data-message "WIND DATA IS OUT OF DATE")
 
 (def particles wind-particles/particles)
 (def particle-field-size wind-particles/particle-field-size)
@@ -329,6 +331,20 @@
   (q/text-size 13)
   (q/text (str "Source: " (name (:source grid)) "  Radius: " (:radius-nm grid) " NM") 20 (- height 20)))
 
+(defn stale-wind-data? [now {:keys [source generated-at-ms]}]
+  (or (= :synthetic source)
+      (nil? generated-at-ms)
+      (> (- now generated-at-ms) stale-wind-data-ms)))
+
+(defn draw-stale-wind-data-warning! [now grid width height]
+  (when (stale-wind-data? now grid)
+    (q/fill 255 60 60)
+    (when-let [font (map-label-font)]
+      (q/text-font font))
+    (q/text-align :center :bottom)
+    (q/text-size 16)
+    (q/text stale-wind-data-message (/ width 2) (- height 6))))
+
 (defn- render-static-map-layer! [layer bounds width height grid markers]
   (q/with-graphics layer
     (q/background 10 15 22)
@@ -359,6 +375,7 @@
         updated (mapv #(step-particle-with-frame frame now %) @particles)]
     (reset! particles updated)
     (q/image layer 0 0)
+    (draw-stale-wind-data-warning! now grid width height)
     (draw-particles! updated)))
 
 (defmethod screen/draw-body :wind-map [_ _state]

@@ -4,6 +4,7 @@
     [clojure.data.json :as json]
     [clojure.string :as str]
     [java-time.api :as time]
+    [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.core-utils :as core-utils]))
 
@@ -11,6 +12,9 @@
 (def last-open-meteo-poll-ms (atom nil))
 (def open-meteo-poll-interval-ms (* 20 60 1000))
 (def open-meteo-url "https://api.open-meteo.com/v1/gfs")
+
+(defn current-time-ms []
+  (System/currentTimeMillis))
 
 (defn radius-bounds [[lat lon] radius-nm]
   (let [lat-delta (/ radius-nm 60.0)
@@ -72,6 +76,7 @@
                           (map vector points responses))]
     {:source :open-meteo-gfs-hrrr
      :generated-at (str (time/local-date-time))
+     :generated-at-ms (current-time-ms)
      :center center
      :radius-nm radius-nm
      :points (vec wind-points)}))
@@ -93,9 +98,12 @@
 (defn refresh-wind-grid! []
   (try
     (when-let [grid (fetch-open-meteo-grid)]
-      (reset! polled-wind-grid grid))
+      (reset! polled-wind-grid grid)
+      (reset! comm/open-meteo-ok? true)
+      grid)
     (catch Exception e
       (core-utils/log :error (str "Error fetching wind data: " (.getMessage e)))
+      (reset! comm/open-meteo-ok? false)
       @polled-wind-grid)))
 
 (defn open-meteo-poll-due? [now]
@@ -124,6 +132,7 @@
                  {:lat lat :lon lon :u u :v v})]
     {:source :synthetic
      :generated-at (str (time/local-date-time))
+     :generated-at-ms (current-time-ms)
      :center config/airport-lat-lon
      :radius-nm config/wind-map-radius-nm
      :points (vec points)}))

@@ -405,6 +405,27 @@
         (should-contain [:text "Source: synthetic  Radius: 150 NM" 20 380] @calls)
         (should-contain [:line 300 200 303.0 196.0] @calls))))
 
+  (it "flags default or stale wind data"
+    (let [now 10000000]
+      (should (wind-map/stale-wind-data? now {:source :synthetic :generated-at-ms now}))
+      (should (wind-map/stale-wind-data? now {:source :open-meteo-gfs-hrrr}))
+      (should (wind-map/stale-wind-data? now {:source :open-meteo-gfs-hrrr
+                                              :generated-at-ms (- now wind-map/stale-wind-data-ms 1)}))
+      (should-not (wind-map/stale-wind-data? now {:source :open-meteo-gfs-hrrr
+                                                  :generated-at-ms (- now wind-map/stale-wind-data-ms)}))))
+
+  (it "draws a red stale wind data warning at the bottom of the screen"
+    (let [calls (atom [])]
+      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (wind-map/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400)
+        (should-contain [:fill 255 60 60] @calls)
+        (should-contain [:text "WIND DATA IS OUT OF DATE" 300 394] @calls))))
+
   (it "draws particle lines grouped by cached stroke"
     (let [calls (atom [])
           particles [{:x 1 :y 2 :x2 3 :y2 4 :stroke [1 2 3 4]}
@@ -457,7 +478,10 @@
     (let [calls (atom [])
           particle-store (atom [{:id 1}])
           bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
-          grid {:center [42.0 -87.0] :radius-nm 100}]
+          grid {:center [42.0 -87.0]
+                :radius-nm 100
+                :source :open-meteo-gfs-hrrr
+                :generated-at-ms Long/MAX_VALUE}]
       (with-redefs [wind-data/current-grid (fn [] grid)
                     wind-data/radius-bounds (fn [center radius-nm]
                                               (swap! calls conj [:bounds center radius-nm])
