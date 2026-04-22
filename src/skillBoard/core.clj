@@ -56,7 +56,7 @@
     (comm/get-metar-history config/airport)
     (comm/get-tafs config/taf-airport)
     (comm/get-nearby-adsb)
-    (wind-data/refresh-wind-grid!)
+    (wind-data/refresh-wind-grid-if-due!)
     (reset! atoms/log-traffic? true)
     (catch Exception e
       (core-utils/log :error e))))

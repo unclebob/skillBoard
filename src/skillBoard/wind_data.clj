@@ -8,6 +8,8 @@
     [skillBoard.core-utils :as core-utils]))
 
 (def polled-wind-grid (atom nil))
+(def last-open-meteo-poll-ms (atom nil))
+(def open-meteo-poll-interval-ms (* 20 60 1000))
 (def open-meteo-url "https://api.open-meteo.com/v1/gfs")
 
 (defn radius-bounds [[lat lon] radius-nm]
@@ -95,6 +97,18 @@
     (catch Exception e
       (core-utils/log :error (str "Error fetching wind data: " (.getMessage e)))
       @polled-wind-grid)))
+
+(defn open-meteo-poll-due? [now]
+  (or (nil? @last-open-meteo-poll-ms)
+      (>= (- now @last-open-meteo-poll-ms) open-meteo-poll-interval-ms)))
+
+(defn refresh-wind-grid-if-due!
+  ([]
+   (refresh-wind-grid-if-due! (System/currentTimeMillis)))
+  ([now]
+   (when (open-meteo-poll-due? now)
+     (reset! last-open-meteo-poll-ms now)
+     (refresh-wind-grid!))))
 
 (defn synthetic-grid []
   (let [[center-lat center-lon] config/airport-lat-lon
