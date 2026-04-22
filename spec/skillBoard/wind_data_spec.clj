@@ -54,15 +54,15 @@
         (should (< (Math/abs u) 0.001))
         (should (< (Math/abs (- 10.0 v)) 0.001)))))
 
-  (it "polls Open-Meteo immediately, then no more than once every twenty minutes"
+  (it "polls Open-Meteo immediately, then no more than once every two hours"
     (let [polls (atom [])]
       (with-redefs [wind-data/last-open-meteo-poll-ms (atom nil)
                     wind-data/refresh-wind-grid! (fn []
                                                    (swap! polls conj :poll)
                                                    {:source :open-meteo-gfs})]
         (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! 1000))
-        (should-be nil? (wind-data/refresh-wind-grid-if-due! (+ 1000 1199000)))
-        (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! (+ 1000 1200000)))
+        (should-be nil? (wind-data/refresh-wind-grid-if-due! (+ 1000 7199000)))
+        (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! (+ 1000 7200000)))
         (should= [:poll :poll] @polls))))
 
   (it "marks Open-Meteo healthy after successful refresh without changing aviation weather errors"

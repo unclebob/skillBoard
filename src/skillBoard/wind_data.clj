@@ -10,7 +10,7 @@
 
 (def polled-wind-grid (atom nil))
 (def last-open-meteo-poll-ms (atom nil))
-(def open-meteo-poll-interval-ms (* 20 60 1000))
+(def open-meteo-poll-interval-ms (* 120 60 1000))
 (def open-meteo-url "https://api.open-meteo.com/v1/gfs")
 
 (defn current-time-ms []
