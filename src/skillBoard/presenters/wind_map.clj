@@ -10,10 +10,15 @@
 
 (def state-outlines-cache (atom nil))
 (def static-map-layer-cache (atom {:key nil :layer nil}))
+(def airport-marker-cache (atom {:time 0 :markers nil}))
+(def airport-marker-cache-ms 1000)
 
 (def particles wind-particles/particles)
 (def particle-field-size wind-particles/particle-field-size)
+(def wind-field-cache wind-particles/wind-field-cache)
 (def animation-seconds-per-frame wind-particles/animation-seconds-per-frame)
+(def wind-field-cols wind-particles/wind-field-cols)
+(def wind-field-rows wind-particles/wind-field-rows)
 (def particle-segment-min-length wind-particles/particle-segment-min-length)
 (def particle-segment-max-length wind-particles/particle-segment-max-length)
 (def particle-segment-pixels-per-knot wind-particles/particle-segment-pixels-per-knot)
@@ -34,11 +39,18 @@
 (def initial-particle wind-particles/initial-particle)
 (def make-particles wind-particles/make-particles)
 (def ensure-particles! wind-particles/ensure-particles!)
+(def wind-field-key wind-particles/wind-field-key)
+(def make-wind-field wind-particles/make-wind-field)
+(def current-wind-field wind-particles/current-wind-field)
+(def sample-wind-field wind-particles/sample-wind-field)
+(def particle-frame wind-particles/particle-frame)
 (def wind-color wind-particles/wind-color)
+(def step-particle-with-frame wind-particles/step-particle-with-frame)
 (def step-particle wind-particles/step-particle)
 (def particle-segment-length wind-particles/particle-segment-length)
 (def particle-segment-end wind-particles/particle-segment-end)
 (def draw-particle! wind-particles/draw-particle!)
+(def draw-particles! wind-particles/draw-particles!)
 
 (def state-labels
   {"Wisconsin" "WI"
@@ -165,6 +177,15 @@
                          :color config/info-color}))]
     (cond-> (vec markers)
       home-marker (conj home-marker))))
+
+(defn cached-flight-category-airport-markers [now]
+  (let [{:keys [time markers]} @airport-marker-cache]
+    (if (and markers
+             (< (- now time) airport-marker-cache-ms))
+      markers
+      (let [markers (flight-category-airport-markers)]
+        (reset! airport-marker-cache {:time now :markers markers})
+        markers))))
 
 (defn label-airport? [{:keys [airspace-class]}]
   (#{"B" "C" "D"} airspace-class))
@@ -307,11 +328,12 @@
   (q/text-size 13)
   (q/text (str "Source: " (name (:source grid)) "  Radius: " (:radius-nm grid) " NM") 20 (- height 20)))
 
-(defn- render-static-map-layer! [layer bounds width height grid _markers]
+(defn- render-static-map-layer! [layer bounds width height grid markers]
   (q/with-graphics layer
     (q/background 10 15 22)
     (draw-state-outlines! bounds width height)
-    (draw-flight-category-airports! bounds width height)
+    (doseq [marker markers]
+      (draw-flight-category-airport! bounds width height marker))
     (draw-source-label! grid height)))
 
 (defn static-map-layer [bounds width height grid markers]
@@ -329,14 +351,14 @@
         width (q/width)
         height (q/height)
         now (System/currentTimeMillis)
-        markers (flight-category-airport-markers)
+        markers (cached-flight-category-airport-markers now)
         layer (static-map-layer bounds width height grid markers)
         _ (ensure-particles! bounds grid width height now)
-        updated (mapv #(step-particle bounds grid width height now %) @particles)]
+        frame (particle-frame bounds grid width height)
+        updated (mapv #(step-particle-with-frame frame now %) @particles)]
     (reset! particles updated)
     (q/image layer 0 0)
-    (doseq [particle updated]
-      (draw-particle! width height particle))))
+    (draw-particles! updated)))
 
 (defmethod screen/draw-body :wind-map [_ _state]
   (draw-wind-map!)

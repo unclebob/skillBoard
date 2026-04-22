@@ -141,6 +141,18 @@
       (should= [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :airspace-class nil}]
                (vec (wind-map/flight-category-airport-markers)))))
 
+  (it "caches flight category airport markers briefly"
+    (let [built (atom 0)]
+      (reset! wind-map/airport-marker-cache {:time 0 :markers nil})
+      (with-redefs [wind-map/flight-category-airport-markers (fn []
+                                                               (swap! built inc)
+                                                               [{:airport (str "K" @built)}])]
+        (should= [{:airport "K1"}] (wind-map/cached-flight-category-airport-markers 1000))
+        (should= [{:airport "K1"}] (wind-map/cached-flight-category-airport-markers 1500))
+        (should= 1 @built)
+        (should= [{:airport "K2"}] (wind-map/cached-flight-category-airport-markers 2101))
+        (should= 2 @built))))
+
   (it "always includes the home airport marker"
     (with-redefs [comm/polled-nearby-metars (atom {})
                   comm/polled-airspace-classes (atom {})
@@ -171,18 +183,18 @@
 
   (it "orients particle line segments with local wind"
     (let [[x2 y2] (wind-map/particle-segment-end {:x 300 :y 200 :u 3 :v 4 :speed 5})]
-      (should= 303.6 (double x2))
-      (should= 195.2 (double y2))))
+      (should= 303.0 (double x2))
+      (should= 196.0 (double y2))))
 
   (it "scales particle line segments with the drawing area"
     (should= 1.0 (wind-map/particle-segment-screen-scale 600 400))
     (should= 5.0 (wind-map/particle-segment-length 600 400 0))
     (should= 10.0 (wind-map/particle-segment-length 1200 800 0))
-    (should= 24.0 (wind-map/particle-segment-length 1200 800 10))
+    (should= 12.0 (wind-map/particle-segment-length 1200 800 10))
     (should= 68.0 (wind-map/particle-segment-length 1200 800 100))
     (let [[x2 y2] (wind-map/particle-segment-end 1200 800 {:x 300 :y 200 :u 3 :v 4 :speed 5})]
-      (should= 307.2 (double x2))
-      (should= 190.4 (double y2))))
+      (should= 306.0 (double x2))
+      (should= 192.0 (double y2))))
 
   (it "uses a zero-length segment when wind speed is zero"
     (should= [300 200]
@@ -196,7 +208,7 @@
 
   (it "scales particle line segment length with wind speed"
     (should= 5.0 (wind-map/particle-segment-length 0))
-    (should= 12.0 (wind-map/particle-segment-length 10))
+    (should= 6.0 (wind-map/particle-segment-length 10))
     (should= 34.0 (wind-map/particle-segment-length 100)))
 
   (it "computes repeatable particle coordinates from fractional salt"
@@ -234,6 +246,36 @@
   (it "uses calm wind when interpolation has no points"
     (should= {:u 0 :v 0} (wind-map/interpolated-wind {:points []} 42.0 -87.0)))
 
+  (it "builds and reuses cached screen-space wind fields"
+    (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          grid {:source :synthetic
+                :generated-at "now"
+                :radius-nm 100
+                :points [{:lat 42.0 :lon -87.0 :u 10 :v 0}
+                         {:lat 42.0 :lon -88.0 :u 0 :v 10}]}]
+      (with-redefs [particles/wind-field-cols 3
+                    particles/wind-field-rows 3]
+        (reset! wind-map/wind-field-cache {:key nil :field nil})
+        (let [field (wind-map/current-wind-field bounds grid 600 400)]
+          (should= [600 400 bounds :synthetic "now" 100 2]
+                   (wind-map/wind-field-key bounds grid 600 400))
+          (should= field (wind-map/current-wind-field bounds grid 600 400))
+          (should= 3 (:cols field))
+          (should= 3 (:rows field))
+          (should= 3 (count (:cells field)))
+          (should= 3 (count (first (:cells field))))))))
+
+  (it "samples cached screen-space wind with bilinear interpolation"
+    (let [field {:width 100
+                 :height 100
+                 :cols 2
+                 :rows 2
+                 :cells [[{:u 0 :v 0} {:u 10 :v 0}]
+                         [{:u 0 :v 10} {:u 10 :v 10}]]}]
+      (should= {:u 5.0 :v 5.0} (wind-map/sample-wind-field field 50 50))
+      (should= {:u 0.0 :v 0.0} (wind-map/sample-wind-field field -10 -10))
+      (should= {:u 10.0 :v 10.0} (wind-map/sample-wind-field field 150 150))))
+
   (it "computes wind speed"
     (should= 5.0 (wind-map/wind-speed {:u 3 :v 4})))
 
@@ -249,6 +291,21 @@
       (should= -10.0 (:v stepped))
       (should= 1.0 (:opacity stepped))
       (should= (Math/sqrt 200) (:speed stepped))))
+
+  (it "caches particle drawing endpoints and stroke colors while stepping"
+    (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          field {:width 600
+                 :height 400
+                 :cols 1
+                 :rows 1
+                 :cells [[{:u 3 :v 4}]]}
+          frame (merge {:bounds bounds :grid {:points []} :width 600 :height 400 :wind-field field}
+                       (#'particles/wind-pixel-factors bounds 600 400))
+          particle {:x 300 :y 200 :age 119 :born-at 1000}
+          stepped (wind-map/step-particle-with-frame frame 2500 particle)]
+      (should (:x2 stepped))
+      (should (:y2 stepped))
+      (should= [165 255 190 220.0] (:stroke stepped))))
 
   (it "keeps living particles regardless of age count"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
@@ -328,7 +385,22 @@
         (should-contain [:text "KUGN" 308.0 200.0] @calls)
         (should-contain [:text "WI" 300.0 200.0] @calls)
         (should-contain [:text "Source: synthetic  Radius: 150 NM" 20 380] @calls)
-        (should-contain [:line 300 200 303.6 195.2] @calls))))
+        (should-contain [:line 300 200 303.0 196.0] @calls))))
+
+  (it "draws particle lines grouped by cached stroke"
+    (let [calls (atom [])
+          particles [{:x 1 :y 2 :x2 3 :y2 4 :stroke [1 2 3 4]}
+                     {:x 5 :y 6 :x2 7 :y2 8 :stroke [1 2 3 4]}
+                     {:x 9 :y 10 :x2 11 :y2 12 :stroke [5 6 7 8]}]]
+      (with-redefs [q/stroke-weight (fn [& args] (swap! calls conj (into [:stroke-weight] args)))
+                    q/stroke (fn [& args] (swap! calls conj (into [:stroke] args)))
+                    q/line (fn [& args] (swap! calls conj (into [:line] args)))]
+        (wind-map/draw-particles! particles)
+        (should= 1 (count (filter #(= :stroke-weight (first %)) @calls)))
+        (should= 2 (count (filter #(= :stroke (first %)) @calls)))
+        (should-contain [:line 1 2 3 4] @calls)
+        (should-contain [:line 5 6 7 8] @calls)
+        (should-contain [:line 9 10 11 12] @calls))))
 
   (it "skips drawing unlabeled or coordinate-less airport markers"
     (let [calls (atom [])
@@ -375,23 +447,30 @@
                     q/width (fn [] 600)
                     q/height (fn [] 400)
                     wind-map/particles particle-store
-                    wind-map/flight-category-airport-markers (fn [] [{:airport "KORD"}])
+                    wind-map/cached-flight-category-airport-markers (fn [now]
+                                                                      (swap! calls conj [:markers (integer? now)])
+                                                                      [{:airport "KORD"}])
                     wind-map/static-map-layer (fn [received-bounds width height received-grid markers]
                                                 (swap! calls conj [:layer received-bounds width height received-grid markers])
                                                 :layer)
                     wind-map/ensure-particles! (fn [received-bounds received-grid width height now]
                                                  (swap! calls conj [:ensure received-bounds received-grid width height (integer? now)]))
-                    wind-map/step-particle (fn [received-bounds received-grid width height now particle]
-                                             (swap! calls conj [:step received-bounds received-grid width height (integer? now) particle])
-                                             (assoc particle :updated true))
+                    wind-map/particle-frame (fn [received-bounds received-grid width height]
+                                              (swap! calls conj [:frame received-bounds received-grid width height])
+                                              :frame)
+                    wind-map/step-particle-with-frame (fn [frame now particle]
+                                                        (swap! calls conj [:step frame (integer? now) particle])
+                                                        (assoc particle :updated true))
                     q/image (fn [& args] (swap! calls conj (into [:image] args)))
-                    wind-map/draw-particle! (fn [width height particle]
-                                              (swap! calls conj [:particle width height particle]))]
+                    wind-map/draw-particles! (fn [particles] (swap! calls conj [:particles particles]))]
         (wind-map/draw-wind-map!)
         (should-contain [:bounds [42.0 -87.0] 100] @calls)
+        (should-contain [:markers true] @calls)
         (should-contain [:layer bounds 600 400 grid [{:airport "KORD"}]] @calls)
+        (should-contain [:frame bounds grid 600 400] @calls)
+        (should-contain [:step :frame true {:id 1}] @calls)
         (should-contain [:image :layer 0 0] @calls)
-        (should-contain [:particle 600 400 {:id 1 :updated true}] @calls)
+        (should-contain [:particles [{:id 1 :updated true}]] @calls)
         (should= [{:id 1 :updated true}] @particle-store))))
 
   (it "reuses and rerenders static map layers by cache key"
