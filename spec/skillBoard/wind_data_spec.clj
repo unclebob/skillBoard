@@ -21,7 +21,7 @@
                       points))))
 
   (it "uses a denser default sample grid for smoother wind animation"
-    (should (< 50 (count (wind-data/sample-points [42.0 -87.0] 120)))))
+    (should= 172 (count (wind-data/sample-points [42.0 -87.0] 120))))
 
   (it "builds Open-Meteo query parameters for sampled points"
     (let [params (wind-data/open-meteo-query-params [{:lat 42.123 :lon -87.456}
@@ -54,15 +54,15 @@
         (should (< (Math/abs u) 0.001))
         (should (< (Math/abs (- 10.0 v)) 0.001)))))
 
-  (it "polls Open-Meteo immediately, then no more than once every two hours"
+  (it "polls Open-Meteo immediately, then no more than once every hour"
     (let [polls (atom [])]
       (with-redefs [wind-data/last-open-meteo-poll-ms (atom nil)
                     wind-data/refresh-wind-grid! (fn []
                                                    (swap! polls conj :poll)
                                                    {:source :open-meteo-gfs})]
         (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! 1000))
-        (should-be nil? (wind-data/refresh-wind-grid-if-due! (+ 1000 7199000)))
-        (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! (+ 1000 7200000)))
+        (should-be nil? (wind-data/refresh-wind-grid-if-due! (+ 1000 3599000)))
+        (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid-if-due! (+ 1000 3600000)))
         (should= [:poll :poll] @polls))))
 
   (it "marks Open-Meteo healthy after successful refresh without changing aviation weather errors"

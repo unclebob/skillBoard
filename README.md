@@ -4,8 +4,8 @@ SkillBoard is a Clojure-based real-time aviation display system designed for fli
 facilities. It runs as a continuous display, designed for a large wall screen, providing instructors and students with
 situational awareness for flight operations.  It integrates data from multiple sources including FlightSchedulePro for
 reservation management, Aviation Weather for meteorological information, and Radarcape for ADSB
-aircraft tracking in order to display current flight
-schedules, weather conditions, flight categories, and nearby traffic on a cycling multi-screen
+aircraft tracking, and Open-Meteo for surface wind field data in order to display current flight
+schedules, weather conditions, surface winds, flight categories, and nearby traffic on a cycling multi-screen
 interface.
 
 ## Theory of Operation
@@ -71,8 +71,11 @@ Traffic, Flights, TAF, Flight Category, and Traffic.  Those slots show five scre
    * and the METAR history for `config/airport`.
 ### Wind Map Screen
    * Presents an animated 200 NM wind field centered on `config/airport`.
+   * Uses a default `16 x 16` sample lattice over the radius bounds and keeps the in-radius points for polling.
+   * Polls Open-Meteo once every 60 minutes with 10 second socket and connection timeouts.
    * Uses cached wind grid data when available and falls back to a synthetic field.
    * Fetches 10 meter surface wind speed and direction from Open-Meteo's GFS/HRRR JSON API and converts it to local vectors.
+   * Fits the displayed map bounds to the screen aspect ratio so the wind field is not stretched on screen.
    * Plots all nearby METAR-reporting airports and labels only Class B, Class C, and Class D airports.
 ### Flight Category Screen
 ![screenshot](images/Flight%20Category%20Screen.jpg)

@@ -2,8 +2,11 @@
   (:require
     [clojure.data.json :as json]
     [quil.core :as q]
+    [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
+    [skillBoard.core-utils :as core-utils]
+    [skillBoard.presenters.utils :as utils]
     [skillBoard.presenters.wind-map.particles :as wind-particles]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.wind-data :as wind-data]))
@@ -31,6 +34,7 @@
 (def particle-min-life-ms wind-particles/particle-min-life-ms)
 (def particle-max-life-ms wind-particles/particle-max-life-ms)
 (def particle-coordinate wind-particles/particle-coordinate)
+(def fit-bounds-to-screen wind-particles/fit-bounds-to-screen)
 (def project-point wind-particles/project-point)
 (def unproject-point wind-particles/unproject-point)
 (def nearest-wind wind-particles/nearest-wind)
@@ -121,6 +125,11 @@
 (defn- airport-label-font []
   (or (:header-font @config/display-info)
       (:annotation-font @config/display-info)))
+
+(defn- metar-label-font []
+  (or (:metar-font @config/display-info)
+      (:annotation-font @config/display-info)
+      (:header-font @config/display-info)))
 
 (def flight-category-colors
   {"VFR" config/vfr-color
@@ -313,23 +322,67 @@
   (doseq [outline (state-outlines)]
     (draw-layer-state-outline! layer bounds width height outline)))
 
+(defn source-label-text [{:keys [source radius-nm generated-at-ms]}]
+  (let [time-text (if generated-at-ms
+                    (try
+                      (.format (java.time.ZonedDateTime/ofInstant
+                                 (java.time.Instant/ofEpochMilli generated-at-ms)
+                                 (java.time.ZoneId/of "UTC"))
+                               (java.time.format.DateTimeFormatter/ofPattern "HH:mm'Z'"))
+                      (catch Exception e
+                        (core-utils/log :error (str "Error formatting wind poll time: " (.getMessage e)))
+                        "unknown"))
+                    "unknown")]
+    (str "Source: " (name source) "  Radius: " radius-nm " NM  Polled: " time-text " UTC")))
+
 (defn- draw-layer-source-label! [layer grid height]
   (.fill layer 255 255 255)
   (layer-text-font! layer (map-label-font))
   (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/BOTTOM)
   (.textSize layer 13)
   (.text layer
-         (str "Source: " (name (:source grid)) "  Radius: " (:radius-nm grid) " NM")
+         (source-label-text grid)
          (float 20)
          (float (- height 20))))
 
 (defn draw-source-label! [grid height]
-  (q/fill 255 255 255)
-  (when-let [font (map-label-font)]
-    (q/text-font font))
-  (q/text-align :left :bottom)
-  (q/text-size 13)
-  (q/text (str "Source: " (name (:source grid)) "  Radius: " (:radius-nm grid) " NM") 20 (- height 20)))
+  (try
+    (q/fill 255 255 255)
+    (when-let [font (map-label-font)]
+      (q/text-font font))
+    (q/text-align :left :bottom)
+    (q/text-size 13)
+    (q/text (source-label-text grid) 20 (- height 20))
+    (catch Exception e
+      (core-utils/log :error (str "Error drawing wind source label: " (.getMessage e))))))
+
+(defn current-airport-metar-label []
+  (utils/get-short-metar config/airport))
+
+(defn- draw-layer-current-airport-metar! [layer width height]
+  (try
+    (let [{:keys [line color]} (current-airport-metar-label)
+          [r g b] (color-rgb color)]
+      (.fill layer r g b)
+      (layer-text-font! layer (metar-label-font))
+      (.textAlign layer processing.core.PConstants/RIGHT processing.core.PConstants/BOTTOM)
+      (.textSize layer 18)
+      (.text layer (str line) (float (- width 20)) (float (- height 20))))
+    (catch Exception e
+      (core-utils/log :error (str "Error drawing wind METAR label: " (.getMessage e))))))
+
+(defn draw-current-airport-metar! [width height]
+  (try
+    (let [{:keys [line color]} (current-airport-metar-label)
+          [r g b] (color-rgb color)]
+      (q/fill r g b)
+      (when-let [font (metar-label-font)]
+        (q/text-font font))
+      (q/text-align :right :bottom)
+      (q/text-size 18)
+      (q/text line (- width 20) (- height 20)))
+    (catch Exception e
+      (core-utils/log :error (str "Error drawing wind METAR label: " (.getMessage e))))))
 
 (defn stale-wind-data? [now {:keys [source generated-at-ms]}]
   (or (= :synthetic source)
@@ -351,7 +404,8 @@
     (draw-state-outlines! bounds width height)
     (doseq [marker markers]
       (draw-flight-category-airport! bounds width height marker))
-    (draw-source-label! grid height)))
+    (draw-source-label! grid height)
+    (draw-layer-current-airport-metar! layer width height)))
 
 (defn static-map-layer [bounds width height grid markers]
   (let [layer-key (static-map-layer-key bounds width height grid markers)
@@ -362,12 +416,18 @@
     (reset! static-map-layer-cache {:key layer-key :layer layer})
     layer))
 
+(defn refresh-static-map-layer-on-screen-entry! []
+  (when @atoms/screen-changed?
+    (reset! static-map-layer-cache {:key nil :layer nil})))
+
 (defn draw-wind-map! []
   (let [grid (wind-data/current-grid)
-        bounds (wind-data/radius-bounds (:center grid) (:radius-nm grid))
         width (q/width)
         height (q/height)
+        base-bounds (wind-data/radius-bounds (:center grid) (:radius-nm grid))
+        bounds (fit-bounds-to-screen base-bounds width height)
         now (System/currentTimeMillis)
+        _ (refresh-static-map-layer-on-screen-entry!)
         markers (cached-flight-category-airport-markers now)
         layer (static-map-layer bounds width height grid markers)
         _ (ensure-particles! bounds grid width height now)

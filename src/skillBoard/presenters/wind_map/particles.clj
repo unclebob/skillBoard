@@ -30,6 +30,39 @@
 (defn particle-coordinate [index size salt]
   (* size (fractional-part (* (inc index) salt))))
 
+(defn bounds-aspect-ratio-nm [{:keys [top bottom left right]}]
+  (let [center-lat (/ (+ top bottom) 2.0)
+        width-nm (* 60.0 (Math/cos (Math/toRadians center-lat)) (- right left))
+        height-nm (* 60.0 (- top bottom))]
+    (if (zero? height-nm)
+      1.0
+      (/ width-nm height-nm))))
+
+(defn fit-bounds-to-screen [{:keys [top bottom left right] :as bounds} width height]
+  (let [screen-aspect (if (zero? height) 1.0 (/ (double width) height))
+        center-lat (/ (+ top bottom) 2.0)
+        center-lon (/ (+ left right) 2.0)
+        lat-span (- top bottom)
+        lon-span (- right left)
+        bounds-aspect (bounds-aspect-ratio-nm bounds)]
+    (cond
+      (<= screen-aspect 0) bounds
+      (> screen-aspect bounds-aspect)
+      (let [target-lon-span (* lat-span (/ screen-aspect (Math/cos (Math/toRadians center-lat))))
+            lon-half-span (/ target-lon-span 2.0)]
+        {:top top
+         :bottom bottom
+         :left (- center-lon lon-half-span)
+         :right (+ center-lon lon-half-span)})
+      (< screen-aspect bounds-aspect)
+      (let [target-lat-span (* lon-span (/ (Math/cos (Math/toRadians center-lat)) screen-aspect))
+            lat-half-span (/ target-lat-span 2.0)]
+        {:top (+ center-lat lat-half-span)
+         :bottom (- center-lat lat-half-span)
+         :left left
+         :right right})
+      :else bounds)))
+
 (defn project-point [{:keys [top bottom left right]} width height lat lon]
   (let [x (* width (/ (- lon left) (- right left)))
         y (* height (/ (- top lat) (- top bottom)))]

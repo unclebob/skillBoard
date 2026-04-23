@@ -10,7 +10,7 @@
 
 (def polled-wind-grid (atom nil))
 (def last-open-meteo-poll-ms (atom nil))
-(def open-meteo-poll-interval-ms (* 120 60 1000))
+(def open-meteo-poll-interval-ms (* 60 60 1000))
 (def open-meteo-url "https://api.open-meteo.com/v1/gfs")
 
 (defn current-time-ms []
@@ -34,7 +34,7 @@
 
 (defn sample-points
   ([center radius-nm]
-   (sample-points center radius-nm 11))
+   (sample-points center radius-nm 16))
   ([center radius-nm steps]
    (let [{:keys [top bottom left right]} (radius-bounds center radius-nm)
          lat-step (/ (- top bottom) (dec steps))
@@ -89,8 +89,8 @@
                            {:accept :json
                             :as :text
                             :query-params (open-meteo-query-params points)
-                            :socket-timeout 5000
-                            :connection-timeout 5000})
+                            :socket-timeout 10000
+                            :connection-timeout 10000})
         body (json/read-str (:body response) :key-fn keyword)]
     (when (= 200 (:status response))
       (open-meteo-response->grid center radius-nm points body))))

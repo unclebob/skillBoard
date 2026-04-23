@@ -25,7 +25,7 @@
 
 (defn sample-points
   ([center radius-nm]
-   (sample-points center radius-nm 11))
+   (sample-points center radius-nm 16))
   ([center radius-nm steps]
    (let [{:keys [top bottom left right]} (radius-bounds center radius-nm)
          lat-step (/ (- top bottom) (dec steps))

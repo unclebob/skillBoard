@@ -1,5 +1,6 @@
 (ns skillBoard.presenters.wind-map-spec
   (:require
+    [skillBoard.atoms :as atoms]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.presenters.wind-map :as wind-map]
@@ -238,6 +239,15 @@
       (should= [300.0 200.0] [x y])
       (should= [42.0 -87.0] (wind-map/unproject-point bounds 600 400 x y))))
 
+  (it "fits map bounds to the screen aspect ratio to avoid stretching"
+    (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          fitted (wind-map/fit-bounds-to-screen bounds 600 400)]
+      (should= 44.0 (:top fitted))
+      (should= 40.0 (:bottom fitted))
+      (should (< (:left fitted) -90.0))
+      (should (> (:right fitted) -84.0))
+      (should (< (Math/abs (- 1.5 (particles/bounds-aspect-ratio-nm fitted))) 0.001))))
+
   (it "loads nearby state outlines from GeoJSON"
     (let [outlines (wind-map/load-state-outlines)]
       (should (some #{"WI"} (map :name outlines)))
@@ -402,7 +412,7 @@
                       @calls))
         (should-contain [:text "KUGN" 308.0 200.0] @calls)
         (should-contain [:text "WI" 300.0 200.0] @calls)
-        (should-contain [:text "Source: synthetic  Radius: 150 NM" 20 380] @calls)
+        (should-contain [:text "Source: synthetic  Radius: 150 NM  Polled: unknown UTC" 20 380] @calls)
         (should-contain [:line 300 200 303.0 196.0] @calls))))
 
   (it "flags default or stale wind data"
@@ -468,16 +478,48 @@
         (#'wind-map/draw-layer-flight-category-airport! layer bounds 600 400 {:airport "KAAA" :color :green})
         (#'wind-map/draw-layer-state-outline! layer bounds 600 400 outline)
         (#'wind-map/draw-layer-state-outlines! layer bounds 600 400)
-        (#'wind-map/draw-layer-source-label! layer {:source :open-meteo :radius-nm 200} 400)
+        (#'wind-map/draw-layer-source-label! layer {:source :open-meteo :radius-nm 200 :generated-at-ms 0} 400)
         (should-contain [:ellipse 300.0 200.0 11.0 11.0] @calls)
         (should-contain [:text "KORD" 308.0 200.0] @calls)
         (should-contain [:text "IL" 300.0 200.0] @calls)
-        (should-contain [:text "Source: open-meteo  Radius: 200 NM" 20.0 380.0] @calls))))
+        (should-contain [:text "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC" 20.0 380.0] @calls))))
+
+  (it "formats the source label with the poll time in utc"
+    (should= "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC"
+             (wind-map/source-label-text {:source :open-meteo :radius-nm 200 :generated-at-ms 0})))
+
+  (it "draws the current airport metar on the bottom right"
+    (let [calls (atom [])]
+      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil :metar-font :courier})
+                    wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
+                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (wind-map/draw-current-airport-metar! 600 400)
+        (should-contain [:fill 0 255 0] @calls)
+        (should-contain [:text-font :courier] @calls)
+        (should-contain [:text-align :right :bottom] @calls)
+        (should-contain [:text-size 18] @calls)
+        (should-contain [:text "METAR KUGN 231853Z 18012KT 10SM CLR" 580 380] @calls))))
+
+  (it "draws the cached layer metar on the bottom right"
+    (let [calls (atom [])
+          layer (fake-graphics calls)]
+      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+                    wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})]
+        (#'wind-map/draw-layer-current-airport-metar! layer 600 400)
+        (should-contain [:fill 0.0 255.0 0.0] @calls)
+        (should-contain [:text-align processing.core.PConstants/RIGHT processing.core.PConstants/BOTTOM] @calls)
+        (should-contain [:text-size 18.0] @calls)
+        (should-contain [:text "METAR KUGN 231853Z 18012KT 10SM CLR" 580.0 380.0] @calls))))
 
   (it "draws the cached map layer before updated particles"
     (let [calls (atom [])
           particle-store (atom [{:id 1}])
           bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          fitted-bounds (wind-map/fit-bounds-to-screen bounds 600 400)
           grid {:center [42.0 -87.0]
                 :radius-nm 100
                 :source :open-meteo-gfs-hrrr
@@ -508,8 +550,8 @@
         (wind-map/draw-wind-map!)
         (should-contain [:bounds [42.0 -87.0] 100] @calls)
         (should-contain [:markers true] @calls)
-        (should-contain [:layer bounds 600 400 grid [{:airport "KORD"}]] @calls)
-        (should-contain [:frame bounds grid 600 400] @calls)
+        (should-contain [:layer fitted-bounds 600 400 grid [{:airport "KORD"}]] @calls)
+        (should-contain [:frame fitted-bounds grid 600 400] @calls)
         (should-contain [:step :frame true {:id 1}] @calls)
         (should-contain [:image :layer 0 0] @calls)
         (should-contain [:particles [{:id 1 :updated true}]] @calls)
@@ -531,3 +573,9 @@
           (should= 1 @renders)
           (should= layer (wind-map/static-map-layer bounds 601 400 grid markers))
           (should= 2 @renders))))))
+
+  (it "invalidates the cached static map layer when the screen changes"
+    (with-redefs [atoms/screen-changed? (atom true)
+                  wind-map/static-map-layer-cache (atom {:key [:old] :layer :layer})]
+      (wind-map/refresh-static-map-layer-on-screen-entry!)
+      (should= {:key nil :layer nil} @wind-map/static-map-layer-cache)))
