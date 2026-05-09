@@ -123,8 +123,8 @@
   nil)
 
 (defn- map-label-font []
-  (or (:annotation-font @config/display-info)
-      (:header-font @config/display-info)))
+  (or (:header-font @config/display-info)
+      (:annotation-font @config/display-info)))
 
 (defn- airport-label-font []
   (or (:header-font @config/display-info)
@@ -343,6 +343,51 @@
 (defn- draw-layer-state-outlines! [layer bounds width height]
   (doseq [outline (state-outlines)]
     (draw-layer-state-outline! layer bounds width height outline)))
+
+(declare source-label-font-size)
+
+(def range-circle-point-count 72)
+
+(defn range-circle-lat-lon [[center-lat center-lon] radius-nm bearing-degrees]
+  (let [bearing (Math/toRadians bearing-degrees)
+        lat-radius (/ radius-nm 60.0)
+        lon-radius (/ radius-nm (* 60.0 (Math/cos (Math/toRadians center-lat))))]
+    [(+ center-lat (* lat-radius (Math/cos bearing)))
+     (+ center-lon (* lon-radius (Math/sin bearing)))]))
+
+(defn range-circle-points [{:keys [center radius-nm]}]
+  (when (and center radius-nm)
+    (let [bearings (map #(* % (/ 360.0 range-circle-point-count))
+                        (range range-circle-point-count))
+          points (mapv #(range-circle-lat-lon center radius-nm %) bearings)]
+      (conj points (first points)))))
+
+(defn range-circle-label-text [radius-nm]
+  (str "valid range: " radius-nm "NM"))
+
+(defn range-circle-label-font-size [width height]
+  (source-label-font-size width height))
+
+(defn range-circle-label-offset [width height]
+  (* 2 (range-circle-label-font-size width height)))
+
+(defn- draw-layer-valid-range-circle! [layer bounds width height {:keys [center radius-nm] :as grid}]
+  (when-let [points (range-circle-points grid)]
+    (.noFill layer)
+    (.stroke layer 255 255 255 210)
+    (.strokeWeight layer 1)
+    (.beginShape layer)
+    (doseq [[lat lon] points
+            :let [[x y] (project-point bounds width height lat lon)]]
+      (.vertex layer (float x) (float y)))
+    (.endShape layer)
+    (let [[label-lat label-lon] (range-circle-lat-lon center radius-nm 0)
+          [x y] (project-point bounds width height label-lat label-lon)]
+      (layer-text-font! layer (map-label-font))
+      (.fill layer 255 255 255)
+      (.textAlign layer processing.core.PConstants/CENTER processing.core.PConstants/TOP)
+      (.textSize layer (range-circle-label-font-size width height))
+      (.text layer (range-circle-label-text radius-nm) (float x) (float (+ y (range-circle-label-offset width height)))))))
 
 (defn ceiling-observations [markers]
   (filterv (fn [{:keys [lat lon ceiling-ft-agl]}]
@@ -668,7 +713,13 @@
                      (range 1000 (inc ceiling-overlay-max-ft) 1000)))))
 
 (defn ceiling-scale-label-font-size [width height]
-  (wind-speed-scale-label-font-size width height))
+  (* 0.9 (wind-speed-scale-label-font-size width height)))
+
+(defn ceiling-scale-label-y-offset [width height]
+  (* 0.45 (ceiling-scale-label-font-size width height)))
+
+(defn ceiling-scale-title-y-offset [width height]
+  (* 0.8 (scale-title-font-size width height)))
 
 (defn- draw-layer-ceiling-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
   (let [[r g b a] color]
@@ -680,14 +731,21 @@
   (layer-text-font! layer (map-label-font))
   (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/CENTER)
   (.textSize layer (ceiling-scale-label-font-size (:screen-width geometry) (:screen-height geometry)))
-  (.text layer (str label) (float (:label-x geometry)) (float y)))
+  (.text layer
+         (str label)
+         (float (:label-x geometry))
+         (float (+ y (ceiling-scale-label-y-offset (:screen-width geometry) (:screen-height geometry))))))
 
 (defn- draw-layer-ceiling-scale-title! [layer geometry]
   (.fill layer 255 255 255)
   (layer-text-font! layer (map-label-font))
   (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/BOTTOM)
   (.textSize layer (scale-title-font-size (:screen-width geometry) (:screen-height geometry)))
-  (.text layer "ceil" (float (:title-x geometry)) (float (- (:y geometry) 4.0))))
+  (.text layer
+         "ceil"
+         (float (:title-x geometry))
+         (float (- (:y geometry)
+                   (ceiling-scale-title-y-offset (:screen-width geometry) (:screen-height geometry))))))
 
 (defn- draw-layer-ceiling-scale! [layer width height]
   (let [geometry (ceiling-scale-geometry width height)]
@@ -729,6 +787,7 @@
     (q/background 10 15 22)
     (draw-state-outlines! bounds width height)
     (draw-layer-ceiling-overlay! layer bounds width height markers)
+    (draw-layer-valid-range-circle! layer bounds width height grid)
     (doseq [marker markers]
       (draw-flight-category-airport! bounds width height marker))
     (draw-layer-ceiling-scale! layer width height)

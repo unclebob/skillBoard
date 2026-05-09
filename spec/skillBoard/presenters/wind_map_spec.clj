@@ -197,6 +197,15 @@
                      (wind-map/static-map-layer-key bounds 600 400 grid
                                                     (assoc-in markers [0 :color] config/vfr-color)))))))
 
+  (it "computes and labels the valid range circle"
+    (let [points (wind-map/range-circle-points {:center [42.0 -87.0] :radius-nm 200})]
+      (should= (inc wind-map/range-circle-point-count) (count points))
+      (should= (first points) (last points))
+      (should= [45.333333333333336 -87.0] (first points))
+      (should= "valid range: 200NM" (wind-map/range-circle-label-text 200))
+      (should= 9 (wind-map/range-circle-label-font-size 600 400))
+      (should= 18 (wind-map/range-circle-label-offset 600 400))))
+
   (it "interpolates ceiling observations and renders clear above ten thousand feet"
     (let [observations [{:lat 42.0 :lon -87.0 :ceiling-ft-agl 500}
                         {:lat 43.0 :lon -87.0 :ceiling-ft-agl 10000}]]
@@ -451,6 +460,27 @@
         (should-contain [:text "Source: synthetic  Radius: 150 NM  Polled: unknown UTC" 20 400] @calls)
         (should-contain [:line 300 200 303.0 196.0] @calls))))
 
+  (it "uses the common sans-serif font for wind map labels, source text, and warnings"
+    (let [calls (atom [])
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          marker {:airport "KUGN" :lat 42.0 :lon -87.0 :color config/vfr-color :airspace-class "D"}]
+      (with-redefs [config/display-info (atom {:header-font :sans-serif
+                                               :annotation-font :serif})
+                    wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN" :color :green})
+                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/stroke (fn [& args] (swap! calls conj (into [:stroke] args)))
+                    q/stroke-weight (fn [& args] (swap! calls conj (into [:stroke-weight] args)))
+                    q/ellipse (fn [& args] (swap! calls conj (into [:ellipse] args)))
+                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (wind-map/draw-flight-category-airport! bounds 600 400 marker)
+        (wind-map/draw-source-label! {:source :synthetic :radius-nm 150} 600 400)
+        (wind-map/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400)
+        (should (some #(= [:text-font :sans-serif] %) @calls))
+        (should-not (some #(= [:text-font :serif] %) @calls)))))
+
   (it "flags default or stale wind data"
     (let [now 10000000]
       (should (wind-map/stale-wind-data? now {:source :synthetic :generated-at-ms now}))
@@ -519,10 +549,13 @@
         (#'wind-map/draw-layer-flight-category-airport! layer bounds 600 400 {:airport "KAAA" :color :green})
         (#'wind-map/draw-layer-state-outline! layer bounds 600 400 outline)
         (#'wind-map/draw-layer-state-outlines! layer bounds 600 400)
+        (#'wind-map/draw-layer-valid-range-circle! layer bounds 600 400 {:center [42.0 -87.0] :radius-nm 100})
         (#'wind-map/draw-layer-source-label! layer {:source :open-meteo :radius-nm 200 :generated-at-ms 0} 600 400)
         (should-contain [:ellipse 300.0 200.0 11.0 11.0] @calls)
         (should-contain [:text "KORD" 308.0 200.0] @calls)
         (should-contain [:text "IL" 300.0 200.0] @calls)
+        (should-contain [:stroke 255 255 255 210] @calls)
+        (should-contain [:text "valid range: 100NM" 300.0 51.333332] @calls)
         (should-contain [:text-size 9.0] @calls)
         (should-contain [:text "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC" 20.0 400.0] @calls))))
 
@@ -704,17 +737,21 @@
       (should-contain [:no-stroke] @calls)
       (should-contain [:rect 0.0 260.0 8.0 6.6666565] @calls)
       (should-contain [:rect 0.0 133.33333 8.0 6.6666718] @calls)
-      (should-contain [:text-size 7.92] @calls)
-      (should-contain [:text "<500" 14.0 263.33334] @calls)
-      (should-contain [:text "1K" 14.0 253.33333] @calls)
-      (should-contain [:text "5K" 14.0 200.0] @calls)
-      (should-contain [:text "10K" 14.0 133.33333] @calls)
+      (should-contain [:text-size 7.128] @calls)
+      (should-contain [:text "<500" 14.0 266.54092] @calls)
+      (should-contain [:text "1K" 14.0 256.54092] @calls)
+      (should-contain [:text "5K" 14.0 203.2076] @calls)
+      (should-contain [:text "10K" 14.0 136.54094] @calls)
       (should-contain [:text-size 9.9] @calls)
-      (should-contain [:text "ceil" 0.0 129.33333] @calls)))
+      (should-contain [:text "ceil" 0.0 125.41333] @calls)))
 
   (it "scales side scale labels and titles from the screen size"
     (should= 7.92 (wind-map/wind-speed-scale-label-font-size 600 400))
     (should= 14.96 (wind-map/wind-speed-scale-label-font-size 1200 800))
+    (should= 7.128 (wind-map/ceiling-scale-label-font-size 600 400))
+    (should= 13.464 (wind-map/ceiling-scale-label-font-size 1200 800))
+    (should= 3.2076 (wind-map/ceiling-scale-label-y-offset 600 400))
+    (should= 7.92 (wind-map/ceiling-scale-title-y-offset 600 400))
     (should= 9.9 (wind-map/scale-title-font-size 600 400))
     (should= 18.7 (wind-map/scale-title-font-size 1200 800)))
 
