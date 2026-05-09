@@ -468,6 +468,61 @@
     (catch Exception e
       (core-utils/log :error (str "Error drawing wind METAR label: " (.getMessage e))))))
 
+(def wind-speed-scale-max 30)
+
+(defn wind-speed-scale-geometry [width height]
+  (let [scale-height (/ height 3.0)
+        strip-width (max 8.0 (* 0.02 (min width height)))]
+    {:x (- width strip-width)
+     :y (/ height 3.0)
+     :width strip-width
+     :height scale-height
+     :label-x (- width strip-width 6.0)}))
+
+(defn wind-speed-scale-y [{:keys [y height]} speed]
+  (+ y (* height (- 1.0 (/ speed wind-speed-scale-max)))))
+
+(defn wind-speed-scale-bands [{:keys [y height]}]
+  (let [speeds [0 5 10 15 20 25 wind-speed-scale-max]]
+    (mapv (fn [[low high]]
+            {:low low
+             :high high
+             :top (+ y (* height (- 1.0 (/ high wind-speed-scale-max))))
+             :bottom (+ y (* height (- 1.0 (/ low wind-speed-scale-max))))
+             :color (wind-color low)})
+          (partition 2 1 speeds))))
+
+(defn wind-speed-scale-band-label [{:keys [low high]}]
+  (if (= high wind-speed-scale-max)
+    (str low "+")
+    (str low "-" high)))
+
+(defn wind-speed-scale-label-font-size [width height]
+  (* 1.5 (source-label-font-size width height)))
+
+(defn- draw-layer-wind-speed-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
+  (let [[r g b a] color]
+    (.fill layer r g b a)
+    (.rect layer (float x) (float top) (float width) (float (- bottom top)))))
+
+(defn- draw-layer-wind-speed-scale-label! [layer geometry {:keys [top bottom] :as band}]
+  (.fill layer 255 255 255)
+  (layer-text-font! layer (map-label-font))
+  (.textAlign layer processing.core.PConstants/RIGHT processing.core.PConstants/CENTER)
+  (.textSize layer (wind-speed-scale-label-font-size (:width geometry) (:height geometry)))
+  (.text layer
+         (wind-speed-scale-band-label band)
+         (float (:label-x geometry))
+         (float (/ (+ top bottom) 2.0))))
+
+(defn- draw-layer-wind-speed-scale! [layer width height]
+  (let [geometry (wind-speed-scale-geometry width height)]
+    (.noStroke layer)
+    (doseq [band (wind-speed-scale-bands geometry)]
+      (draw-layer-wind-speed-scale-band! layer geometry band))
+    (doseq [band (wind-speed-scale-bands geometry)]
+      (draw-layer-wind-speed-scale-label! layer geometry band))))
+
 (defn stale-wind-data? [now {:keys [source generated-at-ms]}]
   (or (= :synthetic source)
       (nil? generated-at-ms)
@@ -488,6 +543,7 @@
     (draw-state-outlines! bounds width height)
     (doseq [marker markers]
       (draw-flight-category-airport! bounds width height marker))
+    (draw-layer-wind-speed-scale! layer width height)
     (draw-source-label! grid width height)
     (draw-layer-current-airport-metar! layer width height)))
 

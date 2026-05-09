@@ -224,9 +224,12 @@
 
   (it "maps wind speeds to particle colors"
     (should= [155 210 255 205] (wind-map/wind-color 4))
-    (should= [165 255 190 220] (wind-map/wind-color 14))
-    (should= [255 242 125 235] (wind-map/wind-color 24))
-    (should= [255 135 135 245] (wind-map/wind-color 25)))
+    (should= [125 235 255 215] (wind-map/wind-color 9))
+    (should= [165 255 190 225] (wind-map/wind-color 14))
+    (should= [255 242 125 235] (wind-map/wind-color 19))
+    (should= [255 185 100 240] (wind-map/wind-color 24))
+    (should= [255 135 135 245] (wind-map/wind-color 29))
+    (should= [255 80 120 250] (wind-map/wind-color 30)))
 
   (it "scales particle line segment length with wind speed"
     (should= 5.0 (wind-map/particle-segment-length 0))
@@ -585,6 +588,49 @@
         (should-contain [:text-size 16.0] @calls)
         (should-contain [:rect 273.8 365.0 6.4 16.0] @calls)
         (should-contain [:text "M" 273.0 363.0] @calls))))
+
+  (it "places the wind speed scale on the right edge in the middle third"
+    (should= {:x 592.0
+              :y (/ 400 3.0)
+              :width 8.0
+              :height (/ 400 3.0)
+              :label-x 586.0}
+             (wind-map/wind-speed-scale-geometry 600 400))
+    (let [geometry (wind-map/wind-speed-scale-geometry 600 400)]
+      (should= (:y geometry) (wind-map/wind-speed-scale-y geometry wind-map/wind-speed-scale-max))
+      (should= 200.0 (wind-map/wind-speed-scale-y geometry 15))
+      (should= (+ (:y geometry) (:height geometry)) (wind-map/wind-speed-scale-y geometry 0))))
+
+  (it "uses wind particle colors for the wind speed scale bands"
+    (let [bands (wind-map/wind-speed-scale-bands (wind-map/wind-speed-scale-geometry 600 400))]
+      (should= [[0 5 [155 210 255 205]]
+                [5 10 [125 235 255 215]]
+                [10 15 [165 255 190 225]]
+                [15 20 [255 242 125 235]]
+                [20 25 [255 185 100 240]]
+                [25 30 [255 135 135 245]]]
+               (mapv (juxt :low :high :color) bands))
+      (should= ["0-5" "5-10" "10-15" "15-20" "20-25" "25+"]
+               (mapv wind-map/wind-speed-scale-band-label bands))))
+
+  (it "draws a static wind speed scale with labels centered in each color band"
+    (let [calls (atom [])
+          layer (fake-graphics calls)]
+      (#'wind-map/draw-layer-wind-speed-scale! layer 600 400)
+      (should-contain [:no-stroke] @calls)
+      (should-contain [:rect 592.0 244.44444 8.0 22.222221] @calls)
+      (should-contain [:rect 592.0 222.22223 8.0 22.222214] @calls)
+      (should-contain [:rect 592.0 200.0 8.0 22.222229] @calls)
+      (should-contain [:rect 592.0 177.77779 8.0 22.222214] @calls)
+      (should-contain [:rect 592.0 155.55556 8.0 22.222229] @calls)
+      (should-contain [:rect 592.0 133.33333 8.0 22.222221] @calls)
+      (should-contain [:text-size 13.5] @calls)
+      (should-contain [:text "0-5" 586.0 255.55556] @calls)
+      (should-contain [:text "5-10" 586.0 233.33334] @calls)
+      (should-contain [:text "10-15" 586.0 211.11111] @calls)
+      (should-contain [:text "15-20" 586.0 188.8889] @calls)
+      (should-contain [:text "20-25" 586.0 166.66667] @calls)
+      (should-contain [:text "25+" 586.0 144.44444] @calls)))
 
   (it "draws the cached map layer before updated particles"
     (let [calls (atom [])

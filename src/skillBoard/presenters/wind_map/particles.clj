@@ -258,10 +258,13 @@
 
 (def wind-color-thresholds
   [[5 [155 210 255 205]]
-   [15 [165 255 190 220]]
-   [25 [255 242 125 235]]])
+   [10 [125 235 255 215]]
+   [15 [165 255 190 225]]
+   [20 [255 242 125 235]]
+   [25 [255 185 100 240]]
+   [30 [255 135 135 245]]])
 
-(def strong-wind-color [255 135 135 245])
+(def strong-wind-color [255 80 120 250])
 
 (defn wind-color [speed]
   (or (some (fn [[threshold color]]
