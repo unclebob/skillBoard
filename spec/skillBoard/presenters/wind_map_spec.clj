@@ -460,17 +460,22 @@
       (should-not (wind-map/stale-wind-data? now {:source :open-meteo-gfs-hrrr
                                                   :generated-at-ms (- now wind-map/stale-wind-data-ms)}))))
 
-  (it "draws a red stale wind data warning at the bottom of the screen"
+  (it "draws a right-bottom red stale wind data warning clear of the metar and source"
     (let [calls (atom [])]
       (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+                    wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
                     q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
                     q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
                     q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
                     q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
                     q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+        (should= {:x 590.0 :y 353.0 :font-size 16}
+                 (wind-map/stale-wind-data-warning-geometry 600 400))
         (wind-map/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400)
         (should-contain [:fill 255 60 60] @calls)
-        (should-contain [:text "WIND DATA IS OUT OF DATE" 300 394] @calls))))
+        (should-contain [:text-align :right :bottom] @calls)
+        (should-contain [:text-size 16] @calls)
+        (should-contain [:text "WIND DATA IS OUT OF DATE" 590.0 353.0] @calls))))
 
   (it "draws particle lines grouped by cached stroke"
     (let [calls (atom [])

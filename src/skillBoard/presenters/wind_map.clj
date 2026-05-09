@@ -703,14 +703,26 @@
       (nil? generated-at-ms)
       (> (- now generated-at-ms) stale-wind-data-ms)))
 
+(defn stale-wind-data-warning-geometry [width height]
+  (let [margin (metar-margin width height)
+        source-clear-y (- height (source-label-font-size width height) 6)
+        metar-clear-y (- (:y (split-flap-metar-geometry width height (:line (current-airport-metar-label)))) 6)
+        y (min source-clear-y metar-clear-y)
+        available-height (max 6 (- height y margin))
+        font-size (min 16 (max 6 (int available-height)))]
+    {:x (- width margin)
+     :y y
+     :font-size font-size}))
+
 (defn draw-stale-wind-data-warning! [now grid width height]
   (when (stale-wind-data? now grid)
-    (q/fill 255 60 60)
-    (when-let [font (map-label-font)]
-      (q/text-font font))
-    (q/text-align :center :bottom)
-    (q/text-size 16)
-    (q/text stale-wind-data-message (/ width 2) (- height 6))))
+    (let [{:keys [x y font-size]} (stale-wind-data-warning-geometry width height)]
+      (q/fill 255 60 60)
+      (when-let [font (map-label-font)]
+        (q/text-font font))
+      (q/text-align :right :bottom)
+      (q/text-size font-size)
+      (q/text stale-wind-data-message x y))))
 
 (defn- render-static-map-layer! [layer bounds width height grid markers]
   (q/with-graphics layer
