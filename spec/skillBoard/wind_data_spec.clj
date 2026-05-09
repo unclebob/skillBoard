@@ -1,5 +1,6 @@
 (ns skillBoard.wind-data-spec
   (:require
+    [clj-http.client :as http]
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.core-utils :as core-utils]
@@ -53,6 +54,12 @@
         (should= -87.0 lon)
         (should (< (Math/abs u) 0.001))
         (should (< (Math/abs (- 10.0 v)) 0.001)))))
+
+  (it "ignores unsuccessful Open-Meteo fetch responses"
+    (with-redefs [http/get (fn [& _]
+                             {:status 503
+                              :body "[]"})]
+      (should-be nil? (wind-data/fetch-open-meteo-grid))))
 
   (it "polls Open-Meteo immediately, then no more than once every hour"
     (let [polls (atom [])]

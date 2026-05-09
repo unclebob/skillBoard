@@ -77,10 +77,13 @@
 (defn- lon-lat->lat-lon [[lon lat]]
   [lat lon])
 
+(def polygon-ring-readers
+  {"Polygon" identity
+   "MultiPolygon" #(mapcat identity %)})
+
 (defn- polygon-rings [{:keys [type coordinates]}]
-  (case type
-    "Polygon" coordinates
-    "MultiPolygon" (mapcat identity coordinates)
+  (if-let [read-rings (polygon-ring-readers type)]
+    (read-rings coordinates)
     []))
 
 (defn- outline-bounds [rings]
@@ -134,6 +137,10 @@
   (or (:metar-font @config/display-info)
       (:annotation-font @config/display-info)
       (:header-font @config/display-info)))
+
+(defn- q-text-font! [font]
+  (when font
+    (q/text-font font)))
 
 (def flight-category-colors
   {"VFR" config/vfr-color
@@ -219,21 +226,34 @@
 (defn label-airport? [{:keys [airspace-class]}]
   (#{"B" "C" "D"} airspace-class))
 
-(defn draw-flight-category-airport! [bounds width height {:keys [airport lat lon color] :as marker}]
-  (when (and lat lon)
-    (let [[x y] (project-point bounds width height lat lon)
-          [r g b] (color-rgb color)]
-      (q/stroke 10 15 22 210)
-      (q/stroke-weight 2)
-      (q/fill r g b)
-      (q/ellipse x y 11 11)
-      (when (label-airport? marker)
-        (when-let [font (map-label-font)]
-          (q/text-font font))
-        (q/fill r g b)
-        (q/text-align :left :center)
-        (q/text-size 12)
-        (q/text airport (+ x 8) y)))))
+(defn- draw-flight-category-dot! [x y color]
+  (let [[r g b] (color-rgb color)]
+    (q/stroke 10 15 22 210)
+    (q/stroke-weight 2)
+    (q/fill r g b)
+    (q/ellipse x y 11 11)))
+
+(defn- draw-flight-category-label! [x y airport color]
+  (let [[r g b] (color-rgb color)]
+    (q-text-font! (map-label-font))
+    (q/fill r g b)
+    (q/text-align :left :center)
+    (q/text-size 12)
+    (q/text airport (+ x 8) y)))
+
+(defn- marker-screen-point [bounds width height {:keys [lat lon]}]
+  (when (every? some? [lat lon])
+    (project-point bounds width height lat lon)))
+
+(defn- draw-flight-category-label-if-needed! [x y {:keys [airport color] :as marker}]
+  (when (label-airport? marker)
+    (draw-flight-category-label! x y airport color)))
+
+(defn draw-flight-category-airport! [bounds width height marker]
+  (when-let [[x y] (marker-screen-point bounds width height marker)]
+    (let [{:keys [color]} marker]
+      (draw-flight-category-dot! x y color)
+      (draw-flight-category-label-if-needed! x y marker))))
 
 (defn draw-flight-category-airports! [bounds width height]
   (doseq [marker (flight-category-airport-markers)]
@@ -255,12 +275,19 @@
    (current-airport-metar-label)
    (mapv marker-layer-key markers)])
 
+(defn- layer-size [layer]
+  (when layer
+    [(.-width layer) (.-height layer)]))
+
+(defn- current-or-new-layer [layer size-match? width height]
+  (if size-match?
+    layer
+    (q/create-graphics width height)))
+
 (defn- current-static-map-layer [width height]
   (let [{:keys [layer]} @static-map-layer-cache
-        size-match? (and (some? layer)
-                         (= (.-width layer) width)
-                         (= (.-height layer) height))]
-    {:layer (if size-match? layer (q/create-graphics width height))
+        size-match? (= [width height] (layer-size layer))]
+    {:layer (current-or-new-layer layer size-match? width height)
      :size-match? size-match?}))
 
 (defn- bounds-intersect? [a b]
@@ -287,8 +314,7 @@
       (q/end-shape))
     (let [[label-lat label-lon] (ring-center (first rings))
           [x y] (project-point bounds width height label-lat label-lon)]
-      (when-let [font (map-label-font)]
-        (q/text-font font))
+      (q-text-font! (map-label-font))
       (q/fill 130 150 165 150)
       (q/text-align :center :center)
       (q/text-size 12)
@@ -302,20 +328,29 @@
   (when font
     (.textFont layer font)))
 
-(defn- draw-layer-flight-category-airport! [layer bounds width height {:keys [airport lat lon color] :as marker}]
-  (when (and lat lon)
-    (let [[x y] (project-point bounds width height lat lon)
-          [r g b] (color-rgb color)]
-      (.stroke layer 10 15 22 210)
-      (.strokeWeight layer 2)
-      (.fill layer r g b)
-      (.ellipse layer (float x) (float y) 11 11)
-      (when (label-airport? marker)
-        (layer-text-font! layer (map-label-font))
-        (.fill layer r g b)
-        (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/CENTER)
-        (.textSize layer 12)
-        (.text layer (str airport) (float (+ x 8)) (float y))))))
+(defn- draw-layer-flight-category-dot! [layer x y color]
+  (let [[r g b] (color-rgb color)]
+    (.stroke layer 10 15 22 210)
+    (.strokeWeight layer 2)
+    (.fill layer r g b)
+    (.ellipse layer (float x) (float y) 11 11)))
+
+(defn- draw-layer-flight-category-label! [layer x y airport color]
+  (let [[r g b] (color-rgb color)]
+    (layer-text-font! layer (map-label-font))
+    (.fill layer r g b)
+    (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/CENTER)
+    (.textSize layer 12)
+    (.text layer (str airport) (float (+ x 8)) (float y))))
+
+(defn- draw-layer-flight-category-label-if-needed! [layer x y {:keys [airport color] :as marker}]
+  (when (label-airport? marker)
+    (draw-layer-flight-category-label! layer x y airport color)))
+
+(defn- draw-layer-flight-category-airport! [layer bounds width height marker]
+  (when-let [[x y] (marker-screen-point bounds width height marker)]
+    (draw-layer-flight-category-dot! layer x y (:color marker))
+    (draw-layer-flight-category-label-if-needed! layer x y marker)))
 
 (defn- draw-layer-flight-category-airports! [layer bounds width height markers]
   (doseq [marker markers]
@@ -356,7 +391,7 @@
      (+ center-lon (* lon-radius (Math/sin bearing)))]))
 
 (defn range-circle-points [{:keys [center radius-nm]}]
-  (when (and center radius-nm)
+  (when (every? some? [center radius-nm])
     (let [bearings (map #(* % (/ 360.0 range-circle-point-count))
                         (range range-circle-point-count))
           points (mapv #(range-circle-lat-lon center radius-nm %) bearings)]
@@ -432,13 +467,19 @@
                 (/ (- ceiling low-ceiling) (- high-ceiling low-ceiling)))]
     (mapv interpolate-channel low-color high-color (repeat ratio))))
 
+(defn- ceiling-overlay-visible? [ceiling-ft-agl]
+  (boolean (some-> ceiling-ft-agl (< ceiling-overlay-max-ft))))
+
+(defn- ceiling-overlay-band-color [ceiling-ft-agl]
+  (let [band-ceiling (min ceiling-overlay-max-ft (ceiling-band-upper-ft ceiling-ft-agl))
+        high-stop (first (filter #(<= band-ceiling (:ceiling %)) (rest ceiling-color-stops)))
+        low-stop (last (take-while #(< (:ceiling %) (:ceiling high-stop)) ceiling-color-stops))]
+    (conj (color-between-stops low-stop high-stop band-ceiling)
+          ceiling-overlay-cell-alpha)))
+
 (defn ceiling-overlay-color [ceiling-ft-agl]
-  (when (and ceiling-ft-agl (< ceiling-ft-agl ceiling-overlay-max-ft))
-    (let [band-ceiling (min ceiling-overlay-max-ft (ceiling-band-upper-ft ceiling-ft-agl))
-          high-stop (first (filter #(<= band-ceiling (:ceiling %)) (rest ceiling-color-stops)))
-          low-stop (last (take-while #(< (:ceiling %) (:ceiling high-stop)) ceiling-color-stops))]
-      (conj (color-between-stops low-stop high-stop band-ceiling)
-            ceiling-overlay-cell-alpha))))
+  (when (ceiling-overlay-visible? ceiling-ft-agl)
+    (ceiling-overlay-band-color ceiling-ft-agl)))
 
 (defn ceiling-scale-color [ceiling-ft-agl]
   (when-let [[r g b _a] (ceiling-overlay-color ceiling-ft-agl)]
@@ -468,18 +509,25 @@
               row (range ceiling-overlay-rows)]
         (draw-layer-ceiling-cell! layer bounds width height observations cell-width cell-height col row)))))
 
+(defn- format-generated-at [generated-at-ms]
+  (try
+    (.format (java.time.ZonedDateTime/ofInstant
+               (java.time.Instant/ofEpochMilli generated-at-ms)
+               (java.time.ZoneId/of "UTC"))
+             (java.time.format.DateTimeFormatter/ofPattern "HH:mm'Z'"))
+    (catch Exception e
+      (core-utils/log :error (str "Error formatting wind poll time: " (.getMessage e)))
+      "unknown")))
+
+(defn- generated-at-text [generated-at-ms]
+  (if generated-at-ms
+    (format-generated-at generated-at-ms)
+    "unknown"))
+
 (defn source-label-text [{:keys [source radius-nm generated-at-ms]}]
-  (let [time-text (if generated-at-ms
-                    (try
-                      (.format (java.time.ZonedDateTime/ofInstant
-                                 (java.time.Instant/ofEpochMilli generated-at-ms)
-                                 (java.time.ZoneId/of "UTC"))
-                               (java.time.format.DateTimeFormatter/ofPattern "HH:mm'Z'"))
-                      (catch Exception e
-                        (core-utils/log :error (str "Error formatting wind poll time: " (.getMessage e)))
-                        "unknown"))
-                    "unknown")]
-    (str "Source: " (name source) "  Radius: " radius-nm " NM  Polled: " time-text " UTC")))
+  (str "Source: " (name source) "  Radius: " radius-nm " NM  Polled: "
+       (generated-at-text generated-at-ms)
+       " UTC"))
 
 (declare split-flap-metar-geometry)
 
@@ -502,8 +550,7 @@
 (defn draw-source-label! [grid width height]
   (try
     (q/fill 255 255 255)
-    (when-let [font (map-label-font)]
-      (q/text-font font))
+    (q-text-font! (map-label-font))
     (q/text-align :left :bottom)
     (q/text-size (source-label-font-size width height))
     (q/text (source-label-text grid) 20 (source-label-y width height))
@@ -578,8 +625,7 @@
                               color]
   (let [[r g b] (color-rgb color)]
     (q/no-stroke)
-    (when-let [font (:sf-font @config/display-info)]
-      (q/text-font font))
+    (q-text-font! (:sf-font @config/display-info))
     (q/text-size sf-font-size)
     (q/text-align :left :top)
     (doseq [[idx c] (map-indexed vector line)
@@ -771,11 +817,13 @@
   (when (stale-wind-data? now grid)
     (let [{:keys [x y font-size]} (stale-wind-data-warning-geometry width height)]
       (q/fill 255 60 60)
-      (when-let [font (map-label-font)]
-        (q/text-font font))
+      (q-text-font! (map-label-font))
       (q/text-align :right :bottom)
       (q/text-size font-size)
       (q/text stale-wind-data-message x y))))
+
+(defn- static-map-layer-stale? [cached-key layer-key size-match?]
+  (not (and size-match? (= cached-key layer-key))))
 
 (defn- render-static-map-layer! [layer bounds width height grid markers]
   (q/with-graphics layer
@@ -794,7 +842,7 @@
   (let [layer-key (static-map-layer-key bounds width height grid markers)
         {cached-key :key} @static-map-layer-cache
         {:keys [layer size-match?]} (current-static-map-layer width height)]
-    (when (or (not size-match?) (not= cached-key layer-key))
+    (when (static-map-layer-stale? cached-key layer-key size-match?)
       (render-static-map-layer! layer bounds width height grid markers))
     (reset! static-map-layer-cache {:key layer-key :layer layer})
     layer))
@@ -826,5 +874,5 @@
   true)
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-04-21T15:38:31.068973-05:00", :module-hash "-1547214145", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 9, :hash "-413269193"} {:id "def/state-outlines-cache", :kind "def", :line 11, :end-line 11, :hash "-350688288"} {:id "def/static-map-layer-cache", :kind "def", :line 12, :end-line 12, :hash "620140335"} {:id "def/particles", :kind "def", :line 14, :end-line 14, :hash "155048396"} {:id "def/particle-field-size", :kind "def", :line 15, :end-line 15, :hash "818318783"} {:id "def/animation-seconds-per-frame", :kind "def", :line 16, :end-line 16, :hash "1555334293"} {:id "def/particle-segment-min-length", :kind "def", :line 17, :end-line 17, :hash "588459670"} {:id "def/particle-segment-max-length", :kind "def", :line 18, :end-line 18, :hash "910308292"} {:id "def/particle-segment-pixels-per-knot", :kind "def", :line 19, :end-line 19, :hash "-1831478383"} {:id "def/particle-fade-in-ms", :kind "def", :line 20, :end-line 20, :hash "-644840462"} {:id "def/particle-fade-out-ms", :kind "def", :line 21, :end-line 21, :hash "722293244"} {:id "def/particle-min-life-ms", :kind "def", :line 22, :end-line 22, :hash "-1530051359"} {:id "def/particle-max-life-ms", :kind "def", :line 23, :end-line 23, :hash "890007799"} {:id "def/particle-coordinate", :kind "def", :line 24, :end-line 24, :hash "-2059248895"} {:id "def/project-point", :kind "def", :line 25, :end-line 25, :hash "-2085532950"} {:id "def/unproject-point", :kind "def", :line 26, :end-line 26, :hash "-1727549963"} {:id "def/nearest-wind", :kind "def", :line 27, :end-line 27, :hash "-1892100238"} {:id "def/interpolated-wind", :kind "def", :line 28, :end-line 28, :hash "-1309347192"} {:id "def/wind-speed", :kind "def", :line 29, :end-line 29, :hash "2078800266"} {:id "def/particle-opacity", :kind "def", :line 30, :end-line 30, :hash "-123347195"} {:id "def/particle-dead?", :kind "def", :line 31, :end-line 31, :hash "-1516087527"} {:id "def/random-particle", :kind "def", :line 32, :end-line 32, :hash "-1857084068"} {:id "def/initial-particle", :kind "def", :line 33, :end-line 33, :hash "-1627751345"} {:id "def/make-particles", :kind "def", :line 34, :end-line 34, :hash "1951808604"} {:id "def/ensure-particles!", :kind "def", :line 35, :end-line 35, :hash "1714997095"} {:id "def/wind-color", :kind "def", :line 36, :end-line 36, :hash "2035026331"} {:id "def/step-particle", :kind "def", :line 37, :end-line 37, :hash "279771128"} {:id "def/particle-segment-length", :kind "def", :line 38, :end-line 38, :hash "-1573784694"} {:id "def/particle-segment-end", :kind "def", :line 39, :end-line 39, :hash "1832291123"} {:id "def/draw-particle!", :kind "def", :line 40, :end-line 40, :hash "-1522966060"} {:id "def/state-labels", :kind "def", :line 42, :end-line 49, :hash "410376313"} {:id "def/nearby-state-names", :kind "def", :line 51, :end-line 51, :hash "-153375614"} {:id "defn-/lon-lat->lat-lon", :kind "defn-", :line 53, :end-line 54, :hash "-34246038"} {:id "defn-/polygon-rings", :kind "defn-", :line 56, :end-line 60, :hash "1249934570"} {:id "defn-/outline-bounds", :kind "defn-", :line 62, :end-line 69, :hash "-613673615"} {:id "defn-/feature->outline", :kind "defn-", :line 71, :end-line 76, :hash "2070406857"} {:id "defn/load-state-outlines", :kind "defn", :line 78, :end-line 82, :hash "-1405659647"} {:id "defn/state-outlines", :kind "defn", :line 84, :end-line 86, :hash "-740183215"} {:id "defn/make-wind-map-screen", :kind "defn", :line 88, :end-line 90, :hash "-1916581111"} {:id "defmethod/screen/make/:wind-map", :kind "defmethod", :line 92, :end-line 93, :hash "1602119916"} {:id "defmethod/screen/header-text/:wind-map", :kind "defmethod", :line 95, :end-line 96, :hash "-829791532"} {:id "defmethod/screen/display-column-headers/:wind-map", :kind "defmethod", :line 98, :end-line 99, :hash "-723555036"} {:id "defn-/map-label-font", :kind "defn-", :line 101, :end-line 103, :hash "-1362124108"} {:id "defn-/airport-label-font", :kind "defn-", :line 105, :end-line 107, :hash "-2024494817"} {:id "def/flight-category-colors", :kind "def", :line 109, :end-line 113, :hash "1208642753"} {:id "defn/flight-category-color", :kind "defn", :line 115, :end-line 116, :hash "-1340670323"} {:id "def/color-rgb-values", :kind "def", :line 118, :end-line 124, :hash "-980395204"} {:id "def/default-color-rgb", :kind "def", :line 126, :end-line 126, :hash "-181122293"} {:id "defn/color-rgb", :kind "defn", :line 128, :end-line 129, :hash "-1165963766"} {:id "defn/draw-airport!", :kind "defn", :line 131, :end-line 140, :hash "987622579"} {:id "defn/flight-category-airport-markers", :kind "defn", :line 142, :end-line 166, :hash "-237429149"} {:id "defn/label-airport?", :kind "defn", :line 168, :end-line 169, :hash "919873300"} {:id "defn/draw-flight-category-airport!", :kind "defn", :line 171, :end-line 185, :hash "-1344100387"} {:id "defn/draw-flight-category-airports!", :kind "defn", :line 187, :end-line 189, :hash "996898366"} {:id "defn/marker-layer-key", :kind "defn", :line 191, :end-line 192, :hash "1553508954"} {:id "defn/static-map-layer-key", :kind "defn", :line 194, :end-line 200, :hash "-173616304"} {:id "defn-/current-static-map-layer", :kind "defn-", :line 202, :end-line 208, :hash "630663816"} {:id "defn-/bounds-intersect?", :kind "defn-", :line 210, :end-line 214, :hash "-544654738"} {:id "defn-/ring-center", :kind "defn-", :line 216, :end-line 219, :hash "-1771243540"} {:id "defn/draw-state-outline!", :kind "defn", :line 221, :end-line 239, :hash "-346684475"} {:id "defn/draw-state-outlines!", :kind "defn", :line 241, :end-line 243, :hash "1141578969"} {:id "defn-/layer-text-font!", :kind "defn-", :line 245, :end-line 247, :hash "-1469010749"} {:id "defn-/draw-layer-flight-category-airport!", :kind "defn-", :line 249, :end-line 262, :hash "-681805799"} {:id "defn-/draw-layer-flight-category-airports!", :kind "defn-", :line 264, :end-line 266, :hash "-1911938762"} {:id "defn-/draw-layer-state-outline!", :kind "defn-", :line 268, :end-line 285, :hash "-1316286081"} {:id "defn-/draw-layer-state-outlines!", :kind "defn-", :line 287, :end-line 289, :hash "-104854079"} {:id "defn-/draw-layer-source-label!", :kind "defn-", :line 291, :end-line 299, :hash "597317914"} {:id "defn/draw-source-label!", :kind "defn", :line 301, :end-line 307, :hash "-818530098"} {:id "defn-/render-static-map-layer!", :kind "defn-", :line 309, :end-line 314, :hash "-528502862"} {:id "defn/static-map-layer", :kind "defn", :line 316, :end-line 323, :hash "-1697418385"} {:id "defn/draw-wind-map!", :kind "defn", :line 325, :end-line 338, :hash "868089126"} {:id "defmethod/screen/draw-body/:wind-map", :kind "defmethod", :line 340, :end-line 342, :hash "965218688"}]}
+;; {:version 1, :tested-at "2026-05-09T09:19:47.341019-05:00", :module-hash "1684827110", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 12, :hash "674352644"} {:id "def/state-outlines-cache", :kind "def", :line 14, :end-line 14, :hash "-350688288"} {:id "def/static-map-layer-cache", :kind "def", :line 15, :end-line 15, :hash "620140335"} {:id "def/airport-marker-cache", :kind "def", :line 16, :end-line 16, :hash "1646684284"} {:id "def/airport-marker-cache-ms", :kind "def", :line 17, :end-line 17, :hash "-1945388248"} {:id "def/stale-wind-data-ms", :kind "def", :line 18, :end-line 18, :hash "218651392"} {:id "def/stale-wind-data-message", :kind "def", :line 19, :end-line 19, :hash "-1316693162"} {:id "def/ceiling-overlay-cols", :kind "def", :line 20, :end-line 20, :hash "368365305"} {:id "def/ceiling-overlay-rows", :kind "def", :line 21, :end-line 21, :hash "-2132883557"} {:id "def/ceiling-overlay-max-ft", :kind "def", :line 22, :end-line 22, :hash "-1107534433"} {:id "def/ceiling-overlay-cell-alpha", :kind "def", :line 23, :end-line 23, :hash "-1428840015"} {:id "def/particles", :kind "def", :line 25, :end-line 25, :hash "155048396"} {:id "def/particle-field-size", :kind "def", :line 26, :end-line 26, :hash "818318783"} {:id "def/wind-field-cache", :kind "def", :line 27, :end-line 27, :hash "-320017671"} {:id "def/animation-seconds-per-frame", :kind "def", :line 28, :end-line 28, :hash "1555334293"} {:id "def/wind-field-cols", :kind "def", :line 29, :end-line 29, :hash "-2105679199"} {:id "def/wind-field-rows", :kind "def", :line 30, :end-line 30, :hash "-1102853663"} {:id "def/particle-segment-min-length", :kind "def", :line 31, :end-line 31, :hash "588459670"} {:id "def/particle-segment-max-length", :kind "def", :line 32, :end-line 32, :hash "910308292"} {:id "def/particle-segment-pixels-per-knot", :kind "def", :line 33, :end-line 33, :hash "-1831478383"} {:id "def/particle-segment-screen-scale", :kind "def", :line 34, :end-line 34, :hash "233315046"} {:id "def/particle-motion-screen-scale", :kind "def", :line 35, :end-line 35, :hash "923541879"} {:id "def/particle-fade-in-ms", :kind "def", :line 36, :end-line 36, :hash "-644840462"} {:id "def/particle-fade-out-ms", :kind "def", :line 37, :end-line 37, :hash "722293244"} {:id "def/particle-min-life-ms", :kind "def", :line 38, :end-line 38, :hash "-1530051359"} {:id "def/particle-max-life-ms", :kind "def", :line 39, :end-line 39, :hash "890007799"} {:id "def/particle-coordinate", :kind "def", :line 40, :end-line 40, :hash "-2059248895"} {:id "def/fit-bounds-to-screen", :kind "def", :line 41, :end-line 41, :hash "-2116898316"} {:id "def/project-point", :kind "def", :line 42, :end-line 42, :hash "-2085532950"} {:id "def/unproject-point", :kind "def", :line 43, :end-line 43, :hash "-1727549963"} {:id "def/nearest-wind", :kind "def", :line 44, :end-line 44, :hash "-1892100238"} {:id "def/interpolated-wind", :kind "def", :line 45, :end-line 45, :hash "-1309347192"} {:id "def/wind-speed", :kind "def", :line 46, :end-line 46, :hash "2078800266"} {:id "def/particle-opacity", :kind "def", :line 47, :end-line 47, :hash "-123347195"} {:id "def/particle-dead?", :kind "def", :line 48, :end-line 48, :hash "-1516087527"} {:id "def/random-particle", :kind "def", :line 49, :end-line 49, :hash "-1857084068"} {:id "def/initial-particle", :kind "def", :line 50, :end-line 50, :hash "-1627751345"} {:id "def/make-particles", :kind "def", :line 51, :end-line 51, :hash "1951808604"} {:id "def/ensure-particles!", :kind "def", :line 52, :end-line 52, :hash "1714997095"} {:id "def/wind-field-key", :kind "def", :line 53, :end-line 53, :hash "-1881373709"} {:id "def/make-wind-field", :kind "def", :line 54, :end-line 54, :hash "774304138"} {:id "def/current-wind-field", :kind "def", :line 55, :end-line 55, :hash "-1861891418"} {:id "def/sample-wind-field", :kind "def", :line 56, :end-line 56, :hash "1655759902"} {:id "def/particle-frame", :kind "def", :line 57, :end-line 57, :hash "-2031095686"} {:id "def/wind-color", :kind "def", :line 58, :end-line 58, :hash "2035026331"} {:id "def/step-particle-with-frame", :kind "def", :line 59, :end-line 59, :hash "-646589692"} {:id "def/step-particle", :kind "def", :line 60, :end-line 60, :hash "279771128"} {:id "def/particle-segment-length", :kind "def", :line 61, :end-line 61, :hash "-1573784694"} {:id "def/particle-segment-end", :kind "def", :line 62, :end-line 62, :hash "1832291123"} {:id "def/draw-particle!", :kind "def", :line 63, :end-line 63, :hash "-1522966060"} {:id "def/draw-particles!", :kind "def", :line 64, :end-line 64, :hash "791491014"} {:id "def/state-labels", :kind "def", :line 66, :end-line 73, :hash "410376313"} {:id "def/nearby-state-names", :kind "def", :line 75, :end-line 75, :hash "-153375614"} {:id "defn-/lon-lat->lat-lon", :kind "defn-", :line 77, :end-line 78, :hash "-34246038"} {:id "defn-/polygon-rings", :kind "defn-", :line 80, :end-line 84, :hash "1249934570"} {:id "defn-/outline-bounds", :kind "defn-", :line 86, :end-line 93, :hash "-613673615"} {:id "defn-/feature->outline", :kind "defn-", :line 95, :end-line 100, :hash "2070406857"} {:id "defn/load-state-outlines", :kind "defn", :line 102, :end-line 106, :hash "-1405659647"} {:id "defn/state-outlines", :kind "defn", :line 108, :end-line 110, :hash "-740183215"} {:id "defn/make-wind-map-screen", :kind "defn", :line 112, :end-line 114, :hash "-1916581111"} {:id "defmethod/screen/make/:wind-map", :kind "defmethod", :line 116, :end-line 117, :hash "1602119916"} {:id "defmethod/screen/header-text/:wind-map", :kind "defmethod", :line 119, :end-line 120, :hash "-829791532"} {:id "defmethod/screen/display-column-headers/:wind-map", :kind "defmethod", :line 122, :end-line 123, :hash "-723555036"} {:id "defn-/map-label-font", :kind "defn-", :line 125, :end-line 127, :hash "1319153087"} {:id "defn-/airport-label-font", :kind "defn-", :line 129, :end-line 131, :hash "-2024494817"} {:id "defn-/metar-label-font", :kind "defn-", :line 133, :end-line 136, :hash "1166997130"} {:id "def/flight-category-colors", :kind "def", :line 138, :end-line 142, :hash "1208642753"} {:id "defn/flight-category-color", :kind "defn", :line 144, :end-line 145, :hash "-1340670323"} {:id "def/color-rgb-values", :kind "def", :line 147, :end-line 153, :hash "-980395204"} {:id "def/default-color-rgb", :kind "def", :line 155, :end-line 155, :hash "-181122293"} {:id "defn/color-rgb", :kind "defn", :line 157, :end-line 158, :hash "-1165963766"} {:id "def/ceiling-covers", :kind "def", :line 160, :end-line 160, :hash "427683661"} {:id "defn/metar-ceiling-ft-agl", :kind "defn", :line 162, :end-line 169, :hash "-1242755510"} {:id "defn/draw-airport!", :kind "defn", :line 171, :end-line 180, :hash "987622579"} {:id "defn/flight-category-airport-markers", :kind "defn", :line 182, :end-line 208, :hash "736452144"} {:id "defn/cached-flight-category-airport-markers", :kind "defn", :line 210, :end-line 217, :hash "-1852679089"} {:id "defn/label-airport?", :kind "defn", :line 219, :end-line 220, :hash "919873300"} {:id "defn/draw-flight-category-airport!", :kind "defn", :line 222, :end-line 236, :hash "-1344100387"} {:id "defn/draw-flight-category-airports!", :kind "defn", :line 238, :end-line 240, :hash "996898366"} {:id "defn/marker-layer-key", :kind "defn", :line 242, :end-line 243, :hash "-1044939270"} {:id "defn/current-airport-metar-label", :kind "defn", :line 245, :end-line 246, :hash "1233621732"} {:id "defn/static-map-layer-key", :kind "defn", :line 248, :end-line 256, :hash "-942071419"} {:id "defn-/current-static-map-layer", :kind "defn-", :line 258, :end-line 264, :hash "630663816"} {:id "defn-/bounds-intersect?", :kind "defn-", :line 266, :end-line 270, :hash "-544654738"} {:id "defn-/ring-center", :kind "defn-", :line 272, :end-line 275, :hash "-1771243540"} {:id "defn/draw-state-outline!", :kind "defn", :line 277, :end-line 295, :hash "-346684475"} {:id "defn/draw-state-outlines!", :kind "defn", :line 297, :end-line 299, :hash "1141578969"} {:id "defn-/layer-text-font!", :kind "defn-", :line 301, :end-line 303, :hash "-1469010749"} {:id "defn-/draw-layer-flight-category-airport!", :kind "defn-", :line 305, :end-line 318, :hash "-681805799"} {:id "defn-/draw-layer-flight-category-airports!", :kind "defn-", :line 320, :end-line 322, :hash "-1911938762"} {:id "defn-/draw-layer-state-outline!", :kind "defn-", :line 324, :end-line 341, :hash "-1316286081"} {:id "defn-/draw-layer-state-outlines!", :kind "defn-", :line 343, :end-line 345, :hash "-104854079"} {:id "form/92/declare", :kind "declare", :line 347, :end-line 347, :hash "744337360"} {:id "def/range-circle-point-count", :kind "def", :line 349, :end-line 349, :hash "-1578680257"} {:id "defn/range-circle-lat-lon", :kind "defn", :line 351, :end-line 356, :hash "941633076"} {:id "defn/range-circle-points", :kind "defn", :line 358, :end-line 363, :hash "-1495990957"} {:id "defn/range-circle-label-text", :kind "defn", :line 365, :end-line 366, :hash "-538750997"} {:id "defn/range-circle-label-font-size", :kind "defn", :line 368, :end-line 369, :hash "911866306"} {:id "defn/range-circle-label-offset", :kind "defn", :line 371, :end-line 372, :hash "1693819112"} {:id "defn-/draw-layer-valid-range-circle!", :kind "defn-", :line 374, :end-line 390, :hash "-823801910"} {:id "defn/ceiling-observations", :kind "defn", :line 392, :end-line 395, :hash "1614300486"} {:id "defn-/ceiling-distance", :kind "defn-", :line 397, :end-line 398, :hash "-232481315"} {:id "defn-/weighted-ceiling", :kind "defn-", :line 400, :end-line 404, :hash "-645407851"} {:id "defn/interpolated-ceiling-ft-agl", :kind "defn", :line 406, :end-line 411, :hash "1903791618"} {:id "defn/ceiling-band-upper-ft", :kind "defn", :line 413, :end-line 414, :hash "-1884758254"} {:id "def/ceiling-color-stops", :kind "def", :line 416, :end-line 422, :hash "-1400591104"} {:id "defn-/interpolate-channel", :kind "defn-", :line 424, :end-line 425, :hash "-179475162"} {:id "defn-/color-between-stops", :kind "defn-", :line 427, :end-line 433, :hash "-2017321468"} {:id "defn/ceiling-overlay-color", :kind "defn", :line 435, :end-line 441, :hash "-130333900"} {:id "defn/ceiling-scale-color", :kind "defn", :line 443, :end-line 445, :hash "35108114"} {:id "defn/ceiling-overlay-cell-color", :kind "defn", :line 447, :end-line 452, :hash "671851820"} {:id "defn-/draw-layer-ceiling-cell!", :kind "defn-", :line 454, :end-line 459, :hash "468826253"} {:id "defn-/draw-layer-ceiling-overlay!", :kind "defn-", :line 461, :end-line 469, :hash "1857341780"} {:id "defn/source-label-text", :kind "defn", :line 471, :end-line 482, :hash "449883718"} {:id "form/114/declare", :kind "declare", :line 484, :end-line 484, :hash "290379583"} {:id "defn/source-label-font-size", :kind "defn", :line 486, :end-line 487, :hash "-622574042"} {:id "defn/source-label-y", :kind "defn", :line 489, :end-line 490, :hash "-1905692084"} {:id "defn-/draw-layer-source-label!", :kind "defn-", :line 492, :end-line 500, :hash "-1326633038"} {:id "defn/draw-source-label!", :kind "defn", :line 502, :end-line 511, :hash "-233005773"} {:id "defn/metar-split-flap-metrics", :kind "defn", :line 513, :end-line 526, :hash "918739642"} {:id "defn/metar-margin", :kind "defn", :line 528, :end-line 529, :hash "-592411333"} {:id "defn/metar-max-chars", :kind "defn", :line 531, :end-line 532, :hash "-481774086"} {:id "defn/truncate-metar-line", :kind "defn", :line 534, :end-line 536, :hash "1866658861"} {:id "defn/split-flap-metar-geometry", :kind "defn", :line 538, :end-line 552, :hash "977690701"} {:id "defn-/draw-layer-split-flap-line!", :kind "defn-", :line 554, :end-line 573, :hash "1889674698"} {:id "defn-/draw-split-flap-line!", :kind "defn-", :line 575, :end-line 594, :hash "1743401762"} {:id "defn-/draw-layer-current-airport-metar!", :kind "defn-", :line 596, :end-line 602, :hash "927688885"} {:id "defn/draw-current-airport-metar!", :kind "defn", :line 604, :end-line 610, :hash "994915483"} {:id "def/wind-speed-scale-max", :kind "def", :line 612, :end-line 612, :hash "218498176"} {:id "defn/wind-speed-scale-geometry", :kind "defn", :line 614, :end-line 624, :hash "-1309337438"} {:id "defn/wind-speed-scale-y", :kind "defn", :line 626, :end-line 627, :hash "-2092454484"} {:id "defn/wind-speed-scale-bands", :kind "defn", :line 629, :end-line 637, :hash "1205873577"} {:id "defn/wind-speed-scale-band-label", :kind "defn", :line 639, :end-line 642, :hash "1240148747"} {:id "defn/wind-speed-scale-label-font-size", :kind "defn", :line 644, :end-line 645, :hash "2103804374"} {:id "defn-/draw-layer-scale-band!", :kind "defn-", :line 647, :end-line 650, :hash "-1865538603"} {:id "defn-/draw-layer-wind-speed-scale-label!", :kind "defn-", :line 652, :end-line 660, :hash "927736510"} {:id "defn/scale-title-font-size", :kind "defn", :line 662, :end-line 663, :hash "1388440132"} {:id "defn-/draw-layer-wind-speed-scale-title!", :kind "defn-", :line 665, :end-line 670, :hash "614846177"} {:id "defn-/draw-layer-wind-speed-scale!", :kind "defn-", :line 672, :end-line 679, :hash "-725571398"} {:id "defn/ceiling-scale-geometry", :kind "defn", :line 681, :end-line 691, :hash "-992914363"} {:id "defn/ceiling-scale-y", :kind "defn", :line 693, :end-line 694, :hash "-189295320"} {:id "defn/ceiling-scale-bands", :kind "defn", :line 696, :end-line 704, :hash "2059161370"} {:id "defn/ceiling-scale-labels", :kind "defn", :line 706, :end-line 713, :hash "1682446522"} {:id "defn/ceiling-scale-label-font-size", :kind "defn", :line 715, :end-line 716, :hash "1173181736"} {:id "defn/ceiling-scale-label-y-offset", :kind "defn", :line 718, :end-line 719, :hash "437750364"} {:id "defn/ceiling-scale-title-y-offset", :kind "defn", :line 721, :end-line 722, :hash "262868395"} {:id "defn-/draw-layer-ceiling-scale-label!", :kind "defn-", :line 724, :end-line 732, :hash "1196054488"} {:id "defn-/draw-layer-ceiling-scale-title!", :kind "defn-", :line 734, :end-line 743, :hash "-507054251"} {:id "defn-/draw-layer-ceiling-scale!", :kind "defn-", :line 745, :end-line 752, :hash "-1451951572"} {:id "defn/stale-wind-data?", :kind "defn", :line 754, :end-line 757, :hash "-1109183279"} {:id "defn/stale-wind-data-warning-geometry", :kind "defn", :line 759, :end-line 768, :hash "1723509000"} {:id "defn/draw-stale-wind-data-warning!", :kind "defn", :line 770, :end-line 778, :hash "943402360"} {:id "defn-/render-static-map-layer!", :kind "defn-", :line 780, :end-line 791, :hash "365465381"} {:id "defn/static-map-layer", :kind "defn", :line 793, :end-line 800, :hash "-1697418385"} {:id "defn/refresh-static-map-layer-on-screen-entry!", :kind "defn", :line 802, :end-line 804, :hash "340398746"} {:id "defn/draw-wind-map!", :kind "defn", :line 806, :end-line 822, :hash "-812032652"} {:id "defmethod/screen/draw-body/:wind-map", :kind "defmethod", :line 824, :end-line 826, :hash "965218688"}]}
 ;; clj-mutate-manifest-end

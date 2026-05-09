@@ -38,30 +38,41 @@
       1.0
       (/ width-nm height-nm))))
 
-(defn fit-bounds-to-screen [{:keys [top bottom left right] :as bounds} width height]
-  (let [screen-aspect (if (zero? height) 1.0 (/ (double width) height))
-        center-lat (/ (+ top bottom) 2.0)
+(defn- screen-aspect-ratio [width height]
+  (if (zero? height) 1.0 (/ (double width) height)))
+
+(defn- widen-bounds [{:keys [top bottom left right]} screen-aspect]
+  (let [center-lat (/ (+ top bottom) 2.0)
         center-lon (/ (+ left right) 2.0)
         lat-span (- top bottom)
+        target-lon-span (* lat-span (/ screen-aspect (Math/cos (Math/toRadians center-lat))))
+        lon-half-span (/ target-lon-span 2.0)]
+    {:top top
+     :bottom bottom
+     :left (- center-lon lon-half-span)
+     :right (+ center-lon lon-half-span)}))
+
+(defn- heighten-bounds [{:keys [top bottom left right]} screen-aspect]
+  (let [center-lat (/ (+ top bottom) 2.0)
+        center-lon (/ (+ left right) 2.0)
         lon-span (- right left)
-        bounds-aspect (bounds-aspect-ratio-nm bounds)]
-    (cond
-      (<= screen-aspect 0) bounds
-      (> screen-aspect bounds-aspect)
-      (let [target-lon-span (* lat-span (/ screen-aspect (Math/cos (Math/toRadians center-lat))))
-            lon-half-span (/ target-lon-span 2.0)]
-        {:top top
-         :bottom bottom
-         :left (- center-lon lon-half-span)
-         :right (+ center-lon lon-half-span)})
-      (< screen-aspect bounds-aspect)
-      (let [target-lat-span (* lon-span (/ (Math/cos (Math/toRadians center-lat)) screen-aspect))
-            lat-half-span (/ target-lat-span 2.0)]
-        {:top (+ center-lat lat-half-span)
-         :bottom (- center-lat lat-half-span)
-         :left left
-         :right right})
-      :else bounds)))
+        target-lat-span (* lon-span (/ (Math/cos (Math/toRadians center-lat)) screen-aspect))
+        lat-half-span (/ target-lat-span 2.0)]
+    {:top (+ center-lat lat-half-span)
+     :bottom (- center-lat lat-half-span)
+     :left left
+     :right right}))
+
+(defn fit-bounds-to-screen [bounds width height]
+  (let [screen-aspect (screen-aspect-ratio width height)
+        bounds-aspect (bounds-aspect-ratio-nm bounds)
+        fit-bounds ({1 widen-bounds
+                     0 (fn [bounds _screen-aspect] bounds)
+                     -1 heighten-bounds}
+                    (compare screen-aspect bounds-aspect))]
+    (if (pos? screen-aspect)
+      (fit-bounds bounds screen-aspect)
+      bounds)))
 
 (defn project-point [{:keys [top bottom left right]} width height lat lon]
   (let [x (* width (/ (- lon left) (- right left)))
@@ -136,13 +147,12 @@
    (:radius-nm grid)
    (count (:points grid))])
 
+(defn- grid-coordinate [size divisions index]
+  (* size (/ index (max 1 (dec divisions)))))
+
 (defn- wind-field-cell [bounds grid width height col row]
-  (let [x (if (= 1 wind-field-cols)
-            0
-            (* width (/ col (dec wind-field-cols))))
-        y (if (= 1 wind-field-rows)
-            0
-            (* height (/ row (dec wind-field-rows))))
+  (let [x (grid-coordinate width wind-field-cols col)
+        y (grid-coordinate height wind-field-rows row)
         [lat lon] (unproject-point bounds width height x y)]
     (interpolated-wind grid lat lon)))
 
@@ -175,27 +185,37 @@
 (defn- interpolate [a b fraction]
   (double (+ a (* (- b a) fraction))))
 
+(def calm-wind {:u 0 :v 0})
+
+(defn- sample-grid-position [width height cols rows x y]
+  (let [grid-x (* (/ (clamp 0 width x) width) (dec cols))
+        grid-y (* (/ (clamp 0 height y) height) (dec rows))]
+    {:col0 (long (Math/floor grid-x))
+     :row0 (long (Math/floor grid-y))
+     :col-fraction (- grid-x (Math/floor grid-x))
+     :row-fraction (- grid-y (Math/floor grid-y))}))
+
+(defn- interpolate-wind-corners [field {:keys [col0 row0 col-fraction row-fraction]}]
+  (let [col1 (min (dec (:cols field)) (inc col0))
+        row1 (min (dec (:rows field)) (inc row0))
+        top-left (wind-cell field col0 row0)
+        top-right (wind-cell field col1 row0)
+        bottom-left (wind-cell field col0 row1)
+        bottom-right (wind-cell field col1 row1)
+        top-u (interpolate (:u top-left) (:u top-right) col-fraction)
+        bottom-u (interpolate (:u bottom-left) (:u bottom-right) col-fraction)
+        top-v (interpolate (:v top-left) (:v top-right) col-fraction)
+        bottom-v (interpolate (:v bottom-left) (:v bottom-right) col-fraction)]
+    {:u (interpolate top-u bottom-u row-fraction)
+     :v (interpolate top-v bottom-v row-fraction)}))
+
+(defn- wind-field-sampleable? [{:keys [cols rows] :as field}]
+  (and field (pos? cols) (pos? rows)))
+
 (defn sample-wind-field [{:keys [width height cols rows] :as field} x y]
-  (if (or (nil? field) (zero? cols) (zero? rows))
-    {:u 0 :v 0}
-    (let [grid-x (* (/ (clamp 0 width x) width) (dec cols))
-          grid-y (* (/ (clamp 0 height y) height) (dec rows))
-          col0 (long (Math/floor grid-x))
-          row0 (long (Math/floor grid-y))
-          col1 (min (dec cols) (inc col0))
-          row1 (min (dec rows) (inc row0))
-          col-fraction (- grid-x col0)
-          row-fraction (- grid-y row0)
-          top-left (wind-cell field col0 row0)
-          top-right (wind-cell field col1 row0)
-          bottom-left (wind-cell field col0 row1)
-          bottom-right (wind-cell field col1 row1)
-          top-u (interpolate (:u top-left) (:u top-right) col-fraction)
-          bottom-u (interpolate (:u bottom-left) (:u bottom-right) col-fraction)
-          top-v (interpolate (:v top-left) (:v top-right) col-fraction)
-          bottom-v (interpolate (:v bottom-left) (:v bottom-right) col-fraction)]
-      {:u (interpolate top-u bottom-u row-fraction)
-       :v (interpolate top-v bottom-v row-fraction)})))
+  (if (wind-field-sampleable? field)
+    (interpolate-wind-corners field (sample-grid-position width height cols rows x y))
+    calm-wind))
 
 (defn particle-frame [bounds grid width height]
   (merge {:bounds bounds
@@ -266,11 +286,12 @@
 
 (def strong-wind-color [255 80 120 250])
 
+(defn- below-wind-threshold? [speed [threshold _color]]
+  (< speed threshold))
+
 (defn wind-color [speed]
-  (or (some (fn [[threshold color]]
-              (when (< speed threshold) color))
-            wind-color-thresholds)
-      strong-wind-color))
+  (second (or (first (filter #(below-wind-threshold? speed %) wind-color-thresholds))
+              [nil strong-wind-color])))
 
 (defn particle-drawing-values [width height particle]
   (let [[r g b base-a] (wind-color (:speed particle 0))
@@ -287,27 +308,33 @@
       (< y 0)
       (> y height)))
 
-(defn step-particle-with-frame [{:keys [bounds grid width height wind-field] :as frame} now particle]
-  (if (particle-dead? now particle)
-    (particle-drawing-values width height (random-particle bounds grid width height (:seed particle 0) now))
-    (let [{:keys [u v] :as wind} (sample-wind-field wind-field (:x particle) (:y particle))
-          [dx dy] (wind-pixel-delta {:u u :v v} frame)
-          x (+ (:x particle) dx)
-          y (- (:y particle) dy)
-          age (inc (:age particle 0))]
-      (if (out-of-bounds? width height x y)
-        (particle-drawing-values width height (random-particle bounds grid width height (:seed particle 0) now))
-        (particle-drawing-values
-          width
-          height
-          (assoc particle
-            :x x
-            :y y
-            :u u
-            :v v
-            :speed (wind-speed wind)
-            :opacity (particle-opacity now particle)
-            :age age))))))
+(defn- replacement-particle [{:keys [bounds grid width height]} now particle]
+  (random-particle bounds grid width height (:seed particle 0) now))
+
+(defn- moved-particle [{:keys [width height wind-field] :as frame} now particle]
+  (let [{:keys [u v] :as wind} (sample-wind-field wind-field (:x particle) (:y particle))
+        [dx dy] (wind-pixel-delta {:u u :v v} frame)]
+    (assoc particle
+      :x (+ (:x particle) dx)
+      :y (- (:y particle) dy)
+      :u u
+      :v v
+      :speed (wind-speed wind)
+      :opacity (particle-opacity now particle)
+      :age (inc (:age particle 0)))))
+
+(defn- replacement-needed? [frame now particle]
+  (or (particle-dead? now particle)
+      (let [{:keys [x y]} (moved-particle frame now particle)]
+        (out-of-bounds? (:width frame) (:height frame) x y))))
+
+(defn step-particle-with-frame [{:keys [width height] :as frame} now particle]
+  (particle-drawing-values
+    width
+    height
+    (if (replacement-needed? frame now particle)
+      (replacement-particle frame now particle)
+      (moved-particle frame now particle))))
 
 (defn step-particle [bounds grid width height now particle]
   (step-particle-with-frame (particle-frame bounds grid width height) now particle))
@@ -324,15 +351,21 @@
           (max (* particle-segment-min-length screen-scale)
                (* speed particle-segment-pixels-per-knot screen-scale))))))
 
+(defn- particle-speed [{:keys [u v speed] :or {u 0 v 0}}]
+  (or speed (wind-speed {:u u :v v})))
+
+(defn- moving-segment-end [width height {:keys [x y u v] :or {u 0 v 0}} speed]
+  (let [length (particle-segment-length width height speed)]
+    [(+ x (* (/ u speed) length))
+     (- y (* (/ v speed) length))]))
+
 (defn particle-segment-end
   ([particle]
    (particle-segment-end 600 400 particle))
-  ([width height {:keys [x y u v speed] :or {u 0 v 0}}]
-   (let [speed (if (some? speed) speed (wind-speed {:u u :v v}))]
+  ([width height {:keys [x y] :as particle}]
+   (let [speed (particle-speed particle)]
      (if (pos? speed)
-       (let [length (particle-segment-length width height speed)]
-         [(+ x (* (/ u speed) length))
-          (- y (* (/ v speed) length))])
+       (moving-segment-end width height particle speed)
        [x y]))))
 
 (defn draw-particle-line! [{:keys [x y x2 y2]}]
@@ -358,5 +391,5 @@
       (draw-particle-line! particle))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-04-21T15:37:29.192711-05:00", :module-hash "974971153", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "605353130"} {:id "def/particles", :kind "def", :line 8, :end-line 8, :hash "-805035099"} {:id "def/particle-field-size", :kind "def", :line 9, :end-line 9, :hash "-1679469677"} {:id "def/animation-seconds-per-frame", :kind "def", :line 10, :end-line 10, :hash "636313673"} {:id "def/particle-segment-min-length", :kind "def", :line 11, :end-line 11, :hash "671707306"} {:id "def/particle-segment-max-length", :kind "def", :line 12, :end-line 12, :hash "-1062122780"} {:id "def/particle-segment-pixels-per-knot", :kind "def", :line 13, :end-line 13, :hash "602699003"} {:id "def/particle-fade-in-ms", :kind "def", :line 14, :end-line 14, :hash "1336373797"} {:id "def/particle-fade-out-ms", :kind "def", :line 15, :end-line 15, :hash "1556980209"} {:id "def/particle-min-life-ms", :kind "def", :line 16, :end-line 16, :hash "609523084"} {:id "def/particle-max-life-ms", :kind "def", :line 17, :end-line 17, :hash "670977351"} {:id "defn-/fractional-part", :kind "defn-", :line 19, :end-line 20, :hash "720073750"} {:id "defn/particle-coordinate", :kind "defn", :line 22, :end-line 23, :hash "-337514268"} {:id "defn/project-point", :kind "defn", :line 25, :end-line 28, :hash "-1445133276"} {:id "defn/unproject-point", :kind "defn", :line 30, :end-line 33, :hash "-1531146905"} {:id "defn/nearest-wind", :kind "defn", :line 35, :end-line 43, :hash "-1823228980"} {:id "defn-/wind-distance", :kind "defn-", :line 45, :end-line 46, :hash "-895157327"} {:id "defn/interpolated-wind", :kind "defn", :line 48, :end-line 62, :hash "1971759617"} {:id "defn/wind-speed", :kind "defn", :line 64, :end-line 65, :hash "-963648133"} {:id "defn-/wind-pixel-delta", :kind "defn-", :line 67, :end-line 76, :hash "-1769679956"} {:id "defn-/visible-particle-opacity", :kind "defn-", :line 78, :end-line 83, :hash "-23369782"} {:id "defn/particle-opacity", :kind "defn", :line 85, :end-line 90, :hash "-1712976452"} {:id "defn/particle-dead?", :kind "defn", :line 92, :end-line 93, :hash "-139136810"} {:id "defn/random-particle", :kind "defn", :line 95, :end-line 105, :hash "-45960960"} {:id "defn/initial-particle", :kind "defn", :line 107, :end-line 112, :hash "1303165161"} {:id "defn/make-particles", :kind "defn", :line 114, :end-line 116, :hash "-675656271"} {:id "defn-/reset-particles!", :kind "defn-", :line 118, :end-line 121, :hash "-1046136234"} {:id "defn/ensure-particles!", :kind "defn", :line 123, :end-line 127, :hash "1971030647"} {:id "def/wind-color-thresholds", :kind "def", :line 129, :end-line 132, :hash "593332343"} {:id "def/strong-wind-color", :kind "def", :line 134, :end-line 134, :hash "-918366031"} {:id "defn/wind-color", :kind "defn", :line 136, :end-line 140, :hash "300582635"} {:id "defn-/out-of-bounds?", :kind "defn-", :line 142, :end-line 146, :hash "1290138187"} {:id "defn/step-particle", :kind "defn", :line 148, :end-line 166, :hash "769620711"} {:id "defn/particle-segment-length", :kind "defn", :line 168, :end-line 171, :hash "1511418725"} {:id "defn/particle-segment-end", :kind "defn", :line 173, :end-line 179, :hash "218024992"} {:id "defn/draw-particle!", :kind "defn", :line 181, :end-line 187, :hash "689326613"}]}
+;; {:version 1, :tested-at "2026-05-09T09:20:19.851393-05:00", :module-hash "-42512529", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "605353130"} {:id "def/particles", :kind "def", :line 8, :end-line 8, :hash "-805035099"} {:id "def/particle-field-size", :kind "def", :line 9, :end-line 9, :hash "-1679469677"} {:id "def/wind-field-cache", :kind "def", :line 10, :end-line 10, :hash "1826981578"} {:id "def/animation-seconds-per-frame", :kind "def", :line 11, :end-line 11, :hash "636313673"} {:id "def/wind-field-cols", :kind "def", :line 12, :end-line 12, :hash "-1232038188"} {:id "def/wind-field-rows", :kind "def", :line 13, :end-line 13, :hash "-1058793850"} {:id "def/particle-segment-min-length", :kind "def", :line 14, :end-line 14, :hash "671707306"} {:id "def/particle-segment-max-length", :kind "def", :line 15, :end-line 15, :hash "-1062122780"} {:id "def/particle-segment-pixels-per-knot", :kind "def", :line 16, :end-line 16, :hash "-515624116"} {:id "def/particle-segment-base-screen-size", :kind "def", :line 17, :end-line 17, :hash "-2128861892"} {:id "def/particle-motion-base-screen-size", :kind "def", :line 18, :end-line 18, :hash "1814956898"} {:id "def/particle-motion-speed-scale", :kind "def", :line 19, :end-line 19, :hash "-1927671676"} {:id "def/particle-fade-in-ms", :kind "def", :line 20, :end-line 20, :hash "1336373797"} {:id "def/particle-fade-out-ms", :kind "def", :line 21, :end-line 21, :hash "1556980209"} {:id "def/particle-min-life-ms", :kind "def", :line 22, :end-line 22, :hash "609523084"} {:id "def/particle-max-life-ms", :kind "def", :line 23, :end-line 23, :hash "670977351"} {:id "form/17/declare", :kind "declare", :line 25, :end-line 25, :hash "1820794180"} {:id "defn-/fractional-part", :kind "defn-", :line 27, :end-line 28, :hash "720073750"} {:id "defn/particle-coordinate", :kind "defn", :line 30, :end-line 31, :hash "-337514268"} {:id "defn/bounds-aspect-ratio-nm", :kind "defn", :line 33, :end-line 39, :hash "2076392437"} {:id "defn/fit-bounds-to-screen", :kind "defn", :line 41, :end-line 64, :hash "-1618914508"} {:id "defn/project-point", :kind "defn", :line 66, :end-line 69, :hash "-1445133276"} {:id "defn/unproject-point", :kind "defn", :line 71, :end-line 74, :hash "-1531146905"} {:id "defn/nearest-wind", :kind "defn", :line 76, :end-line 84, :hash "-1823228980"} {:id "defn-/wind-distance", :kind "defn-", :line 86, :end-line 87, :hash "-895157327"} {:id "defn/interpolated-wind", :kind "defn", :line 89, :end-line 103, :hash "1971759617"} {:id "defn/wind-speed", :kind "defn", :line 105, :end-line 106, :hash "-963648133"} {:id "defn/particle-motion-screen-scale", :kind "defn", :line 108, :end-line 109, :hash "73021701"} {:id "defn-/wind-pixel-factors", :kind "defn-", :line 111, :end-line 121, :hash "164388188"} {:id "defn-/wind-pixel-delta", :kind "defn-", :line 123, :end-line 128, :hash "692223622"} {:id "defn/wind-field-key", :kind "defn", :line 130, :end-line 137, :hash "-486797723"} {:id "defn-/wind-field-cell", :kind "defn-", :line 139, :end-line 147, :hash "1067059015"} {:id "defn/make-wind-field", :kind "defn", :line 149, :end-line 158, :hash "1616713997"} {:id "defn/current-wind-field", :kind "defn", :line 160, :end-line 167, :hash "227094913"} {:id "defn-/clamp", :kind "defn-", :line 169, :end-line 170, :hash "-870597765"} {:id "defn-/wind-cell", :kind "defn-", :line 172, :end-line 173, :hash "1227267460"} {:id "defn-/interpolate", :kind "defn-", :line 175, :end-line 176, :hash "1024992655"} {:id "defn/sample-wind-field", :kind "defn", :line 178, :end-line 198, :hash "-1535150109"} {:id "defn/particle-frame", :kind "defn", :line 200, :end-line 206, :hash "-112530792"} {:id "defn-/visible-particle-opacity", :kind "defn-", :line 208, :end-line 213, :hash "-23369782"} {:id "defn/particle-opacity", :kind "defn", :line 215, :end-line 220, :hash "-1712976452"} {:id "defn/particle-dead?", :kind "defn", :line 222, :end-line 223, :hash "-139136810"} {:id "defn/random-particle", :kind "defn", :line 225, :end-line 235, :hash "-45960960"} {:id "defn/initial-particle", :kind "defn", :line 237, :end-line 242, :hash "1303165161"} {:id "defn/make-particles", :kind "defn", :line 244, :end-line 246, :hash "-675656271"} {:id "defn-/reset-particles!", :kind "defn-", :line 248, :end-line 251, :hash "-1046136234"} {:id "defn/ensure-particles!", :kind "defn", :line 253, :end-line 257, :hash "1971030647"} {:id "def/wind-color-thresholds", :kind "def", :line 259, :end-line 265, :hash "-1446270570"} {:id "def/strong-wind-color", :kind "def", :line 267, :end-line 267, :hash "895141912"} {:id "defn/wind-color", :kind "defn", :line 269, :end-line 273, :hash "300582635"} {:id "defn/particle-drawing-values", :kind "defn", :line 275, :end-line 282, :hash "-1219187261"} {:id "defn-/out-of-bounds?", :kind "defn-", :line 284, :end-line 288, :hash "1290138187"} {:id "defn/step-particle-with-frame", :kind "defn", :line 290, :end-line 310, :hash "1288716974"} {:id "defn/step-particle", :kind "defn", :line 312, :end-line 313, :hash "2092335168"} {:id "defn/particle-segment-screen-scale", :kind "defn", :line 315, :end-line 316, :hash "-468896462"} {:id "defn/particle-segment-length", :kind "defn", :line 318, :end-line 325, :hash "653487717"} {:id "defn/particle-segment-end", :kind "defn", :line 327, :end-line 336, :hash "1132813491"} {:id "defn/draw-particle-line!", :kind "defn", :line 338, :end-line 339, :hash "1499373047"} {:id "defn/draw-particle!", :kind "defn", :line 341, :end-line 351, :hash "659787476"} {:id "defn/draw-particles!", :kind "defn", :line 353, :end-line 358, :hash "866443721"}]}
 ;; clj-mutate-manifest-end

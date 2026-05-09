@@ -144,6 +144,71 @@
                    @captured-args)))))
   )
 
+(describe "aviation weather fetches"
+  (it "formats aviation weather ICAO queries"
+    (should= "KUGN" (comm/icao-query "kugn"))
+    (should= "KUGN,KORD" (comm/icao-query ["kugn" "kord"])))
+
+  (it "keys single and sequential aviation weather responses by ICAO"
+    (should= {"KUGN" {:icaoId "KUGN" :rawOb "METAR KUGN"}}
+             (comm/keyed-weather-response {:icaoId "KUGN" :rawOb "METAR KUGN"}))
+    (should= {"KUGN" {:icaoId "KUGN"}
+              "KORD" {:icaoId "KORD"}}
+             (comm/keyed-weather-response [{:icaoId "KUGN"} {:icaoId "KORD"}]))))
+
+  (it "fetches keyed aviation weather and stores it in the requested atom"
+    (let [polled (atom {})
+          captured-url (atom nil)
+          captured-args (atom nil)
+          captured-save-atom (atom nil)
+          captured-source (atom nil)]
+      (with-redefs [comm/get-json (fn [url args save-atom _error-handler source]
+                                    (reset! captured-url url)
+                                    (reset! captured-args args)
+                                    (reset! captured-save-atom save-atom)
+                                    (reset! captured-source source)
+                                    [{:icaoId "KUGN"} {:icaoId "KORD"}])]
+        (should= {"KUGN" {:icaoId "KUGN"}
+                  "KORD" {:icaoId "KORD"}}
+                 (comm/get-keyed-aviation-weather "metar" polled ["kugn" "kord"]))
+        (should= "https://aviationweather.gov/api/data/metar?ids=KUGN,KORD&format=json"
+                 @captured-url)
+        (should= {:accept :text :with-credentials? false} @captured-args)
+        (should= polled @captured-save-atom)
+        (should= "METAR" @captured-source)
+        (should= {"KUGN" {:icaoId "KUGN"}
+                  "KORD" {:icaoId "KORD"}}
+                 @polled))))
+
+  (it "routes METAR and TAF requests through the keyed weather fetcher"
+    (let [calls (atom [])]
+      (with-redefs [comm/get-keyed-aviation-weather (fn [& args]
+                                                      (swap! calls conj args)
+                                                      {:ok true})]
+        (should= {:ok true} (comm/get-metars "kugn"))
+        (should= {:ok true} (comm/get-tafs ["kugn"]))
+        (should= [["metar" comm/polled-metars "kugn"]
+                  ["taf" comm/polled-tafs ["kugn"]]]
+                 @calls))))
+
+  (it "fetches METAR history for the requested airport"
+    (let [captured-url (atom nil)
+          captured-args (atom nil)
+          captured-save-atom (atom nil)
+          captured-source (atom nil)]
+      (with-redefs [comm/get-json (fn [url args save-atom _error-handler source]
+                                    (reset! captured-url url)
+                                    (reset! captured-args args)
+                                    (reset! captured-save-atom save-atom)
+                                    (reset! captured-source source)
+                                    [{:icaoId "KUGN"}])]
+        (should= [{:icaoId "KUGN"}] (comm/get-metar-history "kugn"))
+        (should= "https://aviationweather.gov/api/data/metar?ids=KUGN&format=json&hours=4"
+                 @captured-url)
+        (should= {:accept :text :with-credentials? false} @captured-args)
+        (should= comm/polled-metar-history @captured-save-atom)
+        (should= "METAR" @captured-source))))
+
 (defn gzip-bytes [text]
   (let [out (ByteArrayOutputStream.)
         bytes (.getBytes text "UTF-8")]
@@ -259,3 +324,42 @@
                  (comm/get-airspace-classes))
         (should= comm/class-airspace-cache-url @captured-url)
         (should= 0 @comm/weather-com-errors)))))
+
+(describe "ADSB fetches"
+  (it "fetches ADSB data by tail number query"
+    (let [captured-url (atom nil)
+          captured-args (atom nil)
+          captured-save-atom (atom nil)
+          captured-source (atom nil)]
+      (with-redefs [comm/get-json (fn [url args save-atom _error-handler source]
+                                    (reset! captured-url url)
+                                    (reset! captured-args args)
+                                    (reset! captured-save-atom save-atom)
+                                    (reset! captured-source source)
+                                    [{:reg "N12345"}])
+                    config/radar-cape-ip "radar.local"]
+        (should= [{:reg "N12345"}] (comm/get-adsb-by-tail-numbers ["N12345" "N67890"]))
+        (should-contain "http://radar.local/aircraftlist.json?" @captured-url)
+        (should-contain "icao=N12345" @captured-url)
+        (should-contain "icao=N67890" @captured-url)
+        (should= {:accept :text
+                  :with-credentials? false
+                  :socket-timeout 2000
+                  :connection-timeout 2000}
+                 @captured-args)
+        (should= comm/polled-adsbs @captured-save-atom)
+        (should= "ADSB" @captured-source))))
+
+  (it "filters nearby ADSB data by distance and altitude"
+    (with-redefs [comm/get-json (fn [& _]
+                                  [{:reg "KEEP" :alt 2000 :dis 10}
+                                   {:reg "TOO-FAR" :alt 2000 :dis 99}
+                                   {:reg "TOO-LOW" :alt -1 :dis 10}
+                                   {:reg "NO-DIST" :alt 2000}])
+                  comm/polled-nearby-adsbs (atom [])
+                  config/nearby-altitude-range [0 4000]
+                  config/nearby-distance 40]
+      (should= [{:reg "KEEP" :alt 2000 :dis 10}]
+               (comm/get-nearby-adsb))
+      (should= [{:reg "KEEP" :alt 2000 :dis 10}]
+               @comm/polled-nearby-adsbs))))

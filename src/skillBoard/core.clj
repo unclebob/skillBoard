@@ -63,22 +63,29 @@
     (catch Exception e
       (core-utils/log :error e))))
 
+(defn poll-due? [now]
+  (let [seconds-since-last-poll (quot (- now @atoms/poll-time) 1000)]
+    (or @atoms/poll-key
+        (>= seconds-since-last-poll config/seconds-between-internet-polls))))
+
+(defn update-clock-pulse! [now]
+  (reset! atoms/clock-pulse (< 500 (mod now 1000))))
+
+(defn run-due-poll! [now]
+  (when (poll-due? now)
+    (future (poll))
+    (reset! atoms/poll-key false)
+    (reset! atoms/poll-time now)))
+
 (defn start-polling []
   (poll)
   (future
     (loop []
-      (let [now (System/currentTimeMillis)
-            seconds-since-last-poll (quot (- now @atoms/poll-time) 1000)]
-        (when (or @atoms/poll-key
-                  (>= seconds-since-last-poll config/seconds-between-internet-polls))
-          (future (poll))
-          (reset! atoms/poll-key false)
-          (reset! atoms/poll-time now))
-        (reset! atoms/clock-pulse (< 500 (mod now 1000)))
+      (let [now (System/currentTimeMillis)]
+        (run-due-poll! now)
+        (update-clock-pulse! now)
         (Thread/sleep 100)
-        (recur))
-      )
-    ))
+        (recur)))))
 
 (defn setup []
   (core-utils/log :status "Setup...")

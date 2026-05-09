@@ -5,7 +5,7 @@
 (defn load-config []
   (reset! config (read-string (slurp "private/config"))))
 
-(def version "20260423")
+(def version "20260509")
 
 ;Display configuration
 (def display-info (atom {}))                                ;determined after sketch started.
@@ -17,6 +17,7 @@
 (def flap-duration 3000)                                    ;milliseconds
 (def frame-rate 30)
 (def flap-steps-per-update 1)
+(def log-retention-days 60)
 
 ;colors
 (def in-fleet-color :white)

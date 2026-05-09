@@ -68,25 +68,36 @@
 (defn get-now []
   (System/currentTimeMillis))
 
+(defn- position-data? [distance alt gs]
+  (and (some? distance) (some? alt) (some? gs)))
+
+(defn- position-location [lat lon alt]
+  (if (and (some? lat) (some? lon) (some? alt))
+    (find-location lat lon alt config/geofences)
+    ""))
+
+(defn- ground-position-remark [nearby? on-ground? gs]
+  (cond
+    (and nearby? on-ground? (< gs 2)) "RAMP"
+    (and nearby? on-ground? (<= 2 gs 25)) "TAXI"))
+
+(defn- air-position-remark [distance alt gs]
+  (let [low (+ config/airport-elevation 30)
+        pattern-low (- config/pattern-altitude 500)
+        pattern-high (+ config/pattern-altitude 500)
+        nearby? (< distance 2)
+        flying-speed? (> gs 50)]
+    (cond
+      (and (< low alt pattern-low) flying-speed?) "LOW "
+      (and nearby? (< pattern-low alt pattern-high) flying-speed?) "PATN"
+      (< distance 6) "NEAR")))
+
 (defn generate-position-remark [distance alt gs on-ground? lat lon]
-  (if (and (some? distance) (some? alt) (some? gs))
-    (let [nearby-threshold 2
-          near-threshold 6
-          low (+ config/airport-elevation 30)
-          pattern-low (- config/pattern-altitude 500)
-          pattern-high (+ config/pattern-altitude 500)
-          geofences config/geofences
-          nearby? (< distance nearby-threshold)
-          flying-speed? (> gs 50)]
-      (cond
-        (and nearby? on-ground? (< gs 2)) "RAMP"
-        (and nearby? on-ground? (<= 2 gs 25)) "TAXI"
-        (and (< low alt pattern-low) flying-speed?) "LOW "
-        (and nearby? (< pattern-low alt pattern-high) flying-speed?) "PATN"
-        (< distance near-threshold) "NEAR"
-        :else (if (and (some? lat) (some? lon) (some? alt))
-                (find-location lat lon alt geofences)
-                "")))
+  (if (position-data? distance alt gs)
+    (let [nearby? (< distance 2)]
+      (or (ground-position-remark nearby? on-ground? gs)
+          (air-position-remark distance alt gs)
+          (position-location lat lon alt)))
     ""))
 
 ;; clj-mutate-manifest-begin
