@@ -18,6 +18,7 @@
                     (beginShape [] (swap! calls conj [:begin-shape]))
                     (endShape [] (swap! calls conj [:end-shape]))
                     (noFill [] (swap! calls conj [:no-fill]))
+                    (noStroke [] (swap! calls conj [:no-stroke]))
                     (stroke
                       ([gray] (swap! calls conj [:stroke gray]))
                       ([r g b] (swap! calls conj [:stroke r g b]))
@@ -27,6 +28,7 @@
                       ([gray] (swap! calls conj [:fill gray]))
                       ([r g b] (swap! calls conj [:fill r g b]))
                       ([r g b a] (swap! calls conj [:fill r g b a])))
+                    (rect [x y w h] (swap! calls conj [:rect x y w h]))
                     (ellipse [x y w h] (swap! calls conj [:ellipse x y w h]))
                     (textFont [font] (swap! calls conj [:text-font font]))
                     (textAlign
@@ -172,15 +174,17 @@
     (should-not (wind-map/label-airport? {:airspace-class "E"}))
     (should-not (wind-map/label-airport? {})))
 
-  (it "keys the static map layer by bounds, grid, size, and airport markers"
+  (it "keys the static map layer by bounds, grid, size, poll time, and airport markers"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
-          grid {:source :open-meteo-gfs-hrrr :radius-nm 200}
+          grid {:source :open-meteo-gfs-hrrr :generated-at-ms 1000 :radius-nm 200}
           markers [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :airspace-class "D"}]]
-      (should= [600 400 bounds :open-meteo-gfs-hrrr 200 [["KUGN" 42.4 -87.9 config/ifr-color "D"]]]
-               (wind-map/static-map-layer-key bounds 600 400 grid markers))
-      (should-not= (wind-map/static-map-layer-key bounds 600 400 grid markers)
-                   (wind-map/static-map-layer-key bounds 600 400 grid
-                                                  (assoc-in markers [0 :color] config/vfr-color)))))
+      (with-redefs [wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN" :color :green})]
+        (should= [600 400 bounds :open-meteo-gfs-hrrr 1000 200 {:line "METAR KUGN" :color :green}
+                  [["KUGN" 42.4 -87.9 config/ifr-color "D"]]]
+                 (wind-map/static-map-layer-key bounds 600 400 grid markers))
+        (should-not= (wind-map/static-map-layer-key bounds 600 400 grid markers)
+                     (wind-map/static-map-layer-key bounds 600 400 grid
+                                                    (assoc-in markers [0 :color] config/vfr-color)))))))
 
   (it "orients particle line segments with local wind"
     (let [[x2 y2] (wind-map/particle-segment-end {:x 300 :y 200 :u 3 :v 4 :speed 5})]
@@ -396,7 +400,7 @@
         (wind-map/draw-airport! bounds 600 400)
         (wind-map/draw-flight-category-airport! bounds 600 400 marker)
         (wind-map/draw-state-outline! bounds 600 400 outline)
-        (wind-map/draw-source-label! {:source :synthetic :radius-nm 150} 400)
+        (wind-map/draw-source-label! {:source :synthetic :radius-nm 150} 600 400)
         (wind-map/draw-particle! 600 400 {:x 300 :y 200 :u 3 :v 4 :speed 5 :opacity 0.5})
         (should (some (fn [[op _ _ w h]]
                         (and (= :ellipse op)
@@ -412,7 +416,7 @@
                       @calls))
         (should-contain [:text "KUGN" 308.0 200.0] @calls)
         (should-contain [:text "WI" 300.0 200.0] @calls)
-        (should-contain [:text "Source: synthetic  Radius: 150 NM  Polled: unknown UTC" 20 380] @calls)
+        (should-contain [:text "Source: synthetic  Radius: 150 NM  Polled: unknown UTC" 20 400] @calls)
         (should-contain [:line 300 200 303.0 196.0] @calls))))
 
   (it "flags default or stale wind data"
@@ -478,42 +482,63 @@
         (#'wind-map/draw-layer-flight-category-airport! layer bounds 600 400 {:airport "KAAA" :color :green})
         (#'wind-map/draw-layer-state-outline! layer bounds 600 400 outline)
         (#'wind-map/draw-layer-state-outlines! layer bounds 600 400)
-        (#'wind-map/draw-layer-source-label! layer {:source :open-meteo :radius-nm 200 :generated-at-ms 0} 400)
+        (#'wind-map/draw-layer-source-label! layer {:source :open-meteo :radius-nm 200 :generated-at-ms 0} 600 400)
         (should-contain [:ellipse 300.0 200.0 11.0 11.0] @calls)
         (should-contain [:text "KORD" 308.0 200.0] @calls)
         (should-contain [:text "IL" 300.0 200.0] @calls)
-        (should-contain [:text "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC" 20.0 380.0] @calls))))
+        (should-contain [:text-size 9.0] @calls)
+        (should-contain [:text "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC" 20.0 400.0] @calls))))
 
   (it "formats the source label with the poll time in utc"
     (should= "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC"
              (wind-map/source-label-text {:source :open-meteo :radius-nm 200 :generated-at-ms 0})))
 
-  (it "draws the current airport metar on the bottom right"
+  (it "scales the source label font size with screen size"
+    (should= 9 (wind-map/source-label-font-size 300 200))
+    (should= 9 (wind-map/source-label-font-size 600 400))
+    (should= 17 (wind-map/source-label-font-size 1200 800)))
+
+  (it "draws the current airport metar as split-flap text on the bottom right"
     (let [calls (atom [])]
-      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil :metar-font :courier})
+      (with-redefs [config/display-info (atom {:sf-font :split-flap
+                                               :sf-font-size 16
+                                               :font-width 8
+                                               :font-height 20
+                                               :sf-char-gap 1})
                     wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
+                    q/no-stroke (fn [& args] (swap! calls conj (into [:no-stroke] args)))
                     q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                    q/rect (fn [& args] (swap! calls conj (into [:rect] args)))
                     q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
                     q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
                     q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
                     q/text (fn [& args] (swap! calls conj (into [:text] args)))]
         (wind-map/draw-current-airport-metar! 600 400)
+        (should-contain [:no-stroke] @calls)
         (should-contain [:fill 0 255 0] @calls)
-        (should-contain [:text-font :courier] @calls)
-        (should-contain [:text-align :right :bottom] @calls)
-        (should-contain [:text-size 18] @calls)
-        (should-contain [:text "METAR KUGN 231853Z 18012KT 10SM CLR" 580 380] @calls))))
+        (should-contain [:text-font :split-flap] @calls)
+        (should-contain [:text-align :left :top] @calls)
+        (should-contain [:text-size 16] @calls)
+        (should-contain [:rect 273.8 365.0 6.4 16.0] @calls)
+        (should-contain [:text "M" 273 363.0] @calls))))
 
-  (it "draws the cached layer metar on the bottom right"
+  (it "draws the cached layer metar as split-flap text on the bottom right"
     (let [calls (atom [])
           layer (fake-graphics calls)]
-      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+      (with-redefs [config/display-info (atom {:sf-font :split-flap
+                                               :sf-font-size 16
+                                               :font-width 8
+                                               :font-height 20
+                                               :sf-char-gap 1})
                     wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})]
         (#'wind-map/draw-layer-current-airport-metar! layer 600 400)
+        (should-contain [:no-stroke] @calls)
         (should-contain [:fill 0.0 255.0 0.0] @calls)
-        (should-contain [:text-align processing.core.PConstants/RIGHT processing.core.PConstants/BOTTOM] @calls)
-        (should-contain [:text-size 18.0] @calls)
-        (should-contain [:text "METAR KUGN 231853Z 18012KT 10SM CLR" 580.0 380.0] @calls))))
+        (should-contain [:text-font :split-flap] @calls)
+        (should-contain [:text-align processing.core.PConstants/LEFT processing.core.PConstants/TOP] @calls)
+        (should-contain [:text-size 16.0] @calls)
+        (should-contain [:rect 273.8 365.0 6.4 16.0] @calls)
+        (should-contain [:text "M" 273.0 363.0] @calls))))
 
   (it "draws the cached map layer before updated particles"
     (let [calls (atom [])
@@ -572,7 +597,7 @@
           (should= layer (wind-map/static-map-layer bounds 600 400 grid markers))
           (should= 1 @renders)
           (should= layer (wind-map/static-map-layer bounds 601 400 grid markers))
-          (should= 2 @renders))))))
+          (should= 2 @renders)))))
 
   (it "invalidates the cached static map layer when the screen changes"
     (with-redefs [atoms/screen-changed? (atom true)

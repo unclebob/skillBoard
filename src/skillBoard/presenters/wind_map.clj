@@ -225,12 +225,17 @@
 (defn marker-layer-key [{:keys [airport lat lon color airspace-class]}]
   [airport lat lon color airspace-class])
 
+(defn current-airport-metar-label []
+  (utils/get-short-metar config/airport))
+
 (defn static-map-layer-key [bounds width height grid markers]
   [width
    height
    bounds
    (:source grid)
+   (:generated-at-ms grid)
    (:radius-nm grid)
+   (current-airport-metar-label)
    (mapv marker-layer-key markers)])
 
 (defn- current-static-map-layer [width height]
@@ -335,52 +340,113 @@
                     "unknown")]
     (str "Source: " (name source) "  Radius: " radius-nm " NM  Polled: " time-text " UTC")))
 
-(defn- draw-layer-source-label! [layer grid height]
+(declare split-flap-metar-geometry)
+
+(defn source-label-font-size [width height]
+  (max 9 (int (/ (min width height) 45))))
+
+(defn source-label-y [width height]
+  height)
+
+(defn- draw-layer-source-label! [layer grid width height]
   (.fill layer 255 255 255)
   (layer-text-font! layer (map-label-font))
   (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/BOTTOM)
-  (.textSize layer 13)
+  (.textSize layer (source-label-font-size width height))
   (.text layer
          (source-label-text grid)
          (float 20)
-         (float (- height 20))))
+         (float (source-label-y width height))))
 
-(defn draw-source-label! [grid height]
+(defn draw-source-label! [grid width height]
   (try
     (q/fill 255 255 255)
     (when-let [font (map-label-font)]
       (q/text-font font))
     (q/text-align :left :bottom)
-    (q/text-size 13)
-    (q/text (source-label-text grid) 20 (- height 20))
+    (q/text-size (source-label-font-size width height))
+    (q/text (source-label-text grid) 20 (source-label-y width height))
     (catch Exception e
       (core-utils/log :error (str "Error drawing wind source label: " (.getMessage e))))))
 
-(defn current-airport-metar-label []
-  (utils/get-short-metar config/airport))
+(defn split-flap-metar-geometry [width height text]
+  (let [{:keys [sf-font-size font-width font-height sf-char-gap]} @config/display-info
+        sf-font-size (or sf-font-size (max 10 (int (/ (min width height) 22))))
+        font-width (or font-width (* sf-font-size 0.58))
+        font-height (or font-height sf-font-size)
+        sf-char-gap (or sf-char-gap (* font-width config/sf-char-gap))
+        flap-width (+ font-width sf-char-gap)
+        flap-height (* font-height (inc config/sf-line-gap))
+        margin (max 12.0 (* 0.025 (min width height)))
+        max-chars (max 1 (int (Math/floor (/ (- width (* 2 margin)) flap-width))))
+        line (subs (str text) 0 (min (count (str text)) max-chars))
+        line-width (* (count line) flap-width)]
+    {:line line
+     :sf-font-size sf-font-size
+     :flap-width flap-width
+     :flap-height flap-height
+     :x (max margin (- width margin line-width))
+     :y (- height margin flap-height)
+     :backing-rect-top-left-x (* font-width 0.1)
+     :backing-rect-top-left-y (* font-height 0.1)
+     :backing-rect-width (* font-width 0.8)
+     :backing-rect-height (* font-height 0.8)}))
+
+(defn- draw-layer-split-flap-line! [layer {:keys [line sf-font-size flap-width x y
+                                                  backing-rect-top-left-x backing-rect-top-left-y
+                                                  backing-rect-width backing-rect-height]}
+                                   color]
+  (let [[r g b] (color-rgb color)]
+    (.noStroke layer)
+    (layer-text-font! layer (:sf-font @config/display-info))
+    (.textSize layer sf-font-size)
+    (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/TOP)
+    (doseq [[idx c] (map-indexed vector line)
+            :when (not= c \space)
+            :let [char-x (+ x (* idx flap-width))]]
+      (.fill layer r g b)
+      (.rect layer
+             (float (+ char-x backing-rect-top-left-x))
+             (float (+ y backing-rect-top-left-y))
+             (float backing-rect-width)
+             (float backing-rect-height))
+      (.fill layer 0 0 0)
+      (.text layer (str c) (float char-x) (float y)))))
+
+(defn- draw-split-flap-line! [{:keys [line sf-font-size flap-width x y
+                                      backing-rect-top-left-x backing-rect-top-left-y
+                                      backing-rect-width backing-rect-height]}
+                              color]
+  (let [[r g b] (color-rgb color)]
+    (q/no-stroke)
+    (when-let [font (:sf-font @config/display-info)]
+      (q/text-font font))
+    (q/text-size sf-font-size)
+    (q/text-align :left :top)
+    (doseq [[idx c] (map-indexed vector line)
+            :when (not= c \space)
+            :let [char-x (+ x (* idx flap-width))]]
+      (q/fill r g b)
+      (q/rect (+ char-x backing-rect-top-left-x)
+              (+ y backing-rect-top-left-y)
+              backing-rect-width
+              backing-rect-height)
+      (q/fill 0 0 0)
+      (q/text (str c) char-x y))))
 
 (defn- draw-layer-current-airport-metar! [layer width height]
   (try
     (let [{:keys [line color]} (current-airport-metar-label)
-          [r g b] (color-rgb color)]
-      (.fill layer r g b)
-      (layer-text-font! layer (metar-label-font))
-      (.textAlign layer processing.core.PConstants/RIGHT processing.core.PConstants/BOTTOM)
-      (.textSize layer 18)
-      (.text layer (str line) (float (- width 20)) (float (- height 20))))
+          geometry (split-flap-metar-geometry width height line)]
+      (draw-layer-split-flap-line! layer geometry color))
     (catch Exception e
       (core-utils/log :error (str "Error drawing wind METAR label: " (.getMessage e))))))
 
 (defn draw-current-airport-metar! [width height]
   (try
     (let [{:keys [line color]} (current-airport-metar-label)
-          [r g b] (color-rgb color)]
-      (q/fill r g b)
-      (when-let [font (metar-label-font)]
-        (q/text-font font))
-      (q/text-align :right :bottom)
-      (q/text-size 18)
-      (q/text line (- width 20) (- height 20)))
+          geometry (split-flap-metar-geometry width height line)]
+      (draw-split-flap-line! geometry color))
     (catch Exception e
       (core-utils/log :error (str "Error drawing wind METAR label: " (.getMessage e))))))
 
@@ -404,7 +470,7 @@
     (draw-state-outlines! bounds width height)
     (doseq [marker markers]
       (draw-flight-category-airport! bounds width height marker))
-    (draw-source-label! grid height)
+    (draw-source-label! grid width height)
     (draw-layer-current-airport-metar! layer width height)))
 
 (defn static-map-layer [bounds width height grid markers]
