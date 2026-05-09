@@ -498,6 +498,52 @@
     (should= 9 (wind-map/source-label-font-size 600 400))
     (should= 17 (wind-map/source-label-font-size 1200 800)))
 
+  (it "computes metar split-flap metrics from configured display metrics"
+    (with-redefs [config/display-info (atom {:sf-font-size 16
+                                             :font-width 8
+                                             :font-height 20
+                                             :sf-char-gap 1})]
+      (should= {:sf-font-size 16
+                :font-width 8
+                :font-height 20
+                :sf-char-gap 1
+                :flap-width 9
+                :flap-height 25.0}
+               (wind-map/metar-split-flap-metrics 600 400))))
+
+  (it "computes fallback metar split-flap metrics from screen size"
+    (with-redefs [config/display-info (atom {})]
+      (should= {:sf-font-size 18
+                :font-width 10.44
+                :font-height 18
+                :sf-char-gap 0.8352
+                :flap-width 11.2752
+                :flap-height 22.5}
+               (wind-map/metar-split-flap-metrics 600 400))))
+
+  (it "truncates metar text to the available split-flap columns"
+    (should= 12.0 (wind-map/metar-margin 600 400))
+    (should= 64 (wind-map/metar-max-chars 600 12.0 9))
+    (should= "METAR" (wind-map/truncate-metar-line "METAR KUGN" 5))
+    (should= "METAR KUGN" (wind-map/truncate-metar-line "METAR KUGN" 64)))
+
+  (it "places the split-flap metar line at the lower right"
+    (with-redefs [config/display-info (atom {:sf-font-size 16
+                                             :font-width 8
+                                             :font-height 20
+                                             :sf-char-gap 1})]
+      (should= {:line "METAR"
+                :sf-font-size 16
+                :flap-width 9
+                :flap-height 25.0
+                :x 543.0
+                :y 363.0
+                :backing-rect-top-left-x 0.8
+                :backing-rect-top-left-y 2.0
+                :backing-rect-width 6.4
+                :backing-rect-height 16.0}
+               (wind-map/split-flap-metar-geometry 600 400 "METAR"))))
+
   (it "draws the current airport metar as split-flap text on the bottom right"
     (let [calls (atom [])]
       (with-redefs [config/display-info (atom {:sf-font :split-flap

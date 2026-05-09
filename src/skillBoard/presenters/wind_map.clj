@@ -369,17 +369,35 @@
     (catch Exception e
       (core-utils/log :error (str "Error drawing wind source label: " (.getMessage e))))))
 
+(defn metar-split-flap-metrics [width height]
+  (let [base-font-size (max 10 (int (/ (min width height) 22)))
+        defaults {:sf-font-size base-font-size
+                  :font-width (* base-font-size 0.58)
+                  :font-height base-font-size}
+        configured (select-keys @config/display-info [:sf-font-size :font-width :font-height :sf-char-gap])
+        {:keys [sf-font-size font-width font-height sf-char-gap]} (merge defaults configured)
+        sf-char-gap (get (merge {:sf-char-gap (* font-width config/sf-char-gap)} configured) :sf-char-gap)]
+    {:sf-font-size sf-font-size
+     :font-width font-width
+     :font-height font-height
+     :sf-char-gap sf-char-gap
+     :flap-width (+ font-width sf-char-gap)
+     :flap-height (* font-height (inc config/sf-line-gap))}))
+
+(defn metar-margin [width height]
+  (max 12.0 (* 0.025 (min width height))))
+
+(defn metar-max-chars [width margin flap-width]
+  (max 1 (int (Math/floor (/ (- width (* 2 margin)) flap-width)))))
+
+(defn truncate-metar-line [text max-chars]
+  (let [line (str text)]
+    (subs line 0 (min (count line) max-chars))))
+
 (defn split-flap-metar-geometry [width height text]
-  (let [{:keys [sf-font-size font-width font-height sf-char-gap]} @config/display-info
-        sf-font-size (or sf-font-size (max 10 (int (/ (min width height) 22))))
-        font-width (or font-width (* sf-font-size 0.58))
-        font-height (or font-height sf-font-size)
-        sf-char-gap (or sf-char-gap (* font-width config/sf-char-gap))
-        flap-width (+ font-width sf-char-gap)
-        flap-height (* font-height (inc config/sf-line-gap))
-        margin (max 12.0 (* 0.025 (min width height)))
-        max-chars (max 1 (int (Math/floor (/ (- width (* 2 margin)) flap-width))))
-        line (subs (str text) 0 (min (count (str text)) max-chars))
+  (let [{:keys [sf-font-size font-width font-height flap-width flap-height]} (metar-split-flap-metrics width height)
+        margin (metar-margin width height)
+        line (truncate-metar-line text (metar-max-chars width margin flap-width))
         line-width (* (count line) flap-width)]
     {:line line
      :sf-font-size sf-font-size
