@@ -140,10 +140,46 @@
   (when-let [value (blank->nil s)]
     (Double/parseDouble value)))
 
+(defn- header-key [header occurrence]
+  (keyword (if (= 1 occurrence)
+             header
+             (str header "_" occurrence))))
+
+(defn unique-csv-headers [headers]
+  (:headers
+    (reduce (fn [{:keys [counts] :as state} header]
+              (let [occurrence (inc (get counts header 0))]
+                (-> state
+                    (update :counts assoc header occurrence)
+                    (update :headers conj (header-key header occurrence)))))
+            {:counts {} :headers []}
+            headers)))
+
 (defn csv->maps [csv-text]
   (let [lines (remove str/blank? (str/split-lines csv-text))
-        headers (map keyword (csv-fields (first lines)))]
+        headers (unique-csv-headers (csv-fields (first lines)))]
     (map #(zipmap headers (csv-fields %)) (rest lines))))
+
+(defn- parse-int-field [s]
+  (when-let [value (blank->nil s)]
+    (Integer/parseInt value)))
+
+(def cloud-layer-fields
+  [[:sky_cover :cloud_base_ft_agl]
+   [:sky_cover_2 :cloud_base_ft_agl_2]
+   [:sky_cover_3 :cloud_base_ft_agl_3]
+   [:sky_cover_4 :cloud_base_ft_agl_4]])
+
+(defn- cloud-layer [record [cover-key base-key]]
+  (when-let [cover (blank->nil (cover-key record))]
+    (cond-> {:cover cover}
+      (parse-int-field (base-key record)) (assoc :base (parse-int-field (base-key record))))))
+
+(defn metar-cache-clouds [record]
+  (let [clouds (keep #(cloud-layer record %) cloud-layer-fields)]
+    (cond-> (vec clouds)
+      (parse-int-field (:vert_vis_ft record))
+      (conj {:cover "VV" :base (parse-int-field (:vert_vis_ft record))}))))
 
 (defn metar-cache-record->metar [record]
   (when-let [station-id (blank->nil (:station_id record))]
@@ -153,6 +189,7 @@
          :lat lat
          :lon lon
          :fltCat (blank->nil (:flight_category record))
+         :clouds (metar-cache-clouds record)
          :rawOb (:raw_text record)}))))
 
 (defn- distance-nm [[center-lat center-lon] {:keys [lat lon]}]

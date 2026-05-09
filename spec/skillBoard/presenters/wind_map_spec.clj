@@ -119,19 +119,21 @@
     (with-redefs [comm/polled-nearby-metars (atom {"KUGN" {:icaoId "KUGN"
                                                            :lat 42.4
                                                            :lon -87.9
-                                                           :fltCat "IFR"}
+                                                           :fltCat "IFR"
+                                                           :clouds [{:cover "BKN" :base 700}]}
                                                    "KMKE" {:icaoId "KMKE"
                                                            :lat 42.9
                                                            :lon -87.9
-                                                           :fltCat "VFR"}})
+                                                           :fltCat "VFR"
+                                                           :clouds [{:cover "SCT" :base 2500}]}})
                   comm/polled-airspace-classes (atom {"KUGN" "D"
                                                       "KMKE" "C"})
                   comm/polled-metars (atom {"KMDW" {:icaoId "KMDW"
                                                     :lat 41.8
                                                     :lon -87.8
                                                     :fltCat "MVFR"}})]
-      (should= [{:airport "KMKE" :lat 42.9 :lon -87.9 :color config/vfr-color :airspace-class "C"}
-                {:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :airspace-class "D"}]
+      (should= [{:airport "KMKE" :lat 42.9 :lon -87.9 :color config/vfr-color :ceiling-ft-agl 10000 :airspace-class "C"}
+                {:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :ceiling-ft-agl 700 :airspace-class "D"}]
                (vec (wind-map/flight-category-airport-markers)))))
 
   (it "falls back to configured polled metars before nearby metars have loaded"
@@ -141,7 +143,7 @@
                                                     :lat 42.4
                                                     :lon -87.9
                                                     :fltCat "IFR"}})]
-      (should= [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :airspace-class nil}]
+      (should= [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :ceiling-ft-agl nil :airspace-class nil}]
                (vec (wind-map/flight-category-airport-markers)))))
 
   (it "caches flight category airport markers briefly"
@@ -167,6 +169,15 @@
                  :color config/info-color}]
                (vec (wind-map/flight-category-airport-markers)))))
 
+  (it "computes the lowest ceiling from broken, overcast, and vertical visibility layers"
+    (should= 600 (wind-map/metar-ceiling-ft-agl {:clouds [{:cover "SCT" :base 1200}
+                                                          {:cover "OVC" :base 900}
+                                                          {:cover "BKN" :base 600}]}))
+    (should= 300 (wind-map/metar-ceiling-ft-agl {:clouds [{:cover "VV" :base 300}]}))
+    (should= 10000 (wind-map/metar-ceiling-ft-agl {:clouds [{:cover "FEW" :base 1200}
+                                                            {:cover "SCT" :base 2500}]}))
+    (should-be-nil (wind-map/metar-ceiling-ft-agl {})))
+
   (it "labels only class B, C, and D airport markers"
     (should (wind-map/label-airport? {:airspace-class "B"}))
     (should (wind-map/label-airport? {:airspace-class "C"}))
@@ -177,14 +188,32 @@
   (it "keys the static map layer by bounds, grid, size, poll time, and airport markers"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
           grid {:source :open-meteo-gfs-hrrr :generated-at-ms 1000 :radius-nm 200}
-          markers [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :airspace-class "D"}]]
+          markers [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :ceiling-ft-agl 700 :airspace-class "D"}]]
       (with-redefs [wind-map/current-airport-metar-label (fn [] {:line "METAR KUGN" :color :green})]
         (should= [600 400 bounds :open-meteo-gfs-hrrr 1000 200 {:line "METAR KUGN" :color :green}
-                  [["KUGN" 42.4 -87.9 config/ifr-color "D"]]]
+                  [["KUGN" 42.4 -87.9 config/ifr-color 700 "D"]]]
                  (wind-map/static-map-layer-key bounds 600 400 grid markers))
         (should-not= (wind-map/static-map-layer-key bounds 600 400 grid markers)
                      (wind-map/static-map-layer-key bounds 600 400 grid
                                                     (assoc-in markers [0 :color] config/vfr-color)))))))
+
+  (it "interpolates ceiling observations and renders clear above ten thousand feet"
+    (let [observations [{:lat 42.0 :lon -87.0 :ceiling-ft-agl 500}
+                        {:lat 43.0 :lon -87.0 :ceiling-ft-agl 10000}]]
+      (should (< (wind-map/interpolated-ceiling-ft-agl observations 42.1 -87.0) 5000))
+      (should-be-nil (wind-map/ceiling-overlay-color nil))
+      (should-be-nil (wind-map/ceiling-overlay-color 10000))
+      (should= [255 87 50 42] (wind-map/ceiling-overlay-color 0))
+      (should= [255 125 50 42] (wind-map/ceiling-overlay-color 750))))
+
+  (it "draws a transparent ceiling overlay cell when the interpolated ceiling is below ten thousand feet"
+    (let [calls (atom [])
+          layer (fake-graphics calls)
+          bounds {:top 43.0 :bottom 41.0 :left -88.0 :right -86.0}
+          observations [{:lat 42.0 :lon -87.0 :ceiling-ft-agl 750}]]
+      (#'wind-map/draw-layer-ceiling-cell! layer bounds 600 400 observations 100 100 3 2)
+      (should-contain [:fill 255 125 50 42] @calls)
+      (should-contain [:rect 300.0 200.0 100.0 100.0] @calls)))
 
   (it "orients particle line segments with local wind"
     (let [[x2 y2] (wind-map/particle-segment-end {:x 300 :y 200 :u 3 :v 4 :speed 5})]
@@ -594,6 +623,9 @@
               :y (/ 400 3.0)
               :width 8.0
               :height (/ 400 3.0)
+              :screen-width 600
+              :screen-height 400
+              :title-x 600
               :label-x 586.0}
              (wind-map/wind-speed-scale-geometry 600 400))
     (let [geometry (wind-map/wind-speed-scale-geometry 600 400)]
@@ -624,13 +656,62 @@
       (should-contain [:rect 592.0 177.77779 8.0 22.222214] @calls)
       (should-contain [:rect 592.0 155.55556 8.0 22.222229] @calls)
       (should-contain [:rect 592.0 133.33333 8.0 22.222221] @calls)
-      (should-contain [:text-size 13.5] @calls)
+      (should-contain [:text-size 7.92] @calls)
       (should-contain [:text "0-5" 586.0 255.55556] @calls)
       (should-contain [:text "5-10" 586.0 233.33334] @calls)
       (should-contain [:text "10-15" 586.0 211.11111] @calls)
       (should-contain [:text "15-20" 586.0 188.8889] @calls)
       (should-contain [:text "20-25" 586.0 166.66667] @calls)
-      (should-contain [:text "25+" 586.0 144.44444] @calls)))
+      (should-contain [:text "25+" 586.0 144.44444] @calls)
+      (should-contain [:text-size 9.9] @calls)
+      (should-contain [:text "wind" 600.0 129.33333] @calls)))
+
+  (it "draws a static ceiling scale abutted to the left edge"
+    (let [calls (atom [])
+          layer (fake-graphics calls)]
+      (should= {:x 0.0
+                :y 133.33333333333334
+                :width 8.0
+                :height 133.33333333333334
+                :screen-width 600
+                :screen-height 400
+                :title-x 0.0
+                :label-x 14.0}
+               (wind-map/ceiling-scale-geometry 600 400))
+      (let [geometry (wind-map/ceiling-scale-geometry 600 400)]
+        (should= (+ (:y geometry) (:height geometry)) (wind-map/ceiling-scale-y geometry 0))
+        (should= 200.0 (wind-map/ceiling-scale-y geometry 5000))
+        (should= (:y geometry) (wind-map/ceiling-scale-y geometry wind-map/ceiling-overlay-max-ft))
+        (should= 20 (count (wind-map/ceiling-scale-bands geometry)))
+        (should= [{:label "<500" :y 263.33333333333337}
+                  {:label "1K" :y 253.33333333333334}
+                  {:label "2K" :y 240.0}
+                  {:label "3K" :y 226.66666666666669}
+                  {:label "4K" :y 213.33333333333334}
+                  {:label "5K" :y 200.0}
+                  {:label "6K" :y 186.66666666666669}
+                  {:label "7K" :y 173.33333333333334}
+                  {:label "8K" :y 160.0}
+                  {:label "9K" :y 146.66666666666669}
+                  {:label "10K" :y 133.33333333333334}]
+                 (wind-map/ceiling-scale-labels geometry)))
+      (#'wind-map/draw-layer-ceiling-scale! layer 600 400)
+      (should-contain [:no-stroke] @calls)
+      (should-contain [:rect 0.0 260.0 8.0 6.6666565] @calls)
+      (should-contain [:rect 0.0 133.33333 8.0 6.6666718] @calls)
+      (should-contain [:text-size 7.92] @calls)
+      (should-contain [:text "<500" 14.0 263.33334] @calls)
+      (should-contain [:text "1K" 14.0 253.33333] @calls)
+      (should-contain [:text "5K" 14.0 200.0] @calls)
+      (should-contain [:text "10K" 14.0 133.33333] @calls)
+      (should-contain [:text-size 9.9] @calls)
+      (should-contain [:text "ceil" 0.0 129.33333] @calls)))
+
+  (it "scales side scale labels and titles from the screen size"
+    (should= 7.92 (wind-map/wind-speed-scale-label-font-size 600 400))
+    (should= 14.96 (wind-map/wind-speed-scale-label-font-size 1200 800))
+    (should= 9.9 (wind-map/scale-title-font-size 600 400))
+    (should= 18.7 (wind-map/scale-title-font-size 1200 800)))
 
   (it "draws the cached map layer before updated particles"
     (let [calls (atom [])

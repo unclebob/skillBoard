@@ -17,6 +17,10 @@
 (def airport-marker-cache-ms 1000)
 (def stale-wind-data-ms (* 2 60 60 1000))
 (def stale-wind-data-message "WIND DATA IS OUT OF DATE")
+(def ceiling-overlay-cols 36)
+(def ceiling-overlay-rows 24)
+(def ceiling-overlay-max-ft 10000)
+(def ceiling-overlay-cell-alpha 42)
 
 (def particles wind-particles/particles)
 (def particle-field-size wind-particles/particle-field-size)
@@ -153,6 +157,17 @@
 (defn color-rgb [color]
   (get color-rgb-values color default-color-rgb))
 
+(def ceiling-covers #{"BKN" "OVC" "VV"})
+
+(defn metar-ceiling-ft-agl [{:keys [clouds]}]
+  (when (seq clouds)
+    (let [ceilings (keep (fn [{:keys [cover base]}]
+                           (when (and (ceiling-covers cover) base)
+                             base))
+                         clouds)]
+      (or (when (seq ceilings) (apply min ceilings))
+          ceiling-overlay-max-ft))))
+
 (defn draw-airport! [bounds width height]
   (let [[lat lon] config/airport-lat-lon
         [x y] (project-point bounds width height lat lon)]
@@ -169,19 +184,21 @@
         fallback-metars @comm/polled-metars
         airspace-classes @comm/polled-airspace-classes
         metars (if (seq nearby-metars) nearby-metars fallback-metars)
-        markers (map (fn [{:keys [lat lon fltCat icaoId]}]
+        markers (map (fn [{:keys [lat lon fltCat icaoId] :as metar}]
                        {:airport icaoId
                         :lat lat
                         :lon lon
                         :color (flight-category-color fltCat)
+                        :ceiling-ft-agl (metar-ceiling-ft-agl metar)
                         :airspace-class (get airspace-classes icaoId)})
                      (sort-by :icaoId (vals metars)))
         home-marker (when-not (some #(= config/airport (:airport %)) markers)
-                      (if-let [{:keys [lat lon fltCat icaoId]} (get fallback-metars config/airport)]
+                      (if-let [{:keys [lat lon fltCat icaoId] :as metar} (get fallback-metars config/airport)]
                         {:airport (or icaoId config/airport)
                          :lat lat
                          :lon lon
                          :color (flight-category-color fltCat)
+                         :ceiling-ft-agl (metar-ceiling-ft-agl metar)
                          :airspace-class (get airspace-classes (or icaoId config/airport))}
                         {:airport config/airport
                          :lat (first config/airport-lat-lon)
@@ -222,8 +239,8 @@
   (doseq [marker (flight-category-airport-markers)]
     (draw-flight-category-airport! bounds width height marker)))
 
-(defn marker-layer-key [{:keys [airport lat lon color airspace-class]}]
-  [airport lat lon color airspace-class])
+(defn marker-layer-key [{:keys [airport lat lon color ceiling-ft-agl airspace-class]}]
+  [airport lat lon color ceiling-ft-agl airspace-class])
 
 (defn current-airport-metar-label []
   (utils/get-short-metar config/airport))
@@ -326,6 +343,85 @@
 (defn- draw-layer-state-outlines! [layer bounds width height]
   (doseq [outline (state-outlines)]
     (draw-layer-state-outline! layer bounds width height outline)))
+
+(defn ceiling-observations [markers]
+  (filterv (fn [{:keys [lat lon ceiling-ft-agl]}]
+             (and lat lon (number? ceiling-ft-agl)))
+           markers))
+
+(defn- ceiling-distance [lat lon observation]
+  (max 0.5 (wind-data/nm-distance [lat lon] [(:lat observation) (:lon observation)])))
+
+(defn- weighted-ceiling [lat lon observation]
+  (let [distance (ceiling-distance lat lon observation)
+        weight (/ 1.0 (* distance distance))]
+    {:weight weight
+     :ceiling (* weight (:ceiling-ft-agl observation))}))
+
+(defn interpolated-ceiling-ft-agl [observations lat lon]
+  (let [nearby (take 6 (sort-by #(ceiling-distance lat lon %) observations))
+        weighted (map #(weighted-ceiling lat lon %) nearby)
+        total-weight (reduce + (map :weight weighted))]
+    (when (pos? total-weight)
+      (/ (reduce + (map :ceiling weighted)) total-weight))))
+
+(defn ceiling-band-upper-ft [ceiling-ft-agl]
+  (max 500 (* 500 (Math/ceil (/ ceiling-ft-agl 500.0)))))
+
+(def ceiling-color-stops
+  [{:ceiling 0 :color [255 50 50]}
+   {:ceiling 1000 :color [255 125 50]}
+   {:ceiling 3000 :color [255 230 80]}
+   {:ceiling 5000 :color [85 220 105]}
+   {:ceiling 8000 :color [70 210 255]}
+   {:ceiling ceiling-overlay-max-ft :color [70 120 255]}])
+
+(defn- interpolate-channel [a b ratio]
+  (int (+ a (* (- b a) ratio))))
+
+(defn- color-between-stops [{low-ceiling :ceiling low-color :color}
+                            {high-ceiling :ceiling high-color :color}
+                            ceiling]
+  (let [ratio (if (= low-ceiling high-ceiling)
+                0.0
+                (/ (- ceiling low-ceiling) (- high-ceiling low-ceiling)))]
+    (mapv interpolate-channel low-color high-color (repeat ratio))))
+
+(defn ceiling-overlay-color [ceiling-ft-agl]
+  (when (and ceiling-ft-agl (< ceiling-ft-agl ceiling-overlay-max-ft))
+    (let [band-ceiling (min ceiling-overlay-max-ft (ceiling-band-upper-ft ceiling-ft-agl))
+          high-stop (first (filter #(<= band-ceiling (:ceiling %)) (rest ceiling-color-stops)))
+          low-stop (last (take-while #(< (:ceiling %) (:ceiling high-stop)) ceiling-color-stops))]
+      (conj (color-between-stops low-stop high-stop band-ceiling)
+            ceiling-overlay-cell-alpha))))
+
+(defn ceiling-scale-color [ceiling-ft-agl]
+  (when-let [[r g b _a] (ceiling-overlay-color ceiling-ft-agl)]
+    [r g b 210]))
+
+(defn ceiling-overlay-cell-color [bounds width height observations cell-width cell-height col row]
+  (let [x (* col cell-width)
+        y (* row cell-height)
+        [lat lon] (unproject-point bounds width height (+ x (/ cell-width 2.0)) (+ y (/ cell-height 2.0)))
+        ceiling (interpolated-ceiling-ft-agl observations lat lon)]
+    (ceiling-overlay-color ceiling)))
+
+(defn- draw-layer-ceiling-cell! [layer bounds width height observations cell-width cell-height col row]
+  (when-let [[r g b a] (ceiling-overlay-cell-color bounds width height observations cell-width cell-height col row)]
+    (let [x (* col cell-width)
+          y (* row cell-height)]
+      (.fill layer r g b a)
+      (.rect layer (float x) (float y) (float cell-width) (float cell-height)))))
+
+(defn- draw-layer-ceiling-overlay! [layer bounds width height markers]
+  (let [observations (ceiling-observations markers)
+        cell-width (/ width ceiling-overlay-cols)
+        cell-height (/ height ceiling-overlay-rows)]
+    (when (seq observations)
+      (.noStroke layer)
+      (doseq [col (range ceiling-overlay-cols)
+              row (range ceiling-overlay-rows)]
+        (draw-layer-ceiling-cell! layer bounds width height observations cell-width cell-height col row)))))
 
 (defn source-label-text [{:keys [source radius-nm generated-at-ms]}]
   (let [time-text (if generated-at-ms
@@ -477,6 +573,9 @@
      :y (/ height 3.0)
      :width strip-width
      :height scale-height
+     :screen-width width
+     :screen-height height
+     :title-x width
      :label-x (- width strip-width 6.0)}))
 
 (defn wind-speed-scale-y [{:keys [y height]} speed]
@@ -498,7 +597,7 @@
     (str low "-" high)))
 
 (defn wind-speed-scale-label-font-size [width height]
-  (* 1.5 (source-label-font-size width height)))
+  (* 0.88 (source-label-font-size width height)))
 
 (defn- draw-layer-wind-speed-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
   (let [[r g b a] color]
@@ -509,11 +608,21 @@
   (.fill layer 255 255 255)
   (layer-text-font! layer (map-label-font))
   (.textAlign layer processing.core.PConstants/RIGHT processing.core.PConstants/CENTER)
-  (.textSize layer (wind-speed-scale-label-font-size (:width geometry) (:height geometry)))
+  (.textSize layer (wind-speed-scale-label-font-size (:screen-width geometry) (:screen-height geometry)))
   (.text layer
          (wind-speed-scale-band-label band)
          (float (:label-x geometry))
          (float (/ (+ top bottom) 2.0))))
+
+(defn scale-title-font-size [width height]
+  (* 1.1 (source-label-font-size width height)))
+
+(defn- draw-layer-wind-speed-scale-title! [layer geometry]
+  (.fill layer 255 255 255)
+  (layer-text-font! layer (map-label-font))
+  (.textAlign layer processing.core.PConstants/RIGHT processing.core.PConstants/BOTTOM)
+  (.textSize layer (scale-title-font-size (:screen-width geometry) (:screen-height geometry)))
+  (.text layer "wind" (float (:title-x geometry)) (float (- (:y geometry) 4.0))))
 
 (defn- draw-layer-wind-speed-scale! [layer width height]
   (let [geometry (wind-speed-scale-geometry width height)]
@@ -521,7 +630,73 @@
     (doseq [band (wind-speed-scale-bands geometry)]
       (draw-layer-wind-speed-scale-band! layer geometry band))
     (doseq [band (wind-speed-scale-bands geometry)]
-      (draw-layer-wind-speed-scale-label! layer geometry band))))
+      (draw-layer-wind-speed-scale-label! layer geometry band))
+    (draw-layer-wind-speed-scale-title! layer geometry)))
+
+(defn ceiling-scale-geometry [width height]
+  (let [scale-height (/ height 3.0)
+        strip-width (max 8.0 (* 0.02 (min width height)))]
+    {:x 0.0
+     :y (/ height 3.0)
+     :width strip-width
+     :height scale-height
+     :screen-width width
+     :screen-height height
+     :title-x 0.0
+     :label-x (+ strip-width 6.0)}))
+
+(defn ceiling-scale-y [{:keys [y height]} ceiling-ft-agl]
+  (+ y (* height (- 1.0 (/ ceiling-ft-agl ceiling-overlay-max-ft)))))
+
+(defn ceiling-scale-bands [{:keys [y height]}]
+  (let [ceilings (range 0 (inc ceiling-overlay-max-ft) 500)]
+    (mapv (fn [[low high]]
+            {:low low
+             :high high
+             :top (+ y (* height (- 1.0 (/ high ceiling-overlay-max-ft))))
+             :bottom (+ y (* height (- 1.0 (/ low ceiling-overlay-max-ft))))
+             :color (ceiling-scale-color low)})
+          (partition 2 1 ceilings))))
+
+(defn ceiling-scale-labels [geometry]
+  (mapv (fn [[label ceiling]]
+          {:label label
+           :y (ceiling-scale-y geometry ceiling)})
+        (concat [["<500" 250]]
+                (map (fn [ceiling]
+                       [(str (/ ceiling 1000) "K") ceiling])
+                     (range 1000 (inc ceiling-overlay-max-ft) 1000)))))
+
+(defn ceiling-scale-label-font-size [width height]
+  (wind-speed-scale-label-font-size width height))
+
+(defn- draw-layer-ceiling-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
+  (let [[r g b a] color]
+    (.fill layer r g b a)
+    (.rect layer (float x) (float top) (float width) (float (- bottom top)))))
+
+(defn- draw-layer-ceiling-scale-label! [layer geometry {:keys [label y]}]
+  (.fill layer 255 255 255)
+  (layer-text-font! layer (map-label-font))
+  (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/CENTER)
+  (.textSize layer (ceiling-scale-label-font-size (:screen-width geometry) (:screen-height geometry)))
+  (.text layer (str label) (float (:label-x geometry)) (float y)))
+
+(defn- draw-layer-ceiling-scale-title! [layer geometry]
+  (.fill layer 255 255 255)
+  (layer-text-font! layer (map-label-font))
+  (.textAlign layer processing.core.PConstants/LEFT processing.core.PConstants/BOTTOM)
+  (.textSize layer (scale-title-font-size (:screen-width geometry) (:screen-height geometry)))
+  (.text layer "ceil" (float (:title-x geometry)) (float (- (:y geometry) 4.0))))
+
+(defn- draw-layer-ceiling-scale! [layer width height]
+  (let [geometry (ceiling-scale-geometry width height)]
+    (.noStroke layer)
+    (doseq [band (ceiling-scale-bands geometry)]
+      (draw-layer-ceiling-scale-band! layer geometry band))
+    (doseq [label (ceiling-scale-labels geometry)]
+      (draw-layer-ceiling-scale-label! layer geometry label))
+    (draw-layer-ceiling-scale-title! layer geometry)))
 
 (defn stale-wind-data? [now {:keys [source generated-at-ms]}]
   (or (= :synthetic source)
@@ -541,8 +716,10 @@
   (q/with-graphics layer
     (q/background 10 15 22)
     (draw-state-outlines! bounds width height)
+    (draw-layer-ceiling-overlay! layer bounds width height markers)
     (doseq [marker markers]
       (draw-flight-category-airport! bounds width height marker))
+    (draw-layer-ceiling-scale! layer width height)
     (draw-layer-wind-speed-scale! layer width height)
     (draw-source-label! grid width height)
     (draw-layer-current-airport-metar! layer width height)))

@@ -167,16 +167,29 @@
     (should= ["METAR KUGN 211853Z, AUTO" "KUGN" "42.4255"]
              (comm/csv-fields "\"METAR KUGN 211853Z, AUTO\",KUGN,42.4255")))
 
+  (it "preserves duplicate CSV headers"
+    (should= [:sky_cover :cloud_base_ft_agl :sky_cover_2 :cloud_base_ft_agl_2]
+             (comm/unique-csv-headers ["sky_cover" "cloud_base_ft_agl"
+                                       "sky_cover" "cloud_base_ft_agl"])))
+
   (it "converts METAR cache records to the display shape"
     (should= {:icaoId "KUGN"
               :lat 42.4255
               :lon -87.8634
               :fltCat "MVFR"
+              :clouds [{:cover "FEW" :base 1200}
+                       {:cover "BKN" :base 2500}
+                       {:cover "VV" :base 300}]
               :rawOb "METAR KUGN"}
              (comm/metar-cache-record->metar {:station_id "KUGN"
                                                :latitude "42.4255"
                                                :longitude "-87.8634"
                                                :flight_category "MVFR"
+                                               :sky_cover "FEW"
+                                               :cloud_base_ft_agl "1200"
+                                               :sky_cover_2 "BKN"
+                                               :cloud_base_ft_agl_2 "2500"
+                                               :vert_vis_ft "300"
                                                :raw_text "METAR KUGN"})))
 
   (it "filters METARs to the configured radius"
@@ -187,7 +200,7 @@
                (map :icaoId (comm/nearby-metars metars config/airport-lat-lon 200)))))
 
   (it "fetches the compressed METAR cache and stores nearby airports"
-    (let [csv "raw_text,station_id,observation_time,latitude,longitude,flight_category\n\"METAR KUGN\",KUGN,2026-04-21T18:00:00.000Z,42.4255,-87.8634,VFR\n\"METAR KLAX\",KLAX,2026-04-21T18:00:00.000Z,33.9425,-118.4081,IFR\n"
+    (let [csv "raw_text,station_id,observation_time,latitude,longitude,sky_cover,cloud_base_ft_agl,sky_cover,cloud_base_ft_agl,flight_category\n\"METAR KUGN\",KUGN,2026-04-21T18:00:00.000Z,42.4255,-87.8634,FEW,1200,OVC,900,VFR\n\"METAR KLAX\",KLAX,2026-04-21T18:00:00.000Z,33.9425,-118.4081,OVC,500,,,,IFR\n"
           captured-url (atom nil)]
       (with-redefs [http/get (fn [url _args]
                                (reset! captured-url url)
@@ -199,6 +212,8 @@
                           :lat 42.4255
                           :lon -87.8634
                           :fltCat "VFR"
+                          :clouds [{:cover "FEW" :base 1200}
+                                   {:cover "OVC" :base 900}]
                           :rawOb "METAR KUGN"}}
                  (comm/get-nearby-metars))
         (should= comm/nearby-metar-cache-url @captured-url)
