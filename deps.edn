@@ -25,6 +25,10 @@
            :cov {:main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov" "--codecov"]
                  :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}}
                  :extra-paths ["spec" "target/generated-acceptance/spec"]}
+           :dry {:main-opts ["-m" "dry4clj.core"]
+                 :extra-deps {io.github.unclebob/dry4clj
+                              {:git/url "https://github.com/unclebob/dry4clj.git"
+                               :git/sha "76094cf24573a1daef1af9f9c8a0616f6b9444d2"}}}
            :scrap {:main-opts ["-m" "scrap.core"]
                    :extra-deps {io.github.unclebob/scrap
                                 {:git/url "https://github.com/unclebob/scrap.git"

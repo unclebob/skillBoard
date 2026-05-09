@@ -644,7 +644,7 @@
 (defn wind-speed-scale-label-font-size [width height]
   (* 0.88 (source-label-font-size width height)))
 
-(defn- draw-layer-wind-speed-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
+(defn- draw-layer-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
   (let [[r g b a] color]
     (.fill layer r g b a)
     (.rect layer (float x) (float top) (float width) (float (- bottom top)))))
@@ -673,7 +673,7 @@
   (let [geometry (wind-speed-scale-geometry width height)]
     (.noStroke layer)
     (doseq [band (wind-speed-scale-bands geometry)]
-      (draw-layer-wind-speed-scale-band! layer geometry band))
+      (draw-layer-scale-band! layer geometry band))
     (doseq [band (wind-speed-scale-bands geometry)]
       (draw-layer-wind-speed-scale-label! layer geometry band))
     (draw-layer-wind-speed-scale-title! layer geometry)))
@@ -721,11 +721,6 @@
 (defn ceiling-scale-title-y-offset [width height]
   (* 0.8 (scale-title-font-size width height)))
 
-(defn- draw-layer-ceiling-scale-band! [layer {:keys [x width]} {:keys [top bottom color]}]
-  (let [[r g b a] color]
-    (.fill layer r g b a)
-    (.rect layer (float x) (float top) (float width) (float (- bottom top)))))
-
 (defn- draw-layer-ceiling-scale-label! [layer geometry {:keys [label y]}]
   (.fill layer 255 255 255)
   (layer-text-font! layer (map-label-font))
@@ -751,7 +746,7 @@
   (let [geometry (ceiling-scale-geometry width height)]
     (.noStroke layer)
     (doseq [band (ceiling-scale-bands geometry)]
-      (draw-layer-ceiling-scale-band! layer geometry band))
+      (draw-layer-scale-band! layer geometry band))
     (doseq [label (ceiling-scale-labels geometry)]
       (draw-layer-ceiling-scale-label! layer geometry label))
     (draw-layer-ceiling-scale-title! layer geometry)))

@@ -13,6 +13,11 @@
     baseline
     ))
 
+(defn draw-column-headers [flap-width header-font label-font-size headers]
+  (let [baseline (setup-headers header-font label-font-size)]
+    (doseq [[label column] headers]
+      (q/text label (* flap-width column) baseline))))
+
 (defmulti make identity)
 (defmulti header-text identity)
 (defmulti display-column-headers (fn [screen-type & _args] screen-type))

@@ -99,18 +99,28 @@
     (reset! polled-aircraft tail-numbers)))
 
 (def last-metars (atom {}))
-(defn get-metars [icao]
+(defn icao-query [icao]
   (let [icao-str (if (sequential? icao)
                    (str/join "," (map str/upper-case icao))
-                   (str/upper-case icao))
-        url (str "https://aviationweather.gov/api/data/metar?ids=" icao-str "&format=json")
+                   (str/upper-case icao))]
+    icao-str))
+
+(defn keyed-weather-response [response]
+  (if (sequential? response)
+    (into {} (map (fn [m] [(:icaoId m) m]) response))
+    {(:icaoId response) response}))
+
+(defn get-keyed-aviation-weather [kind polled-atom icao]
+  (let [url (str "https://aviationweather.gov/api/data/" kind
+                 "?ids=" (icao-query icao) "&format=json")
         args {:accept :text :with-credentials? false}
-        metar-response (get-json url args last-metars weather-com-errors "METAR")]
-    (let [metar-dict (if (sequential? metar-response)
-                       (into {} (map (fn [m] [(:icaoId m) m]) metar-response))
-                       {(:icaoId metar-response) metar-response})]
-      (reset! polled-metars metar-dict)
-      metar-dict)))
+        response (get-json url args polled-atom weather-com-errors (str/upper-case kind))
+        keyed (keyed-weather-response response)]
+    (reset! polled-atom keyed)
+    keyed))
+
+(defn get-metars [icao]
+  (get-keyed-aviation-weather "metar" polled-metars icao))
 
 (defn csv-fields [line]
   (loop [chars (seq line)
@@ -295,17 +305,7 @@
 ; {:rawOb "SPECI KUGN 181109Z AUTO 18014G26KT 9SM OVC008 06/06 A2953 RMK AO2 PK WND 17026/1106 CIG 006V010 T00610056", :wdir 180, :qcField 6, :temp 6.1, :visib 9, :wspd 14, :name "Waukegan Rgnl, IL, US", :cover "OVC", :metarType "SPECI", :wgst 26, :obsTime 1766056140, :elev 217, :receiptTime "2025-12-18T11:12:07.629Z", :reportTime "2025-12-18T11:09:00.000Z", :lon -87.8634, :icaoId "KUGN", :lat 42.4255, :clouds [{:cover "OVC", :base 800}], :dewp 5.6, :altim 1000.1, :fltCat "IFR"}]
 
 (defn get-tafs [icao]
-  (let [icao-str (if (sequential? icao)
-                   (str/join "," (map str/upper-case icao))
-                   (str/upper-case icao))
-        url (str "https://aviationweather.gov/api/data/taf?ids=" icao-str "&format=json")
-        args {:accept :text :with-credentials? false}
-        taf-response (get-json url args polled-tafs weather-com-errors "TAF")]
-    (let [taf-dict (if (sequential? taf-response)
-                     (into {} (map (fn [m] [(:icaoId m) m]) taf-response))
-                     {(:icaoId taf-response) taf-response})]
-      (reset! polled-tafs taf-dict)
-      taf-dict)))
+  (get-keyed-aviation-weather "taf" polled-tafs icao))
 
 (defn get-adsb-by-tail-numbers [tail-numbers]
   (let [tails (map #(str "icao=" %) tail-numbers)
