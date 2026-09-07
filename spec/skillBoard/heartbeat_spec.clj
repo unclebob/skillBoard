@@ -17,8 +17,11 @@
              "skillBoard-heartbeat"
              (make-array java.nio.file.attribute.FileAttribute 0))))
 
-(defn- log-line [message]
-  (str "2026-09-07T12:34:56.78 " message "\n"))
+(defn- log-line
+  ([message]
+   (str "2026-09-07T12:34:56.78 " message "\n"))
+  ([event message]
+   (log-line (str "[event:" (name event) "] " message))))
 
 (describe "heartbeat metrics"
   (it "counts today's aircraft reports, communication issues, and application starts"
@@ -26,14 +29,16 @@
           date (LocalDate/parse "2026-09-07")]
       (with-redefs [core-utils/log-directory (.getPath directory)]
         (spit (core-utils/log-file-path :status date)
-              (str (log-line "skillBoard v20260509 has begun.")
-                   (log-line "Traffic: N12345 UGN090010/025/100 NEAR")
-                   (log-line "Traffic: N12345 UGN091009/025/101 NEAR")
-                   (log-line "Traffic: N54321 UGN180005/020/090 NEAR")
+              (str (log-line :application-start "startup wording can change")
+                   (log-line :aircraft-report "aircraft wording can change")
+                   (log-line :aircraft-report "another aircraft")
+                   (log-line :aircraft-report "third aircraft")
+                   (log-line "Traffic: unmarked legacy prose")
                    (log-line "Setup...")))
         (spit (core-utils/log-file-path :error date)
-              (str (log-line "Error fetching METAR: timed out")
-                   (log-line "Error fetching nearby ADSB: connection refused")
+              (str (log-line :communication-issue "METAR timed out")
+                   (log-line :communication-issue "ADSB connection refused")
+                   (log-line "Error fetching unmarked legacy prose")
                    (log-line "Heartbeat reporting failed.")
                    (log-line "Error drawing wind source label")))
         (should= {:aircraft-reports 3

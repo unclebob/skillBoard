@@ -32,14 +32,15 @@
 
     (it "prints and counts API errors, returns saved data"
       (with-redefs [http/get (stub :get {:return {:status 500 :body "Server Error"}})
-                    core-utils/log (stub :log)]
+                    core-utils/log-event (stub :log-event)]
         (reset! @save-atom :none)
         (should= :none (comm/get-json :url :args @save-atom @com-errors "test data"))
         (should-have-invoked :get
                              {:times 1
                               :with [:* :*]})
-        (should-have-invoked :log
-                             {:times 1})
+        (should-have-invoked :log-event
+                             {:times 1
+                              :with [:error :communication-issue :*]})
         (should= 1 @@com-errors)
         ))
     )
@@ -282,7 +283,20 @@
                           :rawOb "METAR KUGN"}}
                  (comm/get-nearby-metars))
         (should= comm/nearby-metar-cache-url @captured-url)
-        (should= 0 @comm/weather-com-errors)))))
+        (should= 0 @comm/weather-com-errors))))
+
+  (it "marks METAR cache failures as communication issues"
+    (let [events (atom [])]
+      (with-redefs [http/get (fn [& _] {:status 503})
+                    comm/polled-nearby-metars (atom {:last :good})
+                    comm/weather-com-errors (atom 0)
+                    core-utils/log-event (fn [& args] (swap! events conj args))]
+        (should= {:last :good} (comm/get-nearby-metars))
+        (should= 1 @comm/weather-com-errors)
+        (should= [[:error
+                   :communication-issue
+                   "Error fetching nearby METAR cache: Failed to fetch nearby METAR cache"]]
+                 @events)))))
 
 (describe "class airspace cache"
   (it "normalizes NASR airport ids to METAR ids"
@@ -323,7 +337,20 @@
                   "KUGN" "D"}
                  (comm/get-airspace-classes))
         (should= comm/class-airspace-cache-url @captured-url)
-        (should= 0 @comm/weather-com-errors)))))
+        (should= 0 @comm/weather-com-errors))))
+
+  (it "marks class airspace cache failures as communication issues"
+    (let [events (atom [])]
+      (with-redefs [http/get (fn [& _] {:status 503})
+                    comm/polled-airspace-classes (atom {:last :good})
+                    comm/weather-com-errors (atom 0)
+                    core-utils/log-event (fn [& args] (swap! events conj args))]
+        (should= {:last :good} (comm/get-airspace-classes))
+        (should= 1 @comm/weather-com-errors)
+        (should= [[:error
+                   :communication-issue
+                   "Error fetching class airspace cache: Failed to fetch class airspace cache"]]
+                 @events)))))
 
 (describe "ADSB fetches"
   (it "fetches ADSB data by tail number query"

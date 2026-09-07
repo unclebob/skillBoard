@@ -1,7 +1,9 @@
 (ns skillBoard.core-spec
   (:require
     [java-time.api :as time]
+    [skillBoard.config :as config]
     [skillBoard.core :refer :all]
+    [skillBoard.core-utils :as core-utils]
     [skillBoard.heartbeat :as heartbeat]
     [speclj.core :refer :all]))
 
@@ -80,6 +82,17 @@
                       update-clock-pulse! (fn [now] (swap! calls conj [:clock now]))]
           (run-polling-step! 12345)
           (should= [[:poll 12345] [:heartbeat 12345] [:clock 12345]] @calls)))))
-  )
 
+  (context "operational events"
+    (it "marks application starts independently of the readable message"
+      (let [events (atom [])]
+        (with-redefs [core-utils/log-event
+                      (fn [level event message]
+                        (swap! events conj [level event message]))]
+          (log-application-start!)
+          (should= [[:status
+                     :application-start
+                     (str "skillBoard v" config/version " has begun.")]]
+                   @events)))))
+  )
 

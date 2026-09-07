@@ -20,26 +20,15 @@
 (defn local-now []
   (ZonedDateTime/now (ZoneId/of config/time-zone)))
 
-(defn- log-message [line]
-  (second (re-matches #"^\S+ (.*)$" line)))
-
-(defn- matching-lines [file predicate]
-  (if-not (.exists file)
-    0
-    (with-open [reader (io/reader file)]
-      (count (filter (comp predicate log-message) (line-seq reader))))))
-
 (defn daily-counts [date]
-  (let [status-log (io/file (core-utils/log-file-path :status date))
-        error-log (io/file (core-utils/log-file-path :error date))]
-    {:aircraft-reports
-     (matching-lines status-log #(str/starts-with? (or % "") "Traffic:"))
+  {:aircraft-reports
+   (core-utils/count-log-events :status date :aircraft-report)
 
-     :communication-issues
-     (matching-lines error-log #(str/starts-with? (or % "") "Error fetching "))
+   :communication-issues
+   (core-utils/count-log-events :error date :communication-issue)
 
-     :application-starts
-     (matching-lines status-log #(boolean (re-matches #"skillBoard v.+ has begun\." (or % ""))))}))
+   :application-starts
+   (core-utils/count-log-events :status date :application-start)})
 
 (defn disk-capacity [path]
   (let [store (Files/getFileStore (.toPath (.getCanonicalFile (io/file path))))]
@@ -215,5 +204,5 @@
   (reset! scheduler-state nil))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-09-07T10:16:26.839485-05:00", :module-hash "-223124729", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 12, :hash "-1586015403"} {:id "def/heartbeat-interval-ms", :kind "def", :line 14, :end-line 14, :hash "1183444860"} {:id "def/heartbeat-timeout-ms", :kind "def", :line 15, :end-line 15, :hash "-179596928"} {:id "def/retry-offsets-ms", :kind "def", :line 16, :end-line 16, :hash "1162488674"} {:id "def/scheduler-state", :kind "def", :line 18, :end-line 18, :hash "-1737427802"} {:id "defn/local-now", :kind "defn", :line 20, :end-line 21, :hash "1818775650"} {:id "defn-/log-message", :kind "defn-", :line 23, :end-line 24, :hash "1020742345"} {:id "defn-/matching-lines", :kind "defn-", :line 26, :end-line 30, :hash "-1804152265"} {:id "defn/daily-counts", :kind "defn", :line 32, :end-line 42, :hash "-1927004901"} {:id "defn/disk-capacity", :kind "defn", :line 44, :end-line 47, :hash "1298799151"} {:id "defn/disk-summary", :kind "defn", :line 49, :end-line 54, :hash "-1140016522"} {:id "defn/snapshot", :kind "defn", :line 56, :end-line 67, :hash "1995987567"} {:id "defn-/configured-url", :kind "defn-", :line 69, :end-line 70, :hash "-1904467403"} {:id "defn-/valid-url?", :kind "defn-", :line 72, :end-line 74, :hash "757071960"} {:id "defn/send-heartbeat!", :kind "defn", :line 76, :end-line 86, :hash "-1098909284"} {:id "defn/submit!", :kind "defn", :line 88, :end-line 89, :hash "-1600722565"} {:id "defn-/safe-log", :kind "defn-", :line 91, :end-line 94, :hash "-2077579327"} {:id "defn-/next-regular-time", :kind "defn-", :line 96, :end-line 100, :hash "-1183622838"} {:id "defn-/regular-due?", :kind "defn-", :line 102, :end-line 103, :hash "1637673728"} {:id "defn-/retry-due?", :kind "defn-", :line 105, :end-line 106, :hash "453287397"} {:id "defn-/claim-regular", :kind "defn-", :line 108, :end-line 118, :hash "-90245119"} {:id "defn-/claim-retry", :kind "defn-", :line 120, :end-line 122, :hash "-2007369310"} {:id "defn-/claim-due!", :kind "defn-", :line 124, :end-line 135, :hash "1974499644"} {:id "defn-/same-attempt?", :kind "defn-", :line 137, :end-line 140, :hash "-1280084248"} {:id "defn-/complete-attempt!", :kind "defn-", :line 142, :end-line 164, :hash "-627278326"} {:id "defn-/execute-attempt!", :kind "defn-", :line 166, :end-line 173, :hash "-364683936"} {:id "defn/run-due!", :kind "defn", :line 175, :end-line 184, :hash "1412700921"} {:id "defn/start!", :kind "defn", :line 186, :end-line 212, :hash "-472256434"} {:id "defn/stop!", :kind "defn", :line 214, :end-line 215, :hash "-521990757"}]}
+;; {:version 1, :tested-at "2026-09-07T11:25:19.276734-05:00", :module-hash "1577793830", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 12, :hash "-1586015403"} {:id "def/heartbeat-interval-ms", :kind "def", :line 14, :end-line 14, :hash "1183444860"} {:id "def/heartbeat-timeout-ms", :kind "def", :line 15, :end-line 15, :hash "-179596928"} {:id "def/retry-offsets-ms", :kind "def", :line 16, :end-line 16, :hash "1162488674"} {:id "def/scheduler-state", :kind "def", :line 18, :end-line 18, :hash "-1737427802"} {:id "defn/local-now", :kind "defn", :line 20, :end-line 21, :hash "1818775650"} {:id "defn/daily-counts", :kind "defn", :line 23, :end-line 31, :hash "-1527212328"} {:id "defn/disk-capacity", :kind "defn", :line 33, :end-line 36, :hash "1298799151"} {:id "defn/disk-summary", :kind "defn", :line 38, :end-line 43, :hash "-1140016522"} {:id "defn/snapshot", :kind "defn", :line 45, :end-line 56, :hash "1995987567"} {:id "defn-/configured-url", :kind "defn-", :line 58, :end-line 59, :hash "-1904467403"} {:id "defn-/valid-url?", :kind "defn-", :line 61, :end-line 63, :hash "757071960"} {:id "defn/send-heartbeat!", :kind "defn", :line 65, :end-line 75, :hash "-1098909284"} {:id "defn/submit!", :kind "defn", :line 77, :end-line 78, :hash "-1600722565"} {:id "defn-/safe-log", :kind "defn-", :line 80, :end-line 83, :hash "-2077579327"} {:id "defn-/next-regular-time", :kind "defn-", :line 85, :end-line 89, :hash "-1183622838"} {:id "defn-/regular-due?", :kind "defn-", :line 91, :end-line 92, :hash "1637673728"} {:id "defn-/retry-due?", :kind "defn-", :line 94, :end-line 95, :hash "453287397"} {:id "defn-/claim-regular", :kind "defn-", :line 97, :end-line 107, :hash "-90245119"} {:id "defn-/claim-retry", :kind "defn-", :line 109, :end-line 111, :hash "-2007369310"} {:id "defn-/claim-due!", :kind "defn-", :line 113, :end-line 124, :hash "1974499644"} {:id "defn-/same-attempt?", :kind "defn-", :line 126, :end-line 129, :hash "-1280084248"} {:id "defn-/complete-attempt!", :kind "defn-", :line 131, :end-line 153, :hash "-627278326"} {:id "defn-/execute-attempt!", :kind "defn-", :line 155, :end-line 162, :hash "-364683936"} {:id "defn/run-due!", :kind "defn", :line 164, :end-line 173, :hash "1412700921"} {:id "defn/start!", :kind "defn", :line 175, :end-line 201, :hash "-472256434"} {:id "defn/stop!", :kind "defn", :line 203, :end-line 204, :hash "-521990757"}]}
 ;; clj-mutate-manifest-end

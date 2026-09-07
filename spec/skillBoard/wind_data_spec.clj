@@ -82,14 +82,19 @@
       (should= 4 @comm/weather-com-errors)))
 
   (it "marks Open-Meteo unhealthy after refresh failures without changing aviation weather errors"
-    (with-redefs [wind-data/polled-wind-grid (atom :last-good-grid)
-                  comm/weather-com-errors (atom 3)
-                  comm/open-meteo-ok? (atom true)
-                  core-utils/log (fn [& _])
-                  wind-data/fetch-open-meteo-grid (fn [] (throw (ex-info "rate limited" {})))]
-      (should= :last-good-grid (wind-data/refresh-wind-grid!))
-      (should= false @comm/open-meteo-ok?)
-      (should= 3 @comm/weather-com-errors)))
+    (let [events (atom [])]
+      (with-redefs [wind-data/polled-wind-grid (atom :last-good-grid)
+                    comm/weather-com-errors (atom 3)
+                    comm/open-meteo-ok? (atom true)
+                    core-utils/log-event (fn [& args] (swap! events conj args))
+                    wind-data/fetch-open-meteo-grid (fn [] (throw (ex-info "rate limited" {})))]
+        (should= :last-good-grid (wind-data/refresh-wind-grid!))
+        (should= false @comm/open-meteo-ok?)
+        (should= 3 @comm/weather-com-errors)
+        (should= [[:error
+                   :communication-issue
+                   "Error fetching wind data: rate limited"]]
+                 @events))))
 
   (it "creates a synthetic fallback grid"
     (let [grid (wind-data/synthetic-grid)]

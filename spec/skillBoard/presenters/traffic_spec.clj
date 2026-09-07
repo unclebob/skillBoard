@@ -271,10 +271,11 @@
                     utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
                     utils/find-location (fn [_ _ _ _] "LOCATION")
                     nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})
-                    core-utils/log (fn [level message] (swap! logs conj [level message]))]
+                    core-utils/log-event (fn [level event message]
+                                           (swap! logs conj [level event message]))]
         (traffic/make-traffic-screen [{:reg "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}] [])
         (should= false @atoms/log-traffic?)
-        (should= [[:status "Traffic: N12345   C000001/GND/001  RAMP    "]]
+        (should= [[:status :aircraft-report "Traffic: N12345   C000001/GND/001  RAMP    "]]
                  @logs)))))
 
 (describe "traffic column headers"

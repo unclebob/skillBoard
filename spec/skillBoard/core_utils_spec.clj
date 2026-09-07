@@ -35,6 +35,15 @@
         (should= (dated-log-file "error.log") file)
         (should-contain "Something broke" content))))
 
+  (it "writes semantic events without sacrificing the readable message"
+    (with-redefs [spit (fn [& args] (swap! @spit-calls conj args))
+                  core-utils/prune-old-logs! (fn [])
+                  print (fn [& _])]
+      (core-utils/log-event :status :aircraft-report "Traffic description")
+      (let [[file content] (first @@spit-calls)]
+        (should= (dated-log-file "status.log") file)
+        (should-contain "[event:aircraft-report] Traffic description" content))))
+
   (it "writes exceptions to the dated error log with a timestamped header and stack trace"
     (with-redefs [spit (fn [& args] (swap! @spit-calls conj args))
                   core-utils/prune-old-logs! (fn [])
@@ -76,6 +85,32 @@
         (core-utils/log :status "loud")
         (should= 1 (count @print-calls)))))
   )
+
+(describe "count-log-events"
+  (it "counts event markers rather than human-readable wording"
+    (let [temp-dir (.toFile (java.nio.file.Files/createTempDirectory
+                              "skillBoard-events"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))
+          date (java.time.LocalDate/parse "2026-09-07")]
+      (with-redefs [core-utils/log-directory (.getPath temp-dir)]
+        (spit (core-utils/log-file-path :status date)
+              (str "2026-09-07T10:00:00.00 [event:aircraft-report] wording one\n"
+                   "2026-09-07T10:01:00.00 Traffic: old prose is not an event\n"
+                   "2026-09-07T10:02:00.00 [event:application-start] wording two\n"
+                   "2026-09-07T10:03:00.00 [event:aircraft-report] wording three\n"))
+        (should= 2 (core-utils/count-log-events :status date :aircraft-report))
+        (should= 1 (core-utils/count-log-events :status date :application-start))
+        (should= 0 (core-utils/count-log-events :status date :communication-issue)))))
+
+  (it "returns zero when the dated log does not exist"
+    (let [temp-dir (.toFile (java.nio.file.Files/createTempDirectory
+                              "skillBoard-events"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))]
+      (with-redefs [core-utils/log-directory (.getPath temp-dir)]
+        (should= 0 (core-utils/count-log-events
+                     :status
+                     (java.time.LocalDate/parse "2026-09-07")
+                     :aircraft-report))))))
 
 (describe "prune-old-logs!"
   (it "deletes dated status and error logs more than the retention period old"
