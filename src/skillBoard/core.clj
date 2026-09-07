@@ -6,6 +6,7 @@
     [skillBoard.comm-utils :as comm]
     [skillBoard.config :as config]
     [skillBoard.core-utils :as core-utils]
+    [skillBoard.heartbeat :as heartbeat]
     [skillBoard.presenters.airports]
     [skillBoard.presenters.flights]
     [skillBoard.presenters.main :as presenter]
@@ -77,13 +78,21 @@
     (reset! atoms/poll-key false)
     (reset! atoms/poll-time now)))
 
-(defn start-polling []
+(defn initialize-polling! []
   (poll)
+  (heartbeat/start!))
+
+(defn run-polling-step! [now]
+  (run-due-poll! now)
+  (heartbeat/run-due! now)
+  (update-clock-pulse! now))
+
+(defn start-polling []
+  (initialize-polling!)
   (future
     (loop []
       (let [now (System/currentTimeMillis)]
-        (run-due-poll! now)
-        (update-clock-pulse! now)
+        (run-polling-step! now)
         (Thread/sleep 100)
         (recur)))))
 
@@ -147,6 +156,7 @@
 (defn on-close [_]
   (q/no-loop)
   (q/exit)                                                  ; Exit the sketch
+  (heartbeat/stop!)
   (core-utils/log :status "Skill Board closed.")
   (System/exit 0))
 
@@ -180,5 +190,5 @@
                  :host "skillBoard")))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-04-21T10:35:30.187402-05:00", :module-hash "1353705591", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 15, :hash "-1516553074"} {:id "defn/load-display-info", :kind "defn", :line 17, :end-line 32, :hash "160311322"} {:id "defn-/load-fonts", :kind "defn-", :line 34, :end-line 43, :hash "-386456934"} {:id "defn/poll", :kind "defn", :line 45, :end-line 57, :hash "-1126242934"} {:id "defn/start-polling", :kind "defn", :line 59, :end-line 74, :hash "1253494332"} {:id "defn/setup", :kind "defn", :line 76, :end-line 117, :hash "1513703913"} {:id "defn/update-state", :kind "defn", :line 119, :end-line 124, :hash "260310114"} {:id "defn/draw-state", :kind "defn", :line 126, :end-line 131, :hash "-681475998"} {:id "defn/on-close", :kind "defn", :line 133, :end-line 137, :hash "1530647094"} {:id "defn/key-released", :kind "defn", :line 139, :end-line 144, :hash "-2145750210"} {:id "form/10/declare", :kind "declare", :line 146, :end-line 146, :hash "955651229"} {:id "defn/-main", :kind "defn", :line 148, :end-line 166, :hash "940659401"}]}
+;; {:version 1, :tested-at "2026-09-07T10:16:58.195293-05:00", :module-hash "-1943398756", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 18, :hash "1802448842"} {:id "defn/load-display-info", :kind "defn", :line 20, :end-line 35, :hash "160311322"} {:id "defn-/load-fonts", :kind "defn-", :line 37, :end-line 48, :hash "-812031420"} {:id "defn/poll", :kind "defn", :line 50, :end-line 65, :hash "-271833523"} {:id "defn/poll-due?", :kind "defn", :line 67, :end-line 70, :hash "410359893"} {:id "defn/update-clock-pulse!", :kind "defn", :line 72, :end-line 73, :hash "-610959273"} {:id "defn/run-due-poll!", :kind "defn", :line 75, :end-line 79, :hash "1110707382"} {:id "defn/initialize-polling!", :kind "defn", :line 81, :end-line 83, :hash "-1928480721"} {:id "defn/run-polling-step!", :kind "defn", :line 85, :end-line 88, :hash "-1686392983"} {:id "defn/start-polling", :kind "defn", :line 90, :end-line 97, :hash "1314719583"} {:id "defn/setup", :kind "defn", :line 99, :end-line 140, :hash "1513703913"} {:id "defn/update-state", :kind "defn", :line 142, :end-line 147, :hash "260310114"} {:id "defn/draw-state", :kind "defn", :line 149, :end-line 154, :hash "-681475998"} {:id "defn/on-close", :kind "defn", :line 156, :end-line 161, :hash "-668574530"} {:id "defn/key-released", :kind "defn", :line 163, :end-line 168, :hash "-2145750210"} {:id "form/15/declare", :kind "declare", :line 170, :end-line 170, :hash "955651229"} {:id "defn/-main", :kind "defn", :line 172, :end-line 190, :hash "940659401"}]}
 ;; clj-mutate-manifest-end

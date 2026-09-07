@@ -2,6 +2,7 @@
   (:require
     [java-time.api :as time]
     [skillBoard.core :refer :all]
+    [skillBoard.heartbeat :as heartbeat]
     [speclj.core :refer :all]))
 
 (defn make-status-item [{:keys [tail-number
@@ -63,7 +64,22 @@
            :remarks "Checked out"}
           (make-status-item reservation nil))))
     )
-  )
 
+  (context "background polling coordination"
+    (it "starts heartbeat reporting after the initial data poll"
+      (let [calls (atom [])]
+        (with-redefs [poll (fn [] (swap! calls conj :poll))
+                      heartbeat/start! (fn [] (swap! calls conj :heartbeat))]
+          (initialize-polling!)
+          (should= [:poll :heartbeat] @calls))))
+
+    (it "checks data polling and heartbeat schedules on every coordinator step"
+      (let [calls (atom [])]
+        (with-redefs [run-due-poll! (fn [now] (swap! calls conj [:poll now]))
+                      heartbeat/run-due! (fn [now] (swap! calls conj [:heartbeat now]))
+                      update-clock-pulse! (fn [now] (swap! calls conj [:clock now]))]
+          (run-polling-step! 12345)
+          (should= [[:poll 12345] [:heartbeat 12345] [:clock 12345]] @calls)))))
+  )
 
 

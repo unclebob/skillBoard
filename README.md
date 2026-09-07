@@ -112,7 +112,29 @@ This file holds information that should be kept secure.  The format is:
     {
     :fsp-key "<the fsp key>"
     :fsp-operator-id "<the fsp operator id>"
+    :heartbeat-url "https://hc-ping.com/<the private heartbeat id>"
     }
+
+`heartbeat-url` is optional. When present, SkillBoard sends an immediate status
+report and then reports hourly using outbound HTTPS. Treat this URL as a secret:
+it must remain in `private/config` and must not be committed or logged. When it
+is absent, remote heartbeat reporting is disabled and the rest of SkillBoard
+operates normally.
+
+Each heartbeat contains the SkillBoard version, report time, usable and total
+space on the filesystem containing the logs, and current-day counts of traffic
+log entries, communication failures, and application starts. The report
+contains aggregate counts only; it does not contain tail numbers, reservations,
+names, weather reports, or log contents.
+
+For Healthchecks.io, configure the check for a 60 minute period with a 15 minute
+grace time. A missing heartbeat can therefore take approximately 75 minutes to
+be reported as down. The Healthchecks dashboard or badge JSON provides the
+up/late/down indicator; the latest ping body contains the operational totals.
+Programmatic access to ping bodies requires a Healthchecks read-write project
+API key; read-only keys provide status but cannot retrieve ping history or
+bodies. Keep that more powerful key on the operator's laptop, not in the
+SkillBoard configuration.
 
 ### `src/skillBoard/config.clj`
 This file holds information that describes the local environment and the display behavior.
