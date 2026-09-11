@@ -112,6 +112,32 @@
                      (java.time.LocalDate/parse "2026-09-07")
                      :aircraft-report))))))
 
+(describe "log-event-messages"
+  (it "returns the message after the event marker"
+    (let [temp-dir (.toFile (java.nio.file.Files/createTempDirectory
+                              "skillBoard-event-messages"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))
+          date (java.time.LocalDate/parse "2026-09-07")]
+      (with-redefs [core-utils/log-directory (.getPath temp-dir)]
+        (spit (core-utils/log-file-path :status date)
+              (str "2026-09-07T10:00:00.00 [event:aircraft-report] Traffic: N12345   C000001/GND/001  RAMP    \n"
+                   "2026-09-07T10:01:00.00 Traffic: old prose is not an event\n"
+                   "2026-09-07T10:02:00.00 [event:application-start] wording two\n"
+                   "2026-09-07T10:03:00.00 [event:aircraft-report] wording three\n"))
+        (should= ["Traffic: N12345   C000001/GND/001  RAMP    "
+                  "wording three"]
+                 (core-utils/log-event-messages :status date :aircraft-report)))))
+
+  (it "returns an empty vector when the dated log does not exist"
+    (let [temp-dir (.toFile (java.nio.file.Files/createTempDirectory
+                              "skillBoard-event-messages-missing"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))]
+      (with-redefs [core-utils/log-directory (.getPath temp-dir)]
+        (should= [] (core-utils/log-event-messages
+                      :status
+                      (java.time.LocalDate/parse "2026-09-07")
+                      :aircraft-report))))))
+
 (describe "prune-old-logs!"
   (it "deletes dated status and error logs more than the retention period old"
     (let [temp-dir (.toFile (java.nio.file.Files/createTempDirectory "skillBoard-logs" (make-array java.nio.file.attribute.FileAttribute 0)))

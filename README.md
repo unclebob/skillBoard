@@ -104,7 +104,8 @@ Hit the escape key.
     git pull
 
 ## Configuration
-There are two files that configure the system.  
+There are two files that configure the system, plus an optional private list
+of tail numbers used only by the remote heartbeat.
 
 ### `private/config`
 This file holds information that should be kept secure.  The format is:
@@ -123,9 +124,18 @@ operates normally.
 
 Each heartbeat contains the SkillBoard version, report time, usable and total
 space on the filesystem containing the logs, and current-day counts of traffic
-log entries, communication failures, and application starts. The report
-contains aggregate counts only; it does not contain tail numbers, reservations,
-names, weather reports, or log contents.
+log entries, unique tail numbers, communication failures, and application
+starts. It also contains `reported_tails`, a map of each tail listed in
+`private/reported-tails` to today's instance count for that tail. Tails with a
+count of zero are omitted. If SkillBoard was launched with `-t`, the payload also includes `"test": true`.
+The report does not contain reservations, names, weather reports, log contents,
+or the rest of the day's tail list.
+
+### `private/reported-tails`
+Optional. One tail number per line. Blank lines and whole-line `#` comments
+are ignored. Matching against today's traffic log lines is exact after
+trimming. A missing file does not fail the heartbeat; `reported_tails` is
+then `{}`. Keep this file in `private/` so it is not committed.
 
 For Healthchecks.io, configure the check for a 60 minute period with a 15 minute
 grace time. A missing heartbeat can therefore take approximately 75 minutes to

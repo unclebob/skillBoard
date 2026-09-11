@@ -7,6 +7,16 @@ Feature: Report SkillBoard health across private networks
     When an hourly heartbeat is due
     Then SkillBoard posts its version, timestamp, and usable disk space
     And it posts today's aircraft report, communication issue, and application start counts
+    And it posts today's unique tail count and instance counts for tails listed in private/reported-tails
+    And it posts test true only when launched with -t
+
+  Scenario: Heartbeat reports unique and listed tail counts
+    Given today's logs contain repeated reports for some aircraft
+    And private/reported-tails lists selected tail numbers
+    When SkillBoard creates a heartbeat snapshot
+    Then the heartbeat includes the number of unique tail numbers
+    And it includes instance counts for each listed tail that appeared today
+    And it omits listed tails whose count is zero
 
   Scenario: Daily totals survive application restarts
     Given today's logs contain operational entries written before the current process started

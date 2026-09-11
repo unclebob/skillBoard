@@ -4,6 +4,7 @@
     [clojure.data.json :as json]
     [clojure.java.io :as io]
     [clojure.string :as str]
+    [skillBoard.atoms :as atoms]
     [skillBoard.config :as config]
     [skillBoard.core-utils :as core-utils])
   (:import
@@ -20,6 +21,8 @@
 (defn local-now []
   (ZonedDateTime/now (ZoneId/of config/time-zone)))
 
+(def reported-tails-path "private/reported-tails")
+
 (defn daily-counts [date]
   {:aircraft-reports
    (core-utils/count-log-events :status date :aircraft-report)
@@ -29,6 +32,41 @@
 
    :application-starts
    (core-utils/count-log-events :status date :application-start)})
+
+(defn- traffic-tail [message]
+  (when message
+    (second (re-find #"^Traffic:\s+(\S+)" message))))
+
+(defn- parse-reported-tail-line [line]
+  (let [trimmed (str/trim line)]
+    (when (and (not (str/blank? trimmed))
+               (not (str/starts-with? trimmed "#")))
+      trimmed)))
+
+(defn load-reported-tails
+  ([] (load-reported-tails reported-tails-path))
+  ([path]
+   (let [file (io/file path)]
+     (if-not (.exists file)
+       []
+       (with-open [reader (io/reader file)]
+         (->> (line-seq reader)
+              (keep parse-reported-tail-line)
+              distinct
+              vec))))))
+
+(defn tail-metrics [date]
+  (let [frequencies (->> (core-utils/log-event-messages :status date :aircraft-report)
+                         (keep traffic-tail)
+                         frequencies)
+        listed (load-reported-tails)]
+    {:unique-tail-numbers (count frequencies)
+     :reported-tails (into {}
+                           (keep (fn [tail]
+                                   (let [n (get frequencies tail 0)]
+                                     (when (pos? n)
+                                       [tail n])))
+                                 listed))}))
 
 (defn disk-capacity [path]
   (let [store (Files/getFileStore (.toPath (.getCanonicalFile (io/file path))))]
@@ -45,15 +83,26 @@
 (defn snapshot
   ([] (snapshot (local-now)))
   ([reported-at]
-   (let [{:keys [aircraft-reports communication-issues application-starts]}
-         (daily-counts (.toLocalDate reported-at))]
-     {:application "skillBoard"
-      :version config/version
-      :reported_at (.format reported-at DateTimeFormatter/ISO_OFFSET_DATE_TIME)
-      :disk (disk-summary (disk-capacity core-utils/log-directory))
-      :today {:aircraft_reports aircraft-reports
-              :communication_issues communication-issues
-              :application_starts application-starts}})))
+   (let [date (.toLocalDate reported-at)
+         {:keys [aircraft-reports communication-issues application-starts]}
+         (daily-counts date)
+         {:keys [unique-tail-numbers reported-tails]}
+         (tail-metrics date)]
+     (apply array-map
+            (concat
+              [:application "skillBoard"
+               :version config/version]
+              (when @atoms/test? [:test true])
+              [:reported_at (.format reported-at DateTimeFormatter/ISO_OFFSET_DATE_TIME)
+               :disk (disk-summary (disk-capacity core-utils/log-directory))
+               :today {:aircraft_reports aircraft-reports
+                       :unique_tail_numbers unique-tail-numbers
+                       :reported_tails reported-tails
+                       :communication_issues communication-issues
+                       :application_starts application-starts}])))))
+
+(defn json-body [payload]
+  (with-out-str (json/pprint payload)))
 
 (defn- configured-url []
   (:heartbeat-url @config/config))
@@ -65,7 +114,7 @@
 (defn send-heartbeat! []
   (let [url (configured-url)
         response (http/post url
-                            {:body (json/write-str (snapshot))
+                            {:body (json-body (snapshot))
                              :content-type :json
                              :accept :text
                              :connection-timeout heartbeat-timeout-ms

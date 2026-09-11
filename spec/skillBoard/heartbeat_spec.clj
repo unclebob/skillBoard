@@ -4,6 +4,7 @@
     [clojure.data.json :as json]
     [clojure.java.io :as io]
     [clojure.string :as str]
+    [skillBoard.atoms :as atoms]
     [skillBoard.config :as config]
     [skillBoard.core-utils :as core-utils]
     [skillBoard.heartbeat :as heartbeat]
@@ -68,10 +69,14 @@
 
   (it "builds the public status payload"
     (let [reported-at (ZonedDateTime/parse "2026-09-07T14:00:00-05:00")]
+      (reset! atoms/test? false)
       (with-redefs [heartbeat/daily-counts (fn [_]
                                              {:aircraft-reports 17
                                               :communication-issues 3
                                               :application-starts 2})
+                    heartbeat/tail-metrics (fn [_]
+                                             {:unique-tail-numbers 6
+                                              :reported-tails {"N12345" 4}})
                     heartbeat/disk-capacity (fn [_]
                                               {:usable-bytes 250
                                                :total-bytes 1000})]
@@ -82,9 +87,76 @@
                          :total_bytes 1000
                          :usable_percent 25.0}
                   :today {:aircraft_reports 17
+                          :unique_tail_numbers 6
+                          :reported_tails {"N12345" 4}
                           :communication_issues 3
                           :application_starts 2}}
-                 (heartbeat/snapshot reported-at))))))
+                 (heartbeat/snapshot reported-at)))))
+
+  (it "includes test true when launched with -t"
+    (let [reported-at (ZonedDateTime/parse "2026-09-07T14:00:00-05:00")]
+      (reset! atoms/test? true)
+      (with-redefs [heartbeat/daily-counts (fn [_]
+                                             {:aircraft-reports 0
+                                              :communication-issues 0
+                                              :application-starts 0})
+                    heartbeat/tail-metrics (fn [_]
+                                             {:unique-tail-numbers 0
+                                              :reported-tails {}})
+                    heartbeat/disk-capacity (fn [_]
+                                              {:usable-bytes 250
+                                               :total-bytes 1000})]
+        (try
+          (let [payload (heartbeat/snapshot reported-at)]
+            (should= true (:test payload))
+            (should= [:application :version :test :reported_at :disk :today]
+                     (keys payload)))
+          (finally
+            (reset! atoms/test? false)))))))
+
+(describe "heartbeat tail metrics"
+  (it "counts unique tails and instances of listed tails from today's aircraft reports"
+    (let [directory (temp-directory)
+          date (LocalDate/parse "2026-09-07")
+          tails-file (io/file directory "reported-tails")]
+      (spit tails-file (str "# school aircraft\n"
+                            "N12345\n"
+                            "\n"
+                            "N67890\n"
+                            "N12345\n"))
+      (with-redefs [core-utils/log-directory (.getPath directory)
+                    heartbeat/reported-tails-path (.getPath tails-file)]
+        (spit (core-utils/log-file-path :status date)
+              (str (log-line :aircraft-report "Traffic: N12345   C000001/GND/001  RAMP    ")
+                   (log-line :aircraft-report "Traffic: N12345   C000002/GND/001  TAXI    ")
+                   (log-line :aircraft-report "Traffic: N99999   C000003/012/080  NEAR    ")
+                   (log-line :aircraft-report "wording can change")
+                   (log-line :application-start "startup")))
+        (should= {:unique-tail-numbers 2
+                  :reported-tails {"N12345" 2}}
+                 (heartbeat/tail-metrics date)))))
+
+  (it "returns an empty reported-tails map when the file is missing"
+    (let [directory (temp-directory)
+          date (LocalDate/parse "2026-09-07")]
+      (with-redefs [core-utils/log-directory (.getPath directory)
+                    heartbeat/reported-tails-path (.getPath (io/file directory "missing-tails"))]
+        (spit (core-utils/log-file-path :status date)
+              (log-line :aircraft-report "Traffic: N12345   C000001/GND/001  RAMP    "))
+        (should= {:unique-tail-numbers 1
+                  :reported-tails {}}
+                 (heartbeat/tail-metrics date)))))
+
+  (it "omits listed tails that did not appear today"
+    (let [directory (temp-directory)
+          date (LocalDate/parse "2026-09-08")
+          tails-file (io/file directory "reported-tails")]
+      (spit tails-file "N12345\n")
+      (with-redefs [core-utils/log-directory (.getPath directory)
+                    heartbeat/reported-tails-path (.getPath tails-file)]
+        (should= {:unique-tail-numbers 0
+                  :reported-tails {}}
+                 (heartbeat/tail-metrics date))))))
 
 (describe "heartbeat transport"
   (it "posts the snapshot as JSON with bounded timeouts"
@@ -104,6 +176,46 @@
           (should= 10000 (:connection-timeout options))
           (should= 10000 (:socket-timeout options))
           (should= false (:throw-exceptions options))))))
+
+  (it "posts a JSON payload in the documented healthcheck format"
+    (let [request (atom nil)
+          reported-at (ZonedDateTime/parse "2026-09-07T14:00:00-05:00")]
+      (reset! atoms/test? true)
+      (with-redefs [config/config (atom {:heartbeat-url "https://hc-ping.com/private-id"})
+                    heartbeat/daily-counts (fn [_]
+                                             {:aircraft-reports 17
+                                              :communication-issues 3
+                                              :application-starts 2})
+                    heartbeat/tail-metrics (fn [_]
+                                             {:unique-tail-numbers 6
+                                              :reported-tails {"N12345" 4}})
+                    heartbeat/disk-capacity (fn [_]
+                                              {:usable-bytes 250
+                                               :total-bytes 1000})
+                    heartbeat/local-now (fn [] reported-at)
+                    http/post (fn [& args]
+                                (reset! request args)
+                                {:status 200})]
+        (try
+          (should (heartbeat/send-heartbeat!))
+          (let [body (:body (second @request))
+                parsed (json/read-str body)]
+            (should= {"application" "skillBoard"
+                      "version" config/version
+                      "test" true
+                      "reported_at" "2026-09-07T14:00:00-05:00"
+                      "disk" {"usable_bytes" 250
+                              "total_bytes" 1000
+                              "usable_percent" 25.0}
+                      "today" {"aircraft_reports" 17
+                               "unique_tail_numbers" 6
+                               "reported_tails" {"N12345" 4}
+                               "communication_issues" 3
+                               "application_starts" 2}}
+                     parsed)
+            (should (boolean? (get parsed "test"))))
+          (finally
+            (reset! atoms/test? false))))))
 
   (it "rejects a non-success response"
     (with-redefs [config/config (atom {:heartbeat-url "https://hc-ping.com/private-id"})
