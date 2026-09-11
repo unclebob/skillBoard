@@ -65,8 +65,8 @@
                  "&endTime=lt:" end-time
                  "&limit=200")
         args {:headers {"x-subscription-key" fsp-key}
-              :socket-timeout 2000
-              :connection-timeout 2000}]
+              :socket-timeout 5000
+              :connection-timeout 5000}]
     (get-json url args polled-reservations reservation-com-errors "reservations")))
 
 (defn get-flights []
@@ -82,8 +82,8 @@
                  "&limit=200"
                  )
         args {:headers {"x-subscription-key" fsp-key}
-              :socket-timeout 2000
-              :connection-timeout 2000}]
+              :socket-timeout 5000
+              :connection-timeout 5000}]
     (get-json url args polled-flights reservation-com-errors "flights")))
 
 (def last-aircraft (atom []))
@@ -92,8 +92,8 @@
         fsp-key (:fsp-key @config/config)
         url (str "https://usc-api.flightschedulepro.com/core/v1.0/operators/" operator-id "/aircraft")
         args {:headers {"x-subscription-key" fsp-key}
-              :socket-timeout 2000
-              :connection-timeout 2000}
+              :socket-timeout 5000
+              :connection-timeout 5000}
         response (get-json url args last-aircraft reservation-com-errors "aircraft")
         aircraft (filter #(= "Active" (get-in % [:status :name])) (:items response))
         tail-numbers (map #(get % :tailNumber) aircraft)]
@@ -316,8 +316,8 @@
         url (str "http://" config/radar-cape-ip "/aircraftlist.json?" tails)
         args {:accept :text
               :with-credentials? false
-              :socket-timeout 2000
-              :connection-timeout 2000}
+              :socket-timeout 5000
+              :connection-timeout 5000}
         adsb-response (get-json url args polled-adsbs adsb-com-errors "ADSB")]
     adsb-response))
 
@@ -326,8 +326,8 @@
         url (str "http://" config/radar-cape-ip "/aircraftlist.json")
         args {:accept :text
               :with-credentials? false
-              :socket-timeout 2000
-              :connection-timeout 2000}
+              :socket-timeout 5000
+              :connection-timeout 5000}
         all-adsb (get-json url args polled-nearby-adsbs adsb-com-errors "nearby ADSB")
         nearby (filter (fn [aircraft]
                          (let [alt (:alt aircraft)
