@@ -77,8 +77,8 @@
           (should= comm/reservation-com-errors @captured-error-handler)
           (should= "reservations" @captured-source)
           (should= {:headers {"x-subscription-key" "fake-key"},
-                    :socket-timeout 2000,
-                    :connection-timeout 2000}
+                    :socket-timeout 5000,
+                    :connection-timeout 5000}
                    @captured-args)))))
   )
 
@@ -111,8 +111,8 @@
           (should= comm/reservation-com-errors @captured-error-handler)
           (should= "flights" @captured-source)
           (should= {:headers {"x-subscription-key" "fake-key"},
-                    :socket-timeout 2000,
-                    :connection-timeout 2000}
+                    :socket-timeout 5000,
+                    :connection-timeout 5000}
                    @captured-args)))))
   )
 
@@ -140,8 +140,8 @@
           (should= comm/reservation-com-errors @captured-error-handler)
           (should= "aircraft" @captured-source)
           (should= {:headers {"x-subscription-key" "fake-key"},
-                    :socket-timeout 2000,
-                    :connection-timeout 2000}
+                    :socket-timeout 5000,
+                    :connection-timeout 5000}
                    @captured-args)))))
   )
 
@@ -371,8 +371,8 @@
         (should-contain "icao=N67890" @captured-url)
         (should= {:accept :text
                   :with-credentials? false
-                  :socket-timeout 2000
-                  :connection-timeout 2000}
+                  :socket-timeout 5000
+                  :connection-timeout 5000}
                  @captured-args)
         (should= comm/polled-adsbs @captured-save-atom)
         (should= "ADSB" @captured-source))))
