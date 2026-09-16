@@ -1,8 +1,7 @@
 (ns skillBoard.presenters.airports
   (:require
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
-    [skillBoard.navigation :as nav]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.domain.navigation :as nav]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
@@ -42,14 +41,16 @@
                           (flight-category-distance metar))]
     {:line ctgy-line :color (flight-category-line-color fltCat)}))
 
-(defn make-airports-screen []
-  (let [metars (vals @comm/polled-metars)
-        metars (sort utils/by-distance metars)
-        fc-lines (map make-flight-category-line metars)]
-    fc-lines))
+(defn make-airports-screen
+  ([] (make-airports-screen {}))
+  ([snapshot]
+   (let [metars (vals (:metars snapshot))
+         metars (sort utils/by-distance metars)
+         fc-lines (map make-flight-category-line metars)]
+     fc-lines)))
 
-(defmethod screen/make :airports [_]
-  (make-airports-screen))
+(defmethod screen/make :airports [_ snapshot]
+  (make-airports-screen (or snapshot {})))
 
 (defmethod screen/header-text :airports [_]
   "FLIGHT CATEGORY")

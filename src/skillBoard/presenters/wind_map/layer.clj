@@ -1,21 +1,21 @@
 (ns skillBoard.presenters.wind-map.layer
   (:require
     [quil.core :as q]
-    [skillBoard.atoms :as atoms]
+    [skillBoard.foundation.atoms :as atoms]
     [skillBoard.presenters.wind-map.geo :as geo]
     [skillBoard.presenters.wind-map.markers :as markers]
     [skillBoard.presenters.wind-map.overlays :as overlays]))
 
 (def static-map-layer-cache (atom {:key nil :layer nil}))
 
-(defn static-map-layer-key [bounds width height grid markers]
+(defn static-map-layer-key [bounds width height grid markers short-metar]
   [width
    height
    bounds
    (:source grid)
    (:generated-at-ms grid)
    (:radius-nm grid)
-   (overlays/current-airport-metar-label)
+   (overlays/current-airport-metar-label short-metar)
    (mapv markers/marker-layer-key markers)])
 
 (defn- layer-size [layer]
@@ -36,7 +36,7 @@
 (defn- static-map-layer-stale? [cached-key layer-key size-match?]
   (not (and size-match? (= cached-key layer-key))))
 
-(defn render-static-map-layer! [layer bounds width height grid markers]
+(defn render-static-map-layer! [layer bounds width height grid markers short-metar]
   (q/with-graphics layer
     (q/background 10 15 22)
     (geo/draw-state-outlines! bounds width height)
@@ -47,14 +47,14 @@
     (overlays/draw-layer-ceiling-scale! layer width height)
     (overlays/draw-layer-wind-speed-scale! layer width height)
     (overlays/draw-source-label! grid width height)
-    (overlays/draw-layer-current-airport-metar! layer width height)))
+    (overlays/draw-layer-current-airport-metar! layer width height short-metar)))
 
-(defn static-map-layer [bounds width height grid markers]
-  (let [layer-key (static-map-layer-key bounds width height grid markers)
+(defn static-map-layer [bounds width height grid markers short-metar]
+  (let [layer-key (static-map-layer-key bounds width height grid markers short-metar)
         {cached-key :key} @static-map-layer-cache
         {:keys [layer size-match?]} (current-static-map-layer width height)]
     (when (static-map-layer-stale? cached-key layer-key size-match?)
-      (render-static-map-layer! layer bounds width height grid markers))
+      (render-static-map-layer! layer bounds width height grid markers short-metar))
     (reset! static-map-layer-cache {:key layer-key :layer layer})
     layer))
 

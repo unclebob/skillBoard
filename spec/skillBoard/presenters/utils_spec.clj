@@ -1,9 +1,8 @@
 (ns skillBoard.presenters.utils-spec
   (:require
     [skillBoard.presenters.utils :as utils]
-    [skillBoard.navigation :as nav]
-    [skillBoard.config :as config]
-    [skillBoard.comm-utils :as comm]
+    [skillBoard.domain.navigation :as nav]
+    [skillBoard.foundation.config :as config]
     [speclj.core :refer :all]))
 
 (def ref-lat 42)
@@ -27,11 +26,10 @@
     (let [calls (atom [])
           airport "KJFK"
           metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014"}]
-      (with-redefs [comm/polled-metars (atom {airport metar})
-                    utils/shorten-metar (fn [m]
+      (with-redefs [utils/shorten-metar (fn [m]
                                           (swap! calls conj m)
                                           {:line "shortened" :color :white})]
-        (utils/get-short-metar airport)
+        (utils/get-short-metar {airport metar} airport)
         (should= [metar] @calls)))))
 
 (describe "shorten-metar"

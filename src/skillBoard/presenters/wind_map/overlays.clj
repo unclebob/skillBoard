@@ -1,19 +1,17 @@
 (ns skillBoard.presenters.wind-map.overlays
   (:require
     [quil.core :as q]
-    [skillBoard.config :as config]
-    [skillBoard.core-utils :as core-utils]
-    [skillBoard.presenters.utils :as utils]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.foundation.core-utils :as core-utils]
     [skillBoard.presenters.wind-map.draw :as draw]
-    [skillBoard.presenters.wind-map.geo :as geo]
-    [skillBoard.wind-data :as wind-data]))
+    [skillBoard.presenters.wind-map.geo :as geo]))
 
 (def stale-wind-data-ms (* 2 60 60 1000))
 (def stale-wind-data-message "WIND DATA IS OUT OF DATE")
 (def range-circle-point-count 72)
 
-(defn current-airport-metar-label []
-  (utils/get-short-metar config/airport))
+(defn current-airport-metar-label [short-metar]
+  (or short-metar {:line "NO-METAR" :color :white}))
 
 (defn range-circle-lat-lon [[center-lat center-lon] radius-nm bearing-degrees]
   (let [bearing (Math/toRadians bearing-degrees)
@@ -181,17 +179,17 @@
       (q/fill 0 0 0)
       (q/text (str c) char-x y))))
 
-(defn draw-layer-current-airport-metar! [layer width height]
+(defn draw-layer-current-airport-metar! [layer width height short-metar]
   (try
-    (let [{:keys [line color]} (current-airport-metar-label)
+    (let [{:keys [line color]} (current-airport-metar-label short-metar)
           geometry (split-flap-metar-geometry width height line)]
       (draw-layer-split-flap-line! layer geometry color))
     (catch Exception e
       (core-utils/log :error (str "Error drawing wind METAR label: " (.getMessage e))))))
 
-(defn draw-current-airport-metar! [width height]
+(defn draw-current-airport-metar! [width height short-metar]
   (try
-    (let [{:keys [line color]} (current-airport-metar-label)
+    (let [{:keys [line color]} (current-airport-metar-label short-metar)
           geometry (split-flap-metar-geometry width height line)]
       (draw-split-flap-line! geometry color))
     (catch Exception e
@@ -202,10 +200,10 @@
       (nil? generated-at-ms)
       (> (- now generated-at-ms) stale-wind-data-ms)))
 
-(defn stale-wind-data-warning-geometry [width height]
+(defn stale-wind-data-warning-geometry [width height short-metar]
   (let [margin (metar-margin width height)
         source-clear-y (- height (draw/source-label-font-size width height) 6)
-        metar-clear-y (- (:y (split-flap-metar-geometry width height (:line (current-airport-metar-label)))) 6)
+        metar-clear-y (- (:y (split-flap-metar-geometry width height (:line (current-airport-metar-label short-metar)))) 6)
         y (min source-clear-y metar-clear-y)
         available-height (max 6 (- height y margin))
         font-size (min 16 (max 6 (int available-height)))]
@@ -213,9 +211,9 @@
      :y y
      :font-size font-size}))
 
-(defn draw-stale-wind-data-warning! [now grid width height]
+(defn draw-stale-wind-data-warning! [now grid width height short-metar]
   (when (stale-wind-data? now grid)
-    (let [{:keys [x y font-size]} (stale-wind-data-warning-geometry width height)]
+    (let [{:keys [x y font-size]} (stale-wind-data-warning-geometry width height short-metar)]
       (q/fill 255 60 60)
       (draw/q-text-font! (draw/map-label-font))
       (q/text-align :right :bottom)
@@ -231,7 +229,7 @@
            markers))
 
 (defn- ceiling-distance [lat lon observation]
-  (max 0.5 (wind-data/nm-distance [lat lon] [(:lat observation) (:lon observation)])))
+  (max 0.5 (geo/nm-distance [lat lon] [(:lat observation) (:lon observation)])))
 
 (defn- weighted-ceiling [lat lon observation]
   (let [distance (ceiling-distance lat lon observation)

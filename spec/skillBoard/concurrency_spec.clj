@@ -1,11 +1,11 @@
 (ns skillBoard.concurrency-spec
   (:require
     [java-time.api :as time]
-    [skillBoard.atoms :as atoms]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.atoms :as atoms]
+    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.foundation.config :as config]
     [skillBoard.core :as core]
-    [skillBoard.core-utils :as core-utils]
+    [skillBoard.foundation.core-utils :as core-utils]
     [skillBoard.presenters.airports]
     [skillBoard.presenters.flights]
     [skillBoard.presenters.main :as main]
@@ -14,7 +14,7 @@
     [skillBoard.presenters.weather]
     [skillBoard.presenters.wind-map]
     [skillBoard.presenters.wind-map.markers :as markers]
-    [skillBoard.wind-data :as wind-data]
+    [skillBoard.gateways.wind-data :as wind-data]
     [speclj.core :refer :all]))
 
 (defn- jitter! [^java.util.Random rng max-ms]
@@ -199,16 +199,20 @@
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
                                        (doseq [screen-type [:flights :traffic :taf :airports :wind-map]]
-                                         (should (valid-screen? (screen/make screen-type))))))
+                                         (should (valid-screen? (screen/make screen-type (core/board-snapshot)))))))
                      (future-result :main-reader
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
-                                       (should (valid-screen? (main/make-screen)))))
+                                       (should (valid-screen? (main/make-screen (core/board-snapshot))))))
                      (future-result :wind-reader
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
-                                       (should (vector? (markers/flight-category-airport-markers)))
-                                       (should (map? (wind-data/current-grid)))))]
+                                       (let [snapshot (core/board-snapshot)]
+                                         (should (vector? (markers/flight-category-airport-markers
+                                                            (:nearby-metars snapshot)
+                                                            (:metars snapshot)
+                                                            (:airspace-classes snapshot))))
+                                         (should (map? (:wind-grid snapshot))))))]
             results (mapv #(deref % 10000 ::timeout) (concat writers readers))]
         (doseq [result results]
           (assert-future-result seed result))))))

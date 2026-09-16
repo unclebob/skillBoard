@@ -1,8 +1,7 @@
 (ns skillBoard.presenters.wind-map.markers
   (:require
     [quil.core :as q]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.wind-map.draw :as draw]
     [skillBoard.presenters.wind-map.geo :as geo]))
 
@@ -31,11 +30,13 @@
     (q/text-size 18)
     (q/text config/airport (+ x 8) (+ y 8))))
 
-(defn flight-category-airport-markers []
-  (let [nearby-metars @comm/polled-nearby-metars
-        fallback-metars @comm/polled-metars
-        airspace-classes @comm/polled-airspace-classes
-        metars (if (seq nearby-metars) nearby-metars fallback-metars)
+(defn flight-category-airport-markers
+  ([] (flight-category-airport-markers {} {} {}))
+  ([nearby-metars fallback-metars airspace-classes]
+   (let [nearby-metars (or nearby-metars {})
+         fallback-metars (or fallback-metars {})
+         airspace-classes (or airspace-classes {})
+         metars (if (seq nearby-metars) nearby-metars fallback-metars)
         markers (map (fn [{:keys [lat lon fltCat icaoId] :as metar}]
                        {:airport icaoId
                         :lat lat
@@ -56,17 +57,19 @@
                          :lat (first config/airport-lat-lon)
                          :lon (second config/airport-lat-lon)
                          :color config/info-color}))]
-    (cond-> (vec markers)
-      home-marker (conj home-marker))))
+     (cond-> (vec markers)
+       home-marker (conj home-marker)))))
 
-(defn cached-flight-category-airport-markers [now]
-  (let [{:keys [time markers]} @airport-marker-cache]
-    (if (and markers
-             (< (- now time) airport-marker-cache-ms))
-      markers
-      (let [markers (flight-category-airport-markers)]
-        (reset! airport-marker-cache {:time now :markers markers})
-        markers))))
+(defn cached-flight-category-airport-markers
+  ([now] (cached-flight-category-airport-markers now {} {} {}))
+  ([now nearby-metars fallback-metars airspace-classes]
+   (let [{:keys [time markers]} @airport-marker-cache]
+     (if (and markers
+              (< (- now time) airport-marker-cache-ms))
+       markers
+       (let [markers (flight-category-airport-markers nearby-metars fallback-metars airspace-classes)]
+         (reset! airport-marker-cache {:time now :markers markers})
+         markers)))))
 
 (defn label-airport? [{:keys [airspace-class]}]
   (#{"B" "C" "D"} airspace-class))

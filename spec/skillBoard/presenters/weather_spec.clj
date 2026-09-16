@@ -1,6 +1,6 @@
 (ns skillBoard.presenters.weather-spec
   (:require
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.weather :as weather]
     [speclj.core :refer :all]))
 

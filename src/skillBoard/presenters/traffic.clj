@@ -2,11 +2,10 @@
   (:require
     [clojure.math :as math]
     [quil.core :as q]
-    [skillBoard.atoms :as atoms]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
-    [skillBoard.core-utils :as core-utils]
-    [skillBoard.navigation :as nav]
+    [skillBoard.foundation.atoms :as atoms]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.foundation.core-utils :as core-utils]
+    [skillBoard.domain.navigation :as nav]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
@@ -16,8 +15,8 @@
    {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :spd 100}
    {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :alt 2000}])
 
-(defn- traffic-aircraft-source [adsb-aircraft]
-  (if @atoms/test? test-adsb-aircraft adsb-aircraft))
+(defn- traffic-aircraft-source [adsb-aircraft test?]
+  (if test? test-adsb-aircraft adsb-aircraft))
 
 (defn- format-three-digits [value]
   (if (nil? value) "---" (format "%03d" (math/round value))))
@@ -61,12 +60,12 @@
      :color color
      :distance (format-three-digits distance)}))
 
-(defn- sorted-aircraft-lines [adsb-aircraft fleet-aircraft]
+(defn- sorted-aircraft-lines [adsb-aircraft fleet-aircraft test?]
   (let [[airport-lat airport-lon] config/airport-lat-lon
         fleet-aircraft (set fleet-aircraft)]
     (sort-by :distance
              (map #(aircraft-line fleet-aircraft airport-lat airport-lon %)
-                  (traffic-aircraft-source adsb-aircraft)))))
+                  (traffic-aircraft-source adsb-aircraft test?)))))
 
 (defn- displayed-traffic [sorted-aircraft short-metar]
   (let [total-lines (:line-count @config/display-info)
@@ -81,13 +80,17 @@
       (core-utils/log-event :status :aircraft-report (str "Traffic: " line)))
     (reset! atoms/log-traffic? false)))
 
-(defn make-traffic-screen [adsb-aircraft fleet-aircraft]
-  (let [sorted-aircraft (sorted-aircraft-lines adsb-aircraft fleet-aircraft)]
-    (log-traffic! sorted-aircraft)
-    (displayed-traffic sorted-aircraft (utils/get-short-metar))))
+(defn make-traffic-screen
+  ([adsb-aircraft fleet-aircraft]
+   (make-traffic-screen adsb-aircraft fleet-aircraft {}))
+  ([adsb-aircraft fleet-aircraft snapshot]
+   (let [sorted-aircraft (sorted-aircraft-lines adsb-aircraft fleet-aircraft (:test? snapshot))]
+     (log-traffic! sorted-aircraft)
+     (displayed-traffic sorted-aircraft (utils/get-short-metar (:metars snapshot))))))
 
-(defmethod screen/make :traffic [_]
-  (make-traffic-screen @comm/polled-nearby-adsbs @comm/polled-aircraft))
+(defmethod screen/make :traffic [_ snapshot]
+  (let [snapshot (or snapshot {})]
+    (make-traffic-screen (:nearby-adsbs snapshot) (:aircraft snapshot) snapshot)))
 
 (defmethod screen/header-text :traffic [_]
   "NEARBY TRAFFIC")

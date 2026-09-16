@@ -1,7 +1,7 @@
 (ns skillBoard.presenters.wind-map.draw
   (:require
     [quil.core :as q]
-    [skillBoard.config :as config]))
+    [skillBoard.foundation.config :as config]))
 
 (def ceiling-overlay-max-ft 10000)
 

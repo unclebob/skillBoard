@@ -1,9 +1,8 @@
 (ns skillBoard.presenters.utils
   (:require
     [clojure.string :as str]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
-    [skillBoard.navigation :as nav]))
+    [skillBoard.foundation.config :as config]
+    [skillBoard.domain.navigation :as nav]))
 
 (defn blank? [s] (empty? (str/trim s)))
 
@@ -58,12 +57,10 @@
      :color color}))
 
 (defn get-short-metar
-  ([]
-   (get-short-metar config/airport))
-
-  ([airport]
-   (let [metar (get @comm/polled-metars airport)]
-     (shorten-metar metar))))
+  ([metars]
+   (get-short-metar metars config/airport))
+  ([metars airport]
+   (shorten-metar (get metars airport))))
 
 (defn get-now []
   (System/currentTimeMillis))

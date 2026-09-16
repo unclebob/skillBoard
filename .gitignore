@@ -12,3 +12,4 @@ out
 /error.log
 /status.log
 /.claude/
+/.uml-viewer/

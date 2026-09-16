@@ -17,6 +17,19 @@
 
 (def nearby-state-names (set (keys state-labels)))
 
+(defn nm-distance [[lat lon] [other-lat other-lon]]
+  (let [lat-nm (* 60.0 (- other-lat lat))
+        lon-nm (* 60.0 (Math/cos (Math/toRadians lat)) (- other-lon lon))]
+    (Math/sqrt (+ (* lat-nm lat-nm) (* lon-nm lon-nm)))))
+
+(defn radius-bounds [[lat lon] radius-nm]
+  (let [lat-delta (/ radius-nm 60.0)
+        lon-delta (/ radius-nm (* 60.0 (Math/cos (Math/toRadians lat))))]
+    {:top (+ lat lat-delta)
+     :bottom (- lat lat-delta)
+     :left (- lon lon-delta)
+     :right (+ lon lon-delta)}))
+
 (defn bounds-aspect-ratio-nm [{:keys [top bottom left right]}]
   (let [center-lat (/ (+ top bottom) 2.0)
         width-nm (* 60.0 (Math/cos (Math/toRadians center-lat)) (- right left))

@@ -9,13 +9,13 @@
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         }
  :aliases {:test {:extra-paths ["spec" "target/generated-acceptance/spec"]
-                  :main-opts ["-m" "skillBoard.test-runner"]}
-           :spec {:main-opts ["-m" "skillBoard.test-runner"]
+                  :main-opts ["-m" "skillBoard.test.runner"]}
+           :spec {:main-opts ["-m" "skillBoard.test.runner"]
                   :extra-paths ["spec" "target/generated-acceptance/spec"]}
-           :acceptance {:main-opts ["-m" "skillBoard.acceptance-test-runner"]
+           :acceptance {:main-opts ["-m" "skillBoard.test.acceptance-test-runner"]
                         :extra-paths ["target/generated-acceptance/spec"]}
-           :gherkin-json {:main-opts ["-m" "skillBoard.gherkin"]}
-           :generate-acceptance {:main-opts ["-m" "skillBoard.acceptance-generator"]}
+           :gherkin-json {:main-opts ["-m" "skillBoard.test.gherkin"]}
+           :generate-acceptance {:main-opts ["-m" "skillBoard.test.acceptance-generator"]}
            :skillBoard {:main-opts [-m skillBoard.core]}
            :run {:main-opts [-m skillBoard.core]}
            :cljs {:main-opts ["-m" "cljs.main"
@@ -56,12 +56,12 @@
                         :extra-paths ["spec"]}
            :ir {:extra-deps {io.github.unclebob/uml-viewer
                              {:git/url "https://github.com/unclebob/uml-viewer.git"
-                              :git/sha "e8e422f26f990296b57a006fd662db90a5acc8d0"}}
+                              :git/sha "4ac90e38ee9e298a014766cd58196edaff65b5c6"}}
                 :main-opts ["-m" "uml-viewer.main.ir-generator"
                             "examples/skillBoard.policy.edn"]}
            :uml {:extra-deps {io.github.unclebob/uml-viewer
                               {:git/url "https://github.com/unclebob/uml-viewer.git"
-                               :git/sha "e8e422f26f990296b57a006fd662db90a5acc8d0"}}
+                               :git/sha "4ac90e38ee9e298a014766cd58196edaff65b5c6"}}
                  :main-opts ["-m" "uml-viewer.main.uml-viewer"
                              "examples/skillBoard.edn"]}
            }

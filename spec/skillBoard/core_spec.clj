@@ -1,10 +1,10 @@
 (ns skillBoard.core-spec
   (:require
     [java-time.api :as time]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.core :refer :all]
-    [skillBoard.core-utils :as core-utils]
-    [skillBoard.heartbeat :as heartbeat]
+    [skillBoard.foundation.core-utils :as core-utils]
+    [skillBoard.adapters.heartbeat :as heartbeat]
     [speclj.core :refer :all]))
 
 (defn make-status-item [{:keys [tail-number

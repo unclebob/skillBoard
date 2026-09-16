@@ -33,7 +33,7 @@ GPS altitude is displayed in 100s of feet.  If the ADSB transmitter is in "groun
 then Altitude will be displayed as `GND`.
 
 The ADSB position of the aircraft is compared against the list of geofences in the 
-`src/skillBoard/config.clj` file (see below).  If a match is found it is shown in the
+`src/skillBoard/foundation/config.clj` file (see below).  If a match is found it is shown in the
 remarks field.
 
 ### REMARKS
@@ -146,5 +146,5 @@ API key; read-only keys provide status but cannot retrieve ping history or
 bodies. Keep that more powerful key on the operator's laptop, not in the
 SkillBoard configuration.
 
-### `src/skillBoard/config.clj`
+### `src/skillBoard/foundation/config.clj`
 This file holds information that describes the local environment and the display behavior.

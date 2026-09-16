@@ -1,7 +1,7 @@
 (ns skillBoard.presenters.screen-spec
   (:require
     [quil.core :as q]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.screen :as screen]
     [speclj.core :refer :all]))
 

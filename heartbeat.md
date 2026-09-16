@@ -45,7 +45,7 @@ Each heartbeat shall contain the following information:
 Field names and meanings are part of the external heartbeat contract.
 
 - `application` is always `skillBoard`.
-- `version` is the running value of `skillBoard.config/version`.
+- `version` is the running value of `skillBoard.foundation.config/version`.
 - `test` is present and `true` only when SkillBoard was launched with `-t`.
   The field is omitted in normal operation.
 - `reported_at` is the time at which the snapshot was made, formatted as an

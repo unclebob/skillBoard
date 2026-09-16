@@ -1,6 +1,6 @@
 (ns skillBoard.presenters.screen
   (:require [quil.core :as q]
-            [skillBoard.config :as config]))
+            [skillBoard.foundation.config :as config]))
 
 (defn setup-headers [header-font label-font-size]
   (let [label-height (* 0.8 (:label-height @config/display-info))
@@ -18,7 +18,7 @@
     (doseq [[label column] headers]
       (q/text label (* flap-width column) baseline))))
 
-(defmulti make identity)
+(defmulti make (fn [screen-type & _] screen-type))
 (defmulti header-text identity)
 (defmulti display-column-headers (fn [screen-type & _args] screen-type))
 (defmulti draw-body (fn [screen-type & _args] screen-type))
@@ -26,7 +26,7 @@
 (defmethod header-text :default [_]
   "TILT")
 
-(defmethod make :default [_]
+(defmethod make :default [_ & _]
   :no-such-screen)
 
 (defmethod display-column-headers :default [_ _flap-width _header-font _label-font-size]

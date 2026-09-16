@@ -1,8 +1,8 @@
 (ns skillBoard.presenters.wind-map-spec
   (:require
-    [skillBoard.atoms :as atoms]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.atoms :as atoms]
+    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.wind-map :as wind-map]
     [skillBoard.presenters.wind-map.draw :as draw]
     [skillBoard.presenters.wind-map.geo :as geo]
@@ -10,7 +10,7 @@
     [skillBoard.presenters.wind-map.markers :as markers]
     [skillBoard.presenters.wind-map.overlays :as overlays]
     [skillBoard.presenters.wind-map.particles :as particles]
-    [skillBoard.wind-data :as wind-data]
+    [skillBoard.gateways.wind-data :as wind-data]
     [quil.core :as q]
     [speclj.core :refer :all]))
 
@@ -121,40 +121,37 @@
     (should= [255 255 255] (draw/color-rgb :unknown)))
 
   (it "creates flight category airport markers from nearby polled metars"
-    (with-redefs [comm/polled-nearby-metars (atom {"KUGN" {:icaoId "KUGN"
-                                                           :lat 42.4
-                                                           :lon -87.9
-                                                           :fltCat "IFR"
-                                                           :clouds [{:cover "BKN" :base 700}]}
-                                                   "KMKE" {:icaoId "KMKE"
-                                                           :lat 42.9
-                                                           :lon -87.9
-                                                           :fltCat "VFR"
-                                                           :clouds [{:cover "SCT" :base 2500}]}})
-                  comm/polled-airspace-classes (atom {"KUGN" "D"
-                                                      "KMKE" "C"})
-                  comm/polled-metars (atom {"KMDW" {:icaoId "KMDW"
-                                                    :lat 41.8
-                                                    :lon -87.8
-                                                    :fltCat "MVFR"}})]
+    (let [nearby {"KUGN" {:icaoId "KUGN"
+                          :lat 42.4
+                          :lon -87.9
+                          :fltCat "IFR"
+                          :clouds [{:cover "BKN" :base 700}]}
+                  "KMKE" {:icaoId "KMKE"
+                          :lat 42.9
+                          :lon -87.9
+                          :fltCat "VFR"
+                          :clouds [{:cover "SCT" :base 2500}]}}
+          airspace {"KUGN" "D" "KMKE" "C"}
+          fallback {"KMDW" {:icaoId "KMDW"
+                            :lat 41.8
+                            :lon -87.8
+                            :fltCat "MVFR"}}]
       (should= [{:airport "KMKE" :lat 42.9 :lon -87.9 :color config/vfr-color :ceiling-ft-agl 10000 :airspace-class "C"}
                 {:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :ceiling-ft-agl 700 :airspace-class "D"}]
-               (vec (markers/flight-category-airport-markers)))))
+               (vec (markers/flight-category-airport-markers nearby fallback airspace)))))
 
   (it "falls back to configured polled metars before nearby metars have loaded"
-    (with-redefs [comm/polled-nearby-metars (atom {})
-                  comm/polled-airspace-classes (atom {})
-                  comm/polled-metars (atom {"KUGN" {:icaoId "KUGN"
-                                                    :lat 42.4
-                                                    :lon -87.9
-                                                    :fltCat "IFR"}})]
+    (let [fallback {"KUGN" {:icaoId "KUGN"
+                            :lat 42.4
+                            :lon -87.9
+                            :fltCat "IFR"}}]
       (should= [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :ceiling-ft-agl nil :airspace-class nil}]
-               (vec (markers/flight-category-airport-markers)))))
+               (vec (markers/flight-category-airport-markers {} fallback {})))))
 
   (it "caches flight category airport markers briefly"
     (let [built (atom 0)]
       (reset! markers/airport-marker-cache {:time 0 :markers nil})
-      (with-redefs [markers/flight-category-airport-markers (fn []
+      (with-redefs [markers/flight-category-airport-markers (fn [& _]
                                                                (swap! built inc)
                                                                [{:airport (str "K" @built)}])]
         (should= [{:airport "K1"}] (markers/cached-flight-category-airport-markers 1000))
@@ -164,15 +161,12 @@
         (should= 2 @built))))
 
   (it "always includes the home airport marker"
-    (with-redefs [comm/polled-nearby-metars (atom {})
-                  comm/polled-airspace-classes (atom {})
-                  comm/polled-metars (atom {})
-                  config/flight-category-airports ["KMKE"]]
+    (with-redefs [config/flight-category-airports ["KMKE"]]
       (should= [{:airport config/airport
                  :lat (first config/airport-lat-lon)
                  :lon (second config/airport-lat-lon)
                  :color config/info-color}]
-               (vec (markers/flight-category-airport-markers)))))
+               (vec (markers/flight-category-airport-markers {} {} {})))))
 
   (it "computes the lowest ceiling from broken, overcast, and vertical visibility layers"
     (should= 600 (markers/metar-ceiling-ft-agl {:clouds [{:cover "SCT" :base 1200}
@@ -194,13 +188,14 @@
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
           grid {:source :open-meteo-gfs-hrrr :generated-at-ms 1000 :radius-nm 200}
           markers [{:airport "KUGN" :lat 42.4 :lon -87.9 :color config/ifr-color :ceiling-ft-agl 700 :airspace-class "D"}]]
-      (with-redefs [overlays/current-airport-metar-label (fn [] {:line "METAR KUGN" :color :green})]
+      (let [short-metar {:line "METAR KUGN" :color :green}]
         (should= [600 400 bounds :open-meteo-gfs-hrrr 1000 200 {:line "METAR KUGN" :color :green}
                   [["KUGN" 42.4 -87.9 config/ifr-color 700 "D"]]]
-                 (map-layer/static-map-layer-key bounds 600 400 grid markers))
-        (should-not= (map-layer/static-map-layer-key bounds 600 400 grid markers)
+                 (map-layer/static-map-layer-key bounds 600 400 grid markers short-metar))
+        (should-not= (map-layer/static-map-layer-key bounds 600 400 grid markers short-metar)
                      (map-layer/static-map-layer-key bounds 600 400 grid
-                                                    (assoc-in markers [0 :color] config/vfr-color)))))))
+                                                    (assoc-in markers [0 :color] config/vfr-color)
+                                                    short-metar))))))
 
   (it "computes and labels the valid range circle"
     (let [points (overlays/range-circle-points {:center [42.0 -87.0] :radius-nm 200})]
@@ -471,7 +466,7 @@
           marker {:airport "KUGN" :lat 42.0 :lon -87.0 :color config/vfr-color :airspace-class "D"}]
       (with-redefs [config/display-info (atom {:header-font :sans-serif
                                                :annotation-font :serif})
-                    overlays/current-airport-metar-label (fn [] {:line "METAR KUGN" :color :green})
+                    overlays/current-airport-metar-label (fn [& _] {:line "METAR KUGN" :color :green})
                     q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
                     q/stroke (fn [& args] (swap! calls conj (into [:stroke] args)))
                     q/stroke-weight (fn [& args] (swap! calls conj (into [:stroke-weight] args)))
@@ -482,7 +477,8 @@
                     q/text (fn [& args] (swap! calls conj (into [:text] args)))]
         (markers/draw-flight-category-airport! bounds 600 400 marker)
         (overlays/draw-source-label! {:source :synthetic :radius-nm 150} 600 400)
-        (overlays/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400)
+        (overlays/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400
+                                                {:line "METAR KUGN" :color :green})
         (should (some #(= [:text-font :sans-serif] %) @calls))
         (should-not (some #(= [:text-font :serif] %) @calls)))))
 
@@ -497,20 +493,20 @@
 
   (it "draws a right-bottom red stale wind data warning clear of the metar and source"
     (let [calls (atom [])]
-      (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
-                    overlays/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
-                    q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
-                    q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
-                    q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
-                    q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
-                    q/text (fn [& args] (swap! calls conj (into [:text] args)))]
+      (let [short-metar {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green}]
+        (with-redefs [config/display-info (atom {:header-font nil :annotation-font nil})
+                      q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
+                      q/text-font (fn [& args] (swap! calls conj (into [:text-font] args)))
+                      q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
+                      q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
+                      q/text (fn [& args] (swap! calls conj (into [:text] args)))]
         (should= {:x 590.0 :y 353.0 :font-size 16}
-                 (overlays/stale-wind-data-warning-geometry 600 400))
-        (overlays/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400)
+                 (overlays/stale-wind-data-warning-geometry 600 400 short-metar))
+        (overlays/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400 short-metar)
         (should-contain [:fill 255 60 60] @calls)
         (should-contain [:text-align :right :bottom] @calls)
         (should-contain [:text-size 16] @calls)
-        (should-contain [:text "WIND DATA IS OUT OF DATE" 590.0 353.0] @calls))))
+        (should-contain [:text "WIND DATA IS OUT OF DATE" 590.0 353.0] @calls)))))
 
   (it "draws particle lines grouped by cached stroke"
     (let [calls (atom [])
@@ -626,7 +622,6 @@
                                                :font-width 8
                                                :font-height 20
                                                :sf-char-gap 1})
-                    overlays/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
                     q/no-stroke (fn [& args] (swap! calls conj (into [:no-stroke] args)))
                     q/fill (fn [& args] (swap! calls conj (into [:fill] args)))
                     q/rect (fn [& args] (swap! calls conj (into [:rect] args)))
@@ -634,7 +629,7 @@
                     q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
                     q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
                     q/text (fn [& args] (swap! calls conj (into [:text] args)))]
-        (overlays/draw-current-airport-metar! 600 400)
+        (overlays/draw-current-airport-metar! 600 400 {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
         (should-contain [:no-stroke] @calls)
         (should-contain [:fill 0 255 0] @calls)
         (should-contain [:text-font :split-flap] @calls)
@@ -651,8 +646,8 @@
                                                :font-width 8
                                                :font-height 20
                                                :sf-char-gap 1})
-                    overlays/current-airport-metar-label (fn [] {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})]
-        (#'overlays/draw-layer-current-airport-metar! layer 600 400)
+                    ]
+        (#'overlays/draw-layer-current-airport-metar! layer 600 400 {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
         (should-contain [:no-stroke] @calls)
         (should-contain [:fill 0.0 255.0 0.0] @calls)
         (should-contain [:text-font :split-flap] @calls)
@@ -769,17 +764,16 @@
                 :radius-nm 100
                 :source :open-meteo-gfs-hrrr
                 :generated-at-ms Long/MAX_VALUE}]
-      (with-redefs [wind-data/current-grid (fn [] grid)
-                    wind-data/radius-bounds (fn [center radius-nm]
-                                              (swap! calls conj [:bounds center radius-nm])
-                                              bounds)
+      (with-redefs [geo/radius-bounds (fn [center radius-nm]
+                                         (swap! calls conj [:bounds center radius-nm])
+                                         bounds)
                     q/width (fn [] 600)
                     q/height (fn [] 400)
                     particles/particles particle-store
-                    markers/cached-flight-category-airport-markers (fn [now]
+                    markers/cached-flight-category-airport-markers (fn [now & _]
                                                                       (swap! calls conj [:markers (integer? now)])
                                                                       [{:airport "KORD"}])
-                    map-layer/static-map-layer (fn [received-bounds width height received-grid markers]
+                    map-layer/static-map-layer (fn [received-bounds width height received-grid markers & _]
                                                 (swap! calls conj [:layer received-bounds width height received-grid markers])
                                                 :layer)
                     particles/ensure-particles! (fn [received-bounds received-grid width height now]
@@ -792,7 +786,7 @@
                                                         (assoc particle :updated true))
                     q/image (fn [& args] (swap! calls conj (into [:image] args)))
                     particles/draw-particles! (fn [particles] (swap! calls conj [:particles particles]))]
-        (wind-map/draw-wind-map!)
+        (wind-map/draw-wind-map! {:wind-grid grid})
         (should-contain [:bounds [42.0 -87.0] 100] @calls)
         (should-contain [:markers true] @calls)
         (should-contain [:layer fitted-bounds 600 400 grid [{:airport "KORD"}]] @calls)
@@ -813,10 +807,10 @@
                        #'q/create-graphics (fn [_ _] layer)
                        #'map-layer/render-static-map-layer! (fn [& _] (swap! renders inc))}
         (fn []
-          (should= layer (map-layer/static-map-layer bounds 600 400 grid markers))
-          (should= layer (map-layer/static-map-layer bounds 600 400 grid markers))
+          (should= layer (map-layer/static-map-layer bounds 600 400 grid markers nil))
+          (should= layer (map-layer/static-map-layer bounds 600 400 grid markers nil))
           (should= 1 @renders)
-          (should= layer (map-layer/static-map-layer bounds 601 400 grid markers))
+          (should= layer (map-layer/static-map-layer bounds 601 400 grid markers nil))
           (should= 2 @renders)))))
 
   (it "invalidates the cached static map layer when the screen changes"

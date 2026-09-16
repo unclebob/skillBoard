@@ -2,10 +2,9 @@
   (:require
     [clojure.math :as math]
     [quil.core :as q]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.wind-map.draw :as draw]
-    [skillBoard.presenters.wind-map.geo :as geo]
-    [skillBoard.wind-data :as wind-data]))
+    [skillBoard.presenters.wind-map.geo :as geo]))
 
 (def particles (atom []))
 (def particle-field-size (atom nil))
@@ -43,7 +42,7 @@
              points))))
 
 (defn- wind-distance [lat lon point]
-  (max 0.25 (wind-data/nm-distance [lat lon] [(:lat point) (:lon point)])))
+  (max 0.25 (geo/nm-distance [lat lon] [(:lat point) (:lon point)])))
 
 (defn interpolated-wind [grid lat lon]
   (let [points (:points grid)]

@@ -1,13 +1,14 @@
 (ns skillBoard.presenters.flights-spec
   (:require
-    [skillBoard.config :as config]
-    [skillBoard.flight-schedule-pro :as fsp]
-    [skillBoard.atoms :as atoms]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.domain.flight-schedule-pro :as fsp]
+    [skillBoard.foundation.atoms :as atoms]
     [skillBoard.presenters.flights :as flights]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
-    [skillBoard.radar-cape :as radar-cape]
-    [skillBoard.time-util :as time-util]
+    [skillBoard.domain.radar-cape :as radar-cape]
+    [skillBoard.foundation.time-util :as time-util]
+    [java-time.api :as time]
     [quil.core :as q]
     [speclj.core :refer :all]))
 
@@ -113,6 +114,41 @@
                )
       )
 
+    (it "leaves bearing/alt/gs blank when there is no position data"
+      (should= {:line "05:50Z TAIL   LAS.P LAS.I                                       ",
+                :color config/scheduled-flight-color}
+               (flights/format-res {:start-time time-util/epoch
+                                    :tail-number "TAIL"
+                                    :pilot-name ["PILOT" "LAST"]
+                                    :instructor-name ["INSTR" "LAST"]
+                                    :co nil
+                                    :adsb? false})))
+
+    (it "still shows altitude and speed when bearing is missing"
+      (should= {:line "05:50Z TAIL   LAS.P LAS.I        UGN      /010/100              ",
+                :color config/scheduled-flight-color}
+               (flights/format-res {:start-time time-util/epoch
+                                    :tail-number "TAIL"
+                                    :pilot-name ["PILOT" "LAST"]
+                                    :instructor-name ["INSTR" "LAST"]
+                                    :co nil
+                                    :altitude 1000
+                                    :ground-speed 100
+                                    :adsb? false})))
+
+    (it "formats a check-out time in UTC"
+      (should= {:line "05:50Z TAIL   LAS.P LAS.I 14:55Z UGN0915309/010/100             ",
+                :color config/scheduled-flight-color}
+               (flights/format-res {:start-time time-util/epoch
+                                    :tail-number "TAIL"
+                                    :pilot-name ["PILOT" "LAST"]
+                                    :instructor-name ["INSTR" "LAST"]
+                                    :co (time/local-date-time 2025 6 16 9 55 24)
+                                    :altitude 1000
+                                    :ground-speed 100
+                                    :lat-lon [0 0]
+                                    :adsb? false})))
+
     (it "packs the adsb status into a map"
       (should= {"N419AM" {:tmp nil, :cat "A1", :dst nil, :spi false, :alr 0, :alt 4825, :ns 817072312, :vrt 640, :wsp nil, :src "A", :altg 5125, :tru 41, :uti 1750878586, :wdi nil, :org nil, :hex "A4F59B", :opr nil, :cou "USA ", :reg "N419AM", :gda "A", :dis 42.5, :lon -88.81367, :lla 0, :squ nil, :lat 42.51814, :spd 105, :fli "N419AM", :pic 11, :ava "A", :typ "DA40", :trk 119, :dbm -78}
                 "N757HE" {:tmp nil, :cat "A1", :sil 3, :dst nil, :spi false, :alr 0, :alt 1600, :mop 2, :sda 2, :ns 566304636, :vrt -64, :wsp nil, :src "A", :tru 193, :uti 1750878547, :wdi nil, :org nil, :hex "AA34BE", :nacp 9, :opr nil, :cou "USA ", :reg "N757HE", :gda "a", :dis 9.0, :cla 4, :lon -88.06391, :lla 42, :squ nil, :lat 42.44133, :spd 97, :fli"N757HE", :pic 11, :ava "A", :typ "C152", :trk 263, :dbm nil}}
@@ -142,7 +178,7 @@
 
 (describe "format-flight-screen"
   (it "formats an empty flight screen correctly"
-    (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+    (with-redefs [utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   fsp/unpack-reservations (fn [_] [])
                   fsp/unpack-flights (fn [_] [])
                   fsp/sort-and-filter-reservations (fn [_ _] [])
@@ -160,7 +196,7 @@
         (should= expected (flights/make-flights-screen [] [])))))
 
   (it "formats a flight screen with dropped items correctly"
-    (with-redefs [utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+    (with-redefs [utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   fsp/unpack-reservations (fn [_] [])
                   fsp/unpack-flights (fn [_] [])
                   fsp/sort-and-filter-reservations (fn [_ _] [])

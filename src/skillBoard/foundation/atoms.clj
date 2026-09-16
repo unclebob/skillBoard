@@ -1,0 +1,10 @@
+(ns skillBoard.foundation.atoms)
+
+(def poll-key (atom false))
+(def poll-time (atom (System/currentTimeMillis)))
+(def clock-pulse (atom false))
+(def test? (atom false))
+(def change-screen? (atom false))
+(def screen-changed? (atom true))
+(def log-traffic? (atom false))
+(def log-stdout? (atom true))

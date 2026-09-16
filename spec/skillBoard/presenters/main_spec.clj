@@ -1,7 +1,7 @@
 (ns skillBoard.presenters.main-spec
   (:require
     [quil.core :as q]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.airports :as airports]
     [skillBoard.presenters.flights :as flights]
     [skillBoard.presenters.main :as main]
@@ -10,14 +10,14 @@
     [skillBoard.presenters.weather :as weather]
     [speclj.core :refer :all]))
 
-(defmethod screen/make :next-screen [_] nil)
-(defmethod screen/make :timeout-screen [_] nil)
+(defmethod screen/make :next-screen [_ & _] nil)
+(defmethod screen/make :timeout-screen [_ & _] nil)
 
 (describe "make-screen"
   (it "returns flights screen when screen-type is :flights and mouse not pressed"
     (with-redefs [q/mouse-pressed? (fn [] false)
                   utils/get-now (fn [] 1000)
-                  flights/make-flights-screen (fn [_res _fl] "mocked flights screen")]
+                  flights/make-flights-screen (fn [& _] "mocked flights screen")]
       (reset! main/screen-type :flights)
       (reset! main/screen-duration 10)
       (reset! main/screen-start-time 0)
@@ -26,7 +26,7 @@
   (it "returns taf screen when screen-type is :taf and mouse not pressed"
     (with-redefs [q/mouse-pressed? (fn [] false)
                   utils/get-now (fn [] 1000)
-                  weather/make-taf-screen (fn [] "mocked taf screen")]
+                  weather/make-taf-screen (fn [& _] "mocked taf screen")]
       (reset! main/screen-type :taf)
       (reset! main/screen-duration 10)
       (reset! main/screen-start-time 0)
@@ -35,7 +35,7 @@
   (it "returns flight-category screen when screen-type is :airports and mouse not pressed"
     (with-redefs [q/mouse-pressed? (fn [] false)
                   utils/get-now (fn [] 1000)
-                  airports/make-airports-screen (fn [] "mocked flight-category screen")]
+                  airports/make-airports-screen (fn [& _] "mocked flight-category screen")]
       (reset! main/screen-type :airports)
       (reset! main/screen-duration 10)
       (reset! main/screen-start-time 0)

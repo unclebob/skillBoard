@@ -1,6 +1,6 @@
 (ns skillBoard.presenters.airports-spec
   (:require
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.airports :as airports]
     [speclj.core :refer :all]))
 

@@ -2,20 +2,20 @@
   (:require
     [quil.core :as q]
     [quil.middleware :as m]
-    [skillBoard.atoms :as atoms]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
-    [skillBoard.core-utils :as core-utils]
-    [skillBoard.heartbeat :as heartbeat]
+    [skillBoard.foundation.atoms :as atoms]
+    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.foundation.core-utils :as core-utils]
+    [skillBoard.adapters.heartbeat :as heartbeat]
     [skillBoard.presenters.airports]
     [skillBoard.presenters.flights]
     [skillBoard.presenters.main :as presenter]
     [skillBoard.presenters.traffic]
     [skillBoard.presenters.weather]
     [skillBoard.presenters.wind-map]
-    [skillBoard.split-flap :as split-flap]
-    [skillBoard.text-util :as text]
-    [skillBoard.wind-data :as wind-data]))
+    [skillBoard.adapters.split-flap :as split-flap]
+    [skillBoard.adapters.text-util :as text]
+    [skillBoard.gateways.wind-data :as wind-data]))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -46,6 +46,24 @@
            :annotation-font annotation-font
            :metar-font metar-font
            :clock-font clock-font)))
+
+(defn board-snapshot []
+  {:reservations @comm/polled-reservations
+   :flights @comm/polled-flights
+   :adsbs @comm/polled-adsbs
+   :metars @comm/polled-metars
+   :nearby-metars @comm/polled-nearby-metars
+   :airspace-classes @comm/polled-airspace-classes
+   :metar-history @comm/polled-metar-history
+   :tafs @comm/polled-tafs
+   :nearby-adsbs @comm/polled-nearby-adsbs
+   :aircraft @comm/polled-aircraft
+   :wind-grid (wind-data/current-grid)
+   :test? @atoms/test?
+   :com-errors {:reservations @comm/reservation-com-errors
+                :adsb @comm/adsb-com-errors
+                :weather @comm/weather-com-errors
+                :open-meteo-ok? @comm/open-meteo-ok?}})
 
 (defn poll []
   (try
@@ -118,12 +136,14 @@
                  :font-width font-width
                  :font-height font-height
                  :line-count lines-count)
-        summary (presenter/make-screen)
+        snapshot (board-snapshot)
+        summary (presenter/make-screen snapshot)
         flappers (split-flap/make-flappers summary [])
         now (System/currentTimeMillis)]
     (q/frame-rate config/frame-rate)
     (q/background 255)
     {:time now
+     :snapshot snapshot
      :lines summary
      :flappers flappers
      :sf-font sf-font
@@ -141,7 +161,7 @@
 
 (defn update-state [state]
   (try
-    (split-flap/do-update state)
+    (split-flap/do-update (assoc state :snapshot (board-snapshot)))
     (catch Exception e
       (core-utils/log :error e)
       state)))

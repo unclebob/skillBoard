@@ -1,8 +1,7 @@
 (ns skillBoard.presenters.weather
   (:require
     [clojure.string :as str]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
+    [skillBoard.foundation.config :as config]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]))
 
@@ -50,18 +49,20 @@
       (assoc metar-line :line new-line))
     ))
 
-(defn make-taf-screen []
-  (let [taf-response (get @comm/polled-tafs config/taf-airport)
-        metar-history (map utils/shorten-metar @comm/polled-metar-history)
-        metar-history (map remove-airport-code metar-history)
-        raw-tafs [(:rawTAF taf-response)]
-        tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
-        blank-line {:line "" :color config/info-color}
-        airport-id {:line (str config/airport " METAR HISTORY") :color config/info-color}]
-    (concat tafs [blank-line airport-id] metar-history)))
+(defn make-taf-screen
+  ([] (make-taf-screen {}))
+  ([snapshot]
+   (let [taf-response (get (:tafs snapshot) config/taf-airport)
+         metar-history (map utils/shorten-metar (:metar-history snapshot))
+         metar-history (map remove-airport-code metar-history)
+         raw-tafs [(:rawTAF taf-response)]
+         tafs (flatten (map #(->> % split-taf (take 8)) raw-tafs))
+         blank-line {:line "" :color config/info-color}
+         airport-id {:line (str config/airport " METAR HISTORY") :color config/info-color}]
+     (concat tafs [blank-line airport-id] metar-history))))
 
-(defmethod screen/make :taf [_]
-  (make-taf-screen))
+(defmethod screen/make :taf [_ snapshot]
+  (make-taf-screen (or snapshot {})))
 
 (defmethod screen/header-text :taf [_]
   "WEATHER")

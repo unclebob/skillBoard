@@ -1,13 +1,13 @@
 (ns skillBoard.presenters.traffic-spec
   (:require
     [skillBoard.presenters.traffic :as traffic]
-    [skillBoard.atoms :as atoms]
-    [skillBoard.config :as config]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.core-utils :as core-utils]
+    [skillBoard.foundation.atoms :as atoms]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.foundation.core-utils :as core-utils]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
-    [skillBoard.navigation :as nav]
+    [skillBoard.domain.navigation :as nav]
     [quil.core :as q]
     [speclj.core :refer :all]))
 
@@ -22,7 +22,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:reg "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}]
@@ -41,7 +41,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:lat 45.0 :lon -87.0 :alt 105 :spd 1}]
@@ -60,7 +60,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:reg "N12345" :lat 44.0 :lon -87.0 :alt 105 :spd 10}]
@@ -79,7 +79,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -101,7 +101,7 @@
                    config/pattern-altitude 2000
                    config/bearing-center "C"
                    config/geofences []
-                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                   utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                    utils/find-location (fn [_ _ _ _] "LOCATION")
                    nav/dist-and-bearing (fn [_ _ lat _lon]
                                           (let [distance (abs (- lat 42.0))]
@@ -123,7 +123,7 @@
                    config/pattern-altitude 2000
                    config/bearing-center "C"
                    config/geofences []
-                   utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                   utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                    utils/find-location (fn [_ _ _ _] "LOCATION")
                    nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
        (let [adsb [{:reg "N12345" :lat 44.0 :lon -87.0 :alt 2200 :spd 100}]
@@ -142,7 +142,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -163,7 +163,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -184,7 +184,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})]
       (let [adsb [{:reg "N12345" :lat 45.0 :lon -87.0 :alt 105 :spd 1}]
@@ -201,7 +201,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -220,7 +220,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color :white})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -243,7 +243,7 @@
                   config/airport-elevation 100
                   config/bearing-center "C"
                   config/geofences []
-                  utils/get-short-metar (fn [] {:line "METAR" :color :white})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color :white})
                   utils/find-location (fn [_ _ _ _] "LOCATION")
                   nav/dist-and-bearing (fn [_ _ lat _lon]
                                          (let [distance (abs (- lat 42.0))]
@@ -268,7 +268,7 @@
                     config/airport-elevation 100
                     config/bearing-center "C"
                     config/geofences []
-                    utils/get-short-metar (fn [] {:line "METAR" :color config/info-color})
+                    utils/get-short-metar (fn [& _] {:line "METAR" :color config/info-color})
                     utils/find-location (fn [_ _ _ _] "LOCATION")
                     nav/dist-and-bearing (fn [_ _ _ _] {:distance 1 :bearing 0})
                     core-utils/log-event (fn [level event message]

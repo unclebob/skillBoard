@@ -3,15 +3,13 @@
     [clojure.math :as math]
     [clojure.string :as str]
     [quil.core :as q]
-    [skillBoard.atoms :as atoms]
-    [skillBoard.comm-utils :as comm]
-    [skillBoard.config :as config]
-    [skillBoard.flight-schedule-pro :as fsp]
-    [skillBoard.navigation :as nav]
+    [skillBoard.foundation.config :as config]
+    [skillBoard.domain.flight-schedule-pro :as fsp]
+    [skillBoard.domain.navigation :as nav]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
-    [skillBoard.radar-cape :as radar-cape]
-    [skillBoard.time-util :as time-util]))
+    [skillBoard.domain.radar-cape :as radar-cape]
+    [skillBoard.foundation.time-util :as time-util]))
 
 (defn format-name [[first-name last-name]]
   (let [first-name (if (nil? first-name) "" first-name)
@@ -114,16 +112,19 @@
               adsb])))
   )
 
-(defn make-flights-screen [reservations-packet flights-packet]
-  (let [short-metar (utils/get-short-metar)
-        unpacked-res (fsp/unpack-reservations reservations-packet)
-        flights (fsp/unpack-flights flights-packet)
-        filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
-        adsbs @comm/polled-adsbs
-        adsb-map (if @atoms/test?
-                   {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
-                    "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
-                   (make-adsb-tail-number-map adsbs))
+(defn make-flights-screen
+  ([reservations-packet flights-packet]
+   (make-flights-screen reservations-packet flights-packet {}))
+  ([reservations-packet flights-packet snapshot]
+   (let [short-metar (utils/get-short-metar (:metars snapshot))
+         unpacked-res (fsp/unpack-reservations reservations-packet)
+         flights (fsp/unpack-flights flights-packet)
+         filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
+         adsbs (:adsbs snapshot)
+         adsb-map (if (:test? snapshot)
+                    {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
+                     "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
+                    (make-adsb-tail-number-map adsbs))
 
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsb-map)
         final-reservations (radar-cape/include-unscheduled-flights
@@ -140,12 +141,12 @@
                 :line (if (zero? dropped-items)
                         "             "
                         (format "...%2d MORE..." dropped-items))}
-        final-screen (concat displayed-items [footer short-metar])
-        ]
-    final-screen))
+         final-screen (concat displayed-items [footer short-metar])]
+     final-screen)))
 
-(defmethod screen/make :flights [_]
-  (make-flights-screen @comm/polled-reservations @comm/polled-flights))
+(defmethod screen/make :flights [_ snapshot]
+  (let [snapshot (or snapshot {})]
+    (make-flights-screen (:reservations snapshot) (:flights snapshot) snapshot)))
 
 (defmethod screen/header-text :flights [_]
   "FLIGHT OPERATIONS")
