@@ -1,0 +1,72 @@
+{:title "SkillBoard"
+ :src "src"
+ :prefix "skillBoard"
+ :lang :clojure
+ :out "examples/skillBoard.edn"
+ :foreign [quil clj-http java-time clojure.data.json]
+ :packages
+ [{:id :main
+   :label "Main"
+   :nses [core]}
+  {:id :adapters
+   :label "Adapters"
+   :nses [split-flap heartbeat text-util]}
+  {:id :presenters
+   :label "Presenters"
+   :nses [presenters.main
+          presenters.flights
+          presenters.traffic
+          presenters.weather
+          presenters.airports
+          presenters.wind-map
+          presenters.wind-map.layer
+          presenters.wind-map.particles
+          presenters.wind-map.overlays
+          presenters.wind-map.markers
+          presenters.wind-map.geo
+          presenters.wind-map.draw
+          presenters.utils
+          presenters.screen]}
+  {:id :gateways
+   :label "Gateways"
+   :nses [wind-data comm-utils]}
+  {:id :domain
+   :label "Domain"
+   :nses [flight-schedule-pro radar-cape navigation]}
+  {:id :foundation
+   :label "Foundation"
+   :nses [core-utils time-util atoms config]}]
+ :diagrams
+ [{:title "Layers" :view :overview :hide-members true :direction :tb}
+  {:title "Main" :package :main
+   :edge-kinds {[:core :split-flap] :association
+                [:core :heartbeat] :association
+                [:core :text-util] :association
+                [:core :presenters.main] :association
+                [:core :comm-utils] :association
+                [:core :wind-data] :association}}
+  {:title "Adapters" :package :adapters
+   :edge-kinds {[:split-flap :presenters.main] :association
+                [:split-flap :presenters.screen] :association
+                [:heartbeat :core-utils] :association}}
+  {:title "Presenters" :package :presenters
+   :edge-kinds {[:presenters.main :presenters.screen] :association
+                [:presenters.main :presenters.utils] :association
+                [:presenters.flights :presenters.screen] :association
+                [:presenters.traffic :presenters.screen] :association
+                [:presenters.weather :presenters.screen] :association
+                [:presenters.airports :presenters.screen] :association
+                [:presenters.wind-map :presenters.screen] :association
+                [:presenters.wind-map :presenters.wind-map.layer] :association
+                [:presenters.wind-map :presenters.wind-map.particles] :association
+                [:presenters.wind-map.layer :presenters.wind-map.geo] :association
+                [:presenters.wind-map.layer :presenters.wind-map.markers] :association
+                [:presenters.wind-map.layer :presenters.wind-map.overlays] :association
+                [:presenters.wind-map.particles :presenters.wind-map.geo] :association}}
+  {:title "Gateways" :package :gateways}
+  {:title "Domain" :package :domain}
+  {:title "Foundation" :package :foundation
+   :edge-kinds {[:core-utils :time-util] :association
+                [:core-utils :atoms] :association
+                [:core-utils :config] :association
+                [:time-util :config] :association}}]}

@@ -12,7 +12,8 @@
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.traffic]
     [skillBoard.presenters.weather]
-    [skillBoard.presenters.wind-map :as wind-map]
+    [skillBoard.presenters.wind-map]
+    [skillBoard.presenters.wind-map.markers :as markers]
     [skillBoard.wind-data :as wind-data]
     [speclj.core :refer :all]))
 
@@ -206,7 +207,7 @@
                      (future-result :wind-reader
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
-                                       (should (vector? (wind-map/flight-category-airport-markers)))
+                                       (should (vector? (markers/flight-category-airport-markers)))
                                        (should (map? (wind-data/current-grid)))))]
             results (mapv #(deref % 10000 ::timeout) (concat writers readers))]
         (doseq [result results]

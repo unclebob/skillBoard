@@ -63,7 +63,3 @@
                                ["VIS" 20]
                                ["WIND" 25]
                                ["DIST" 31]]))
-
-;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-05-09T09:18:13.557664-05:00", :module-hash "1351740696", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 7, :hash "2111620770"} {:id "defn/make-flight-category-line", :kind "defn", :line 9, :end-line 29, :hash "-1105333052"} {:id "defn/make-airports-screen", :kind "defn", :line 31, :end-line 35, :hash "453534776"} {:id "defmethod/screen/make/:airports", :kind "defmethod", :line 37, :end-line 38, :hash "-107903511"} {:id "defmethod/screen/header-text/:airports", :kind "defmethod", :line 40, :end-line 41, :hash "349942679"} {:id "defmethod/screen/display-column-headers/:airports", :kind "defmethod", :line 43, :end-line 51, :hash "-167362968"}]}
-;; clj-mutate-manifest-end

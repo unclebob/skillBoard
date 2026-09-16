@@ -37,12 +37,12 @@
            :mutate {:main-opts ["-m" "clj-mutate.core"]
                     :extra-deps {io.github.unclebob/clj-mutate
                                  {:git/url "https://github.com/unclebob/clj-mutate.git"
-                                  :git/sha "a95a3352cd5fe104dac8e7a5c0b97547ba5718d5"}}
+                                  :git/sha "1744720852f4ecbfa66662bea5d822d7dece043d"}}
                     :extra-paths ["spec" "target/generated-acceptance/spec"]}
            :crap {:main-opts ["-m" "crap4clj.core"]
                   :extra-deps {io.github.unclebob/crap4clj
                                {:git/url "https://github.com/unclebob/crap4clj.git"
-                                :git/sha "16697b336705e7008cf9c75dc3b7dc0a5965db18"}}
+                                :git/sha "1ee5b8cf1b3fd0dbb62c5308f3e2de528b80d077"}}
                   :extra-paths ["spec"]}
            :check {:main-opts ["-m" "speclj-structure-check.core"]
                    :extra-deps {io.github.unclebob/speclj-structure-check
@@ -54,5 +54,15 @@
                                      {:git/url "https://github.com/unclebob/speclj-structure-check.git"
                                       :git/sha "7cc804c4e99b3482ca1d8a26b735ed41751a03ab"}}
                         :extra-paths ["spec"]}
+           :ir {:extra-deps {io.github.unclebob/uml-viewer
+                             {:git/url "https://github.com/unclebob/uml-viewer.git"
+                              :git/sha "e8e422f26f990296b57a006fd662db90a5acc8d0"}}
+                :main-opts ["-m" "uml-viewer.main.ir-generator"
+                            "examples/skillBoard.policy.edn"]}
+           :uml {:extra-deps {io.github.unclebob/uml-viewer
+                              {:git/url "https://github.com/unclebob/uml-viewer.git"
+                               :git/sha "e8e422f26f990296b57a006fd662db90a5acc8d0"}}
+                 :main-opts ["-m" "uml-viewer.main.uml-viewer"
+                             "examples/skillBoard.edn"]}
            }
  }
