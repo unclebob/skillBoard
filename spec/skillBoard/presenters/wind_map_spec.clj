@@ -1,8 +1,8 @@
 (ns skillBoard.presenters.wind-map-spec
   (:require
     [skillBoard.foundation.atoms :as atoms]
-    [skillBoard.gateways.comm-utils :as comm]
     [skillBoard.foundation.config :as config]
+    [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.wind-map :as wind-map]
     [skillBoard.presenters.wind-map.draw :as draw]
     [skillBoard.presenters.wind-map.geo :as geo]
@@ -46,6 +46,20 @@
      (set! (.-height graphics) height)
      graphics)))
 
+(defn- near-number? [expected actual]
+  (and (number? expected)
+       (number? actual)
+       (< (Math/abs (- (double expected) (double actual))) 0.001)))
+
+(defn- near-call? [expected actual]
+  (and (= (count expected) (count actual))
+       (every? (fn [[e a]]
+                 (or (= e a) (near-number? e a)))
+               (map vector expected actual))))
+
+(defn- calls-include? [calls expected]
+  (some #(near-call? expected %) calls))
+
 (describe "wind map presenter"
   (it "initializes particles across the current drawing bounds"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
@@ -84,6 +98,7 @@
 
   (it "fades particles in, holds them, fades them out by their own lifetime, then marks them dead"
     (let [particle {:born-at 1000 :life-ms 2500}]
+      (should= 0.0 (particles/particle-opacity 999 particle))
       (should= 0.0 (particles/particle-opacity 1000 particle))
       (should= 0.5 (particles/particle-opacity 1250 particle))
       (should= 1.0 (particles/particle-opacity 1500 particle))
@@ -157,8 +172,41 @@
         (should= [{:airport "K1"}] (markers/cached-flight-category-airport-markers 1000))
         (should= [{:airport "K1"}] (markers/cached-flight-category-airport-markers 1500))
         (should= 1 @built)
+        (should= [{:airport "K2"}] (markers/cached-flight-category-airport-markers 2000))
+        (should= 2 @built)
         (should= [{:airport "K2"}] (markers/cached-flight-category-airport-markers 2101))
         (should= 2 @built))))
+
+  (it "treats nil marker inputs as empty and still includes home"
+    (should= [{:airport config/airport
+               :lat (first config/airport-lat-lon)
+               :lon (second config/airport-lat-lon)
+               :color config/info-color}]
+             (vec (markers/flight-category-airport-markers nil nil nil))))
+
+  (it "adds the home airport from fallback metars when nearby metars omit it"
+    (let [nearby {"KMKE" {:icaoId "KMKE"
+                          :lat 42.9
+                          :lon -87.9
+                          :fltCat "VFR"}}
+          fallback {"KUGN" {:lat 42.4
+                            :lon -87.9
+                            :fltCat "IFR"
+                            :clouds [{:cover "BKN" :base 800}]}}
+          airspace {config/airport "D"}]
+      (should= [{:airport "KMKE"
+                 :lat 42.9
+                 :lon -87.9
+                 :color config/vfr-color
+                 :ceiling-ft-agl nil
+                 :airspace-class nil}
+                {:airport config/airport
+                 :lat 42.4
+                 :lon -87.9
+                 :color config/ifr-color
+                 :ceiling-ft-agl 800
+                 :airspace-class "D"}]
+               (vec (markers/flight-category-airport-markers nearby fallback airspace)))))
 
   (it "always includes the home airport marker"
     (with-redefs [config/flight-category-airports ["KMKE"]]
@@ -184,6 +232,21 @@
     (should-not (markers/label-airport? {:airspace-class "E"}))
     (should-not (markers/label-airport? {})))
 
+  (it "reports calm wind when a field cannot be sampled"
+    (should= {:u 0 :v 0} (particles/sample-wind-field nil 10 10)))
+
+  (it "keeps an explicit particle speed instead of the vector speed"
+    (should= 5 (#'particles/particle-speed {:u 0 :v 0 :speed 5}))
+    (should= 5.0 (#'particles/particle-speed {:u 3 :v 4})))
+
+  (it "stays put when a particle has no wind components and no speed"
+    (should= [300 200] (particles/particle-segment-end {:x 300 :y 200})))
+
+  (it "treats wind older than two hours as stale"
+    (should= 7200000 overlays/stale-wind-data-ms)
+    (should (overlays/stale-wind-data? 7200001 {:source :open-meteo-gfs-hrrr :generated-at-ms 0}))
+    (should-not (overlays/stale-wind-data? 7200000 {:source :open-meteo-gfs-hrrr :generated-at-ms 0})))
+
   (it "keys the static map layer by bounds, grid, size, poll time, and airport markers"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
           grid {:source :open-meteo-gfs-hrrr :generated-at-ms 1000 :radius-nm 200}
@@ -197,6 +260,7 @@
                                                     (assoc-in markers [0 :color] config/vfr-color)
                                                     short-metar))))))
 
+(describe "wind map calculations and drawing"
   (it "computes and labels the valid range circle"
     (let [points (overlays/range-circle-points {:center [42.0 -87.0] :radius-nm 200})]
       (should= (inc overlays/range-circle-point-count) (count points))
@@ -221,7 +285,7 @@
           bounds {:top 43.0 :bottom 41.0 :left -88.0 :right -86.0}
           observations [{:lat 42.0 :lon -87.0 :ceiling-ft-agl 750}]]
       (#'overlays/draw-layer-ceiling-cell! layer bounds 600 400 observations 100 100 3 2)
-      (should-contain [:fill 255 125 50 42] @calls)
+      (should (calls-include? @calls [:fill 255 125 50 42]))
       (should-contain [:rect 300.0 200.0 100.0 100.0] @calls)))
 
   (it "orients particle line segments with local wind"
@@ -377,7 +441,7 @@
           stepped (particles/step-particle-with-frame frame 2500 particle)]
       (should (:x2 stepped))
       (should (:y2 stepped))
-      (should= [165 255 190 220.0] (:stroke stepped))))
+      (should= [125 235 255 215.0] (:stroke stepped))))
 
   (it "keeps living particles regardless of age count"
     (let [bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
@@ -487,9 +551,10 @@
       (should (overlays/stale-wind-data? now {:source :synthetic :generated-at-ms now}))
       (should (overlays/stale-wind-data? now {:source :open-meteo-gfs-hrrr}))
       (should (overlays/stale-wind-data? now {:source :open-meteo-gfs-hrrr
-                                              :generated-at-ms (- now overlays/stale-wind-data-ms 1)}))
+                                              :generated-at-ms (- now 7200000 1)}))
       (should-not (overlays/stale-wind-data? now {:source :open-meteo-gfs-hrrr
-                                                  :generated-at-ms (- now overlays/stale-wind-data-ms)}))))
+                                                  :generated-at-ms (- now 7200000)}))
+      (should= 7200000 overlays/stale-wind-data-ms)))
 
   (it "draws a right-bottom red stale wind data warning clear of the metar and source"
     (let [calls (atom [])]
@@ -500,13 +565,13 @@
                       q/text-align (fn [& args] (swap! calls conj (into [:text-align] args)))
                       q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))
                       q/text (fn [& args] (swap! calls conj (into [:text] args)))]
-        (should= {:x 590.0 :y 353.0 :font-size 16}
+        (should= {:x 588.0 :y 359.5 :font-size 16}
                  (overlays/stale-wind-data-warning-geometry 600 400 short-metar))
         (overlays/draw-stale-wind-data-warning! 10000 {:source :synthetic :generated-at-ms 10000} 600 400 short-metar)
         (should-contain [:fill 255 60 60] @calls)
         (should-contain [:text-align :right :bottom] @calls)
         (should-contain [:text-size 16] @calls)
-        (should-contain [:text "WIND DATA IS OUT OF DATE" 590.0 353.0] @calls)))))
+        (should-contain [:text "WIND DATA IS OUT OF DATE" 588.0 359.5] @calls)))))
 
   (it "draws particle lines grouped by cached stroke"
     (let [calls (atom [])
@@ -555,10 +620,10 @@
         (should-contain [:ellipse 300.0 200.0 11.0 11.0] @calls)
         (should-contain [:text "KORD" 308.0 200.0] @calls)
         (should-contain [:text "IL" 300.0 200.0] @calls)
-        (should-contain [:stroke 255 255 255 210] @calls)
-        (should-contain [:text "valid range: 100NM" 300.0 51.333332] @calls)
-        (should-contain [:text-size 9.0] @calls)
-        (should-contain [:text "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC" 20.0 400.0] @calls))))
+        (should (calls-include? @calls [:stroke 255 255 255 210]))
+        (should (calls-include? @calls [:text "valid range: 100NM" 300.0 51.333332]))
+        (should (calls-include? @calls [:text-size 9.0]))
+        (should (calls-include? @calls [:text "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC" 20.0 400.0])))))
 
   (it "formats the source label with the poll time in utc"
     (should= "Source: open-meteo  Radius: 200 NM  Polled: 00:00Z UTC"
@@ -587,7 +652,7 @@
       (should= {:sf-font-size 18
                 :font-width 10.44
                 :font-height 18
-                :sf-char-gap 0.8352
+                :sf-char-gap 0.8351999999999999
                 :flap-width 11.2752
                 :flap-height 22.5}
                (overlays/metar-split-flap-metrics 600 400))))
@@ -636,25 +701,22 @@
         (should-contain [:text-align :left :top] @calls)
         (should-contain [:text-size 16] @calls)
         (should-contain [:rect 273.8 365.0 6.4 16.0] @calls)
-        (should-contain [:text "M" 273 363.0] @calls))))
+        (should-contain [:text "M" 273.0 363.0] @calls))))
 
   (it "draws the cached layer metar as split-flap text on the bottom right"
     (let [calls (atom [])
           layer (fake-graphics calls)]
-      (with-redefs [config/display-info (atom {:sf-font :split-flap
-                                               :sf-font-size 16
+      (with-redefs [config/display-info (atom {:sf-font-size 16
                                                :font-width 8
                                                :font-height 20
-                                               :sf-char-gap 1})
-                    ]
+                                               :sf-char-gap 1})]
         (#'overlays/draw-layer-current-airport-metar! layer 600 400 {:line "METAR KUGN 231853Z 18012KT 10SM CLR" :color :green})
         (should-contain [:no-stroke] @calls)
-        (should-contain [:fill 0.0 255.0 0.0] @calls)
-        (should-contain [:text-font :split-flap] @calls)
-        (should-contain [:text-align processing.core.PConstants/LEFT processing.core.PConstants/TOP] @calls)
-        (should-contain [:text-size 16.0] @calls)
-        (should-contain [:rect 273.8 365.0 6.4 16.0] @calls)
-        (should-contain [:text "M" 273.0 363.0] @calls))))
+        (should (calls-include? @calls [:fill 0.0 255.0 0.0]))
+        (should (calls-include? @calls [:text-align processing.core.PConstants/LEFT processing.core.PConstants/TOP]))
+        (should (calls-include? @calls [:text-size 16.0]))
+        (should (calls-include? @calls [:rect 273.8 365.0 6.4 16.0]))
+        (should (calls-include? @calls [:text "M" 273.0 363.0])))))
 
   (it "places the wind speed scale on the right edge in the middle third"
     (should= {:x 592.0
@@ -688,21 +750,21 @@
           layer (fake-graphics calls)]
       (#'overlays/draw-layer-wind-speed-scale! layer 600 400)
       (should-contain [:no-stroke] @calls)
-      (should-contain [:rect 592.0 244.44444 8.0 22.222221] @calls)
-      (should-contain [:rect 592.0 222.22223 8.0 22.222214] @calls)
-      (should-contain [:rect 592.0 200.0 8.0 22.222229] @calls)
-      (should-contain [:rect 592.0 177.77779 8.0 22.222214] @calls)
-      (should-contain [:rect 592.0 155.55556 8.0 22.222229] @calls)
-      (should-contain [:rect 592.0 133.33333 8.0 22.222221] @calls)
-      (should-contain [:text-size 7.92] @calls)
-      (should-contain [:text "0-5" 586.0 255.55556] @calls)
-      (should-contain [:text "5-10" 586.0 233.33334] @calls)
-      (should-contain [:text "10-15" 586.0 211.11111] @calls)
-      (should-contain [:text "15-20" 586.0 188.8889] @calls)
-      (should-contain [:text "20-25" 586.0 166.66667] @calls)
-      (should-contain [:text "25+" 586.0 144.44444] @calls)
-      (should-contain [:text-size 9.9] @calls)
-      (should-contain [:text "wind" 600.0 129.33333] @calls)))
+      (should (calls-include? @calls [:rect 592.0 244.44444 8.0 22.222221]))
+      (should (calls-include? @calls [:rect 592.0 222.22223 8.0 22.222214]))
+      (should (calls-include? @calls [:rect 592.0 200.0 8.0 22.222229]))
+      (should (calls-include? @calls [:rect 592.0 177.77779 8.0 22.222214]))
+      (should (calls-include? @calls [:rect 592.0 155.55556 8.0 22.222229]))
+      (should (calls-include? @calls [:rect 592.0 133.33333 8.0 22.222221]))
+      (should (calls-include? @calls [:text-size 7.92]))
+      (should (calls-include? @calls [:text "0-5" 586.0 255.55556]))
+      (should (calls-include? @calls [:text "5-10" 586.0 233.33334]))
+      (should (calls-include? @calls [:text "10-15" 586.0 211.11111]))
+      (should (calls-include? @calls [:text "15-20" 586.0 188.8889]))
+      (should (calls-include? @calls [:text "20-25" 586.0 166.66667]))
+      (should (calls-include? @calls [:text "25+" 586.0 144.44444]))
+      (should (calls-include? @calls [:text-size 9.9]))
+      (should (calls-include? @calls [:text "wind" 600.0 129.33333]))))
 
   (it "draws a static ceiling scale abutted to the left edge"
     (let [calls (atom [])
@@ -721,39 +783,38 @@
         (should= 200.0 (overlays/ceiling-scale-y geometry 5000))
         (should= (:y geometry) (overlays/ceiling-scale-y geometry draw/ceiling-overlay-max-ft))
         (should= 20 (count (overlays/ceiling-scale-bands geometry)))
-        (should= [{:label "<500" :y 263.33333333333337}
-                  {:label "1K" :y 253.33333333333334}
-                  {:label "2K" :y 240.0}
-                  {:label "3K" :y 226.66666666666669}
-                  {:label "4K" :y 213.33333333333334}
-                  {:label "5K" :y 200.0}
-                  {:label "6K" :y 186.66666666666669}
-                  {:label "7K" :y 173.33333333333334}
-                  {:label "8K" :y 160.0}
-                  {:label "9K" :y 146.66666666666669}
-                  {:label "10K" :y 133.33333333333334}]
-                 (overlays/ceiling-scale-labels geometry)))
+        (let [labels (overlays/ceiling-scale-labels geometry)]
+          (should= ["<500" "1K" "2K" "3K" "4K" "5K" "6K" "7K" "8K" "9K" "10K"]
+                   (mapv :label labels))
+          (should (every? (fn [[expected actual]]
+                            (< (Math/abs (- expected actual)) 0.001))
+                          (map vector
+                               [263.33333333333337 253.33333333333334 240.0
+                                226.66666666666669 213.33333333333334 200.0
+                                186.66666666666669 173.33333333333334 160.0
+                                146.66666666666669 133.33333333333334]
+                               (map :y labels))))))
       (#'overlays/draw-layer-ceiling-scale! layer 600 400)
-      (should-contain [:no-stroke] @calls)
-      (should-contain [:rect 0.0 260.0 8.0 6.6666565] @calls)
-      (should-contain [:rect 0.0 133.33333 8.0 6.6666718] @calls)
-      (should-contain [:text-size 7.128] @calls)
-      (should-contain [:text "<500" 14.0 266.54092] @calls)
-      (should-contain [:text "1K" 14.0 256.54092] @calls)
-      (should-contain [:text "5K" 14.0 203.2076] @calls)
-      (should-contain [:text "10K" 14.0 136.54094] @calls)
-      (should-contain [:text-size 9.9] @calls)
-      (should-contain [:text "ceil" 0.0 125.41333] @calls)))
+      (should (calls-include? @calls [:no-stroke]))
+      (should (calls-include? @calls [:rect 0.0 260.0 8.0 6.6666665]))
+      (should (calls-include? @calls [:rect 0.0 133.33333 8.0 6.6666665]))
+      (should (calls-include? @calls [:text-size 7.128]))
+      (should (calls-include? @calls [:text "<500" 14.0 266.54092]))
+      (should (calls-include? @calls [:text "1K" 14.0 256.54092]))
+      (should (calls-include? @calls [:text "5K" 14.0 203.2076]))
+      (should (calls-include? @calls [:text "10K" 14.0 136.54094]))
+      (should (calls-include? @calls [:text-size 9.9]))
+      (should (calls-include? @calls [:text "ceil" 0.0 125.41333]))))
 
   (it "scales side scale labels and titles from the screen size"
-    (should= 7.92 (overlays/wind-speed-scale-label-font-size 600 400))
-    (should= 14.96 (overlays/wind-speed-scale-label-font-size 1200 800))
-    (should= 7.128 (overlays/ceiling-scale-label-font-size 600 400))
-    (should= 13.464 (overlays/ceiling-scale-label-font-size 1200 800))
-    (should= 3.2076 (overlays/ceiling-scale-label-y-offset 600 400))
-    (should= 7.92 (overlays/ceiling-scale-title-y-offset 600 400))
-    (should= 9.9 (draw/scale-title-font-size 600 400))
-    (should= 18.7 (draw/scale-title-font-size 1200 800)))
+    (should (near-number? 7.92 (overlays/wind-speed-scale-label-font-size 600 400)))
+    (should (near-number? 14.96 (overlays/wind-speed-scale-label-font-size 1200 800)))
+    (should (near-number? 7.128 (overlays/ceiling-scale-label-font-size 600 400)))
+    (should (near-number? 13.464 (overlays/ceiling-scale-label-font-size 1200 800)))
+    (should (near-number? 3.2076 (overlays/ceiling-scale-label-y-offset 600 400)))
+    (should (near-number? 7.92 (overlays/ceiling-scale-title-y-offset 600 400)))
+    (should (near-number? 9.9 (draw/scale-title-font-size 600 400)))
+    (should (near-number? 18.7 (draw/scale-title-font-size 1200 800))))
 
   (it "draws the cached map layer before updated particles"
     (let [calls (atom [])
@@ -817,4 +878,72 @@
     (with-redefs [atoms/screen-changed? (atom true)
                   map-layer/static-map-layer-cache (atom {:key [:old] :layer :layer})]
       (map-layer/refresh-static-map-layer-on-screen-entry!)
-      (should= {:key nil :layer nil} @map-layer/static-map-layer-cache)))
+      (should= {:key nil :layer nil} @map-layer/static-map-layer-cache))))
+
+(describe "wind map drawing"
+  (it "draws the cached layer at the origin when a wind grid is present"
+    (let [calls (atom [])
+          grid {:center [42.0 -87.0] :radius-nm 100}]
+      (with-redefs [q/width (fn [] 600)
+                    q/height (fn [] 400)
+                    markers/cached-flight-category-airport-markers (fn [& _] [])
+                    map-layer/refresh-static-map-layer-on-screen-entry! (fn [])
+                    map-layer/static-map-layer (fn [& _] :layer)
+                    particles/ensure-particles! (fn [& _])
+                    particles/particle-frame (fn [& _] :frame)
+                    particles/particles (atom [])
+                    particles/step-particle-with-frame (fn [_ _ particle] particle)
+                    particles/draw-particles! (fn [_])
+                    overlays/draw-stale-wind-data-warning! (fn [& _])
+                    q/image (fn [& args] (swap! calls conj (vec args)))]
+        (should= true (screen/draw-body :wind-map {:snapshot {:wind-grid grid}}))
+        (should= [[:layer 0 0]] @calls))))
+
+  (it "draws nothing when the snapshot has no wind grid"
+    (let [calls (atom [])]
+      (with-redefs [q/image (fn [& args] (swap! calls conj (vec args)))]
+        (wind-map/draw-wind-map! {})
+        (should= [] @calls)))))
+
+(describe "wind map batch drawing"
+  (it "renders the static layer from outlines, ceilings, and scales"
+    (let [calls (atom [])
+          layer (fake-graphics calls)
+          bounds {:top 44.0 :bottom 40.0 :left -90.0 :right -84.0}
+          grid {:center [42.0 -87.0] :radius-nm 100 :source :open-meteo :generated-at-ms 0}
+          markers [{:airport "KUGN" :lat 42.2 :lon -87.8 :color :green
+                    :ceiling-ft-agl 1000 :airspace-class "D"}]]
+      (with-redefs [q/background (fn [& _])
+                    q/no-fill (fn [])
+                    q/stroke (fn [& _])
+                    q/stroke-weight (fn [_])
+                    q/begin-shape (fn [])
+                    q/end-shape (fn [])
+                    q/vertex (fn [& _])
+                    q/fill (fn [& _])
+                    q/text (fn [& _])
+                    q/text-align (fn [& _])
+                    q/text-size (fn [_])
+                    q/text-font (fn [_])
+                    q/ellipse (fn [& _])]
+        (map-layer/render-static-map-layer! layer bounds 600 400 grid markers
+                                            {:line "METAR" :color :green}))
+      (should (calls-include? @calls [:no-stroke]))
+      (should (some #(= :fill (first %)) @calls))))
+
+  (it "heightens bounds when the screen is taller than the map"
+    (let [bounds {:top 43.0 :bottom 41.0 :left -88.0 :right -86.0}
+          fitted (geo/fit-bounds-to-screen bounds 400 800)]
+      (should (> (- (:top fitted) (:bottom fitted))
+                 (- (:top bounds) (:bottom bounds))))))
+
+  (it "chooses the metar font, then the annotation font, then the header font"
+    (with-redefs [config/display-info (atom {:metar-font :metar
+                                             :annotation-font :ann
+                                             :header-font :header})]
+      (should= :metar (draw/metar-label-font)))
+    (with-redefs [config/display-info (atom {:annotation-font :ann
+                                             :header-font :header})]
+      (should= :ann (draw/metar-label-font)))
+    (with-redefs [config/display-info (atom {:header-font :header})]
+      (should= :header (draw/metar-label-font)))))

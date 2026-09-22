@@ -3,6 +3,7 @@
     [quil.core :as q]
     [skillBoard.foundation.config :as config]
     [skillBoard.presenters.screen :as screen]
+    [skillBoard.presenters.wind-map.aircraft :as aircraft]
     [skillBoard.presenters.wind-map.geo :as geo]
     [skillBoard.presenters.wind-map.layer :as map-layer]
     [skillBoard.presenters.wind-map.markers :as markers]
@@ -46,7 +47,8 @@
        (reset! particles/particles updated)
        (q/image layer 0 0)
        (overlays/draw-stale-wind-data-warning! now grid width height short-metar)
-       (particles/draw-particles! updated)))))
+       (particles/draw-particles! updated)
+       (aircraft/draw-fleet! bounds width height (aircraft/fleet-adsbs snapshot))))))
 
 (defmethod screen/draw-body :wind-map [_ state]
   (draw-wind-map! (or (:snapshot state) {}))

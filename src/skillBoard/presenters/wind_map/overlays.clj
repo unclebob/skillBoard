@@ -6,7 +6,7 @@
     [skillBoard.presenters.wind-map.draw :as draw]
     [skillBoard.presenters.wind-map.geo :as geo]))
 
-(def stale-wind-data-ms (* 2 60 60 1000))
+(def stale-wind-data-ms 7200000)
 (def stale-wind-data-message "WIND DATA IS OUT OF DATE")
 (def range-circle-point-count 72)
 

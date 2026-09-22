@@ -1,7 +1,7 @@
 (ns skillBoard.gateways.wind-data-spec
   (:require
     [clj-http.client :as http]
-    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.gateways.aviation-weather :as weather]
     [skillBoard.foundation.config :as config]
     [skillBoard.foundation.core-utils :as core-utils]
     [skillBoard.gateways.wind-data :as wind-data]
@@ -74,36 +74,53 @@
 
   (it "marks Open-Meteo healthy after successful refresh without changing aviation weather errors"
     (with-redefs [wind-data/polled-wind-grid (atom nil)
-                  comm/weather-com-errors (atom 4)
-                  comm/open-meteo-ok? (atom false)
+                  weather/weather-com-errors (atom 4)
+                  wind-data/open-meteo-ok? (atom false)
                   wind-data/fetch-open-meteo-grid (fn [] {:source :open-meteo-gfs})]
       (should= {:source :open-meteo-gfs} (wind-data/refresh-wind-grid!))
-      (should= true @comm/open-meteo-ok?)
-      (should= 4 @comm/weather-com-errors)))
+      (should= true @wind-data/open-meteo-ok?)
+      (should= 4 @weather/weather-com-errors)))
 
   (it "marks Open-Meteo unhealthy after refresh failures without changing aviation weather errors"
     (let [events (atom [])]
       (with-redefs [wind-data/polled-wind-grid (atom :last-good-grid)
-                    comm/weather-com-errors (atom 3)
-                    comm/open-meteo-ok? (atom true)
+                    weather/weather-com-errors (atom 3)
+                    wind-data/open-meteo-ok? (atom true)
                     core-utils/log-event (fn [& args] (swap! events conj args))
                     wind-data/fetch-open-meteo-grid (fn [] (throw (ex-info "rate limited" {})))]
         (should= :last-good-grid (wind-data/refresh-wind-grid!))
-        (should= false @comm/open-meteo-ok?)
-        (should= 3 @comm/weather-com-errors)
+        (should= false @wind-data/open-meteo-ok?)
+        (should= 3 @weather/weather-com-errors)
         (should= [[:error
                    :communication-issue
                    "Error fetching wind data: rate limited"]]
                  @events))))
 
   (it "creates a synthetic fallback grid"
-    (let [grid (wind-data/synthetic-grid)]
+    (let [grid (wind-data/synthetic-grid)
+          points (:points grid)
+          lats (sort (distinct (map :lat points)))
+          lons (sort (distinct (map :lon points)))
+          step (fn [xs]
+                 (map #(Math/abs (- %2 %1)) xs (rest xs)))]
       (should= :synthetic (:source grid))
       (should (integer? (:generated-at-ms grid)))
+      (should= config/airport-lat-lon (:center grid))
       (should= config/wind-map-radius-nm (:radius-nm grid))
-      (should-not-be empty? (:points grid))))
+      (should-not-be empty? points)
+      (should (every? #(< (Math/abs (- 0.35 %)) 1e-9) (step lats)))
+      (should (every? #(< (Math/abs (- 0.35 %)) 1e-9) (step lons)))
+      (should (every? #(= (wind-data/synthetic-wind (:center grid) [(:lat %) (:lon %)])
+                          (select-keys % [:lat :lon :u :v]))
+                      points))))
 
-  (it "uses a coherent fallback wind field instead of orbiting around the center"
-    (let [points (:points (wind-data/synthetic-grid))]
-      (should (every? pos? (map :u points)))
-      (should (every? pos? (map :v points))))))
+  (it "blows the fallback wind from the southwest and shears it with distance"
+    (let [center [42.0 -87.0]
+          close? (fn [expected actual]
+                   (< (Math/abs (- expected actual)) 1e-9))]
+      (let [{:keys [u v]} (wind-data/synthetic-wind center center)]
+        (should (close? 10.0 u))
+        (should (close? 4.0 v)))
+      (let [{:keys [u v]} (wind-data/synthetic-wind center [44.0 -85.0])]
+        (should (close? 11.6 u))
+        (should (close? 5.0 v))))))

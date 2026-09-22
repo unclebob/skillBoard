@@ -8,7 +8,29 @@
 (def ref-lat 42)
 (def ref-lon -87)
 
+(describe "flight-category-color"
+  (it "uses the visibility and ceiling boundaries"
+    (should= config/vfr-color (utils/flight-category-color 5.0 3000))
+    (should= config/mvfr-color (utils/flight-category-color 4.9 3000))
+    (should= config/mvfr-color (utils/flight-category-color 5.0 2999))
+    (should= config/mvfr-color (utils/flight-category-color 3.0 1000))
+    (should= config/ifr-color (utils/flight-category-color 2.9 1000))
+    (should= config/ifr-color (utils/flight-category-color 3.0 999))
+    (should= config/ifr-color (utils/flight-category-color 3.0 500))
+    (should= config/ifr-color (utils/flight-category-color 1.0 500))
+    (should= config/lifr-color (utils/flight-category-color 0.9 500))
+    (should= config/lifr-color (utils/flight-category-color 1.0 499))))
+
 (describe "by-distance"
+  (it "orders closer metars first and ignores a missing distance"
+    (with-redefs [nav/dist-and-bearing (fn [_ _ lat _]
+                                         {:distance (when-not (neg? lat) lat)})]
+      (should (utils/by-distance {:lat 1.0 :lon 0} {:lat 2.0 :lon 0}))
+      (should-not (utils/by-distance {:lat 2.0 :lon 0} {:lat 1.0 :lon 0}))
+      (should-not (utils/by-distance {:lat 2.0 :lon 0} {:lat 2.0 :lon 0}))
+      (should-not (utils/by-distance {:lat -1.0 :lon 0} {:lat 2.0 :lon 0}))
+      (should-not (utils/by-distance {:lat 1.0 :lon 0} {:lat -2.0 :lon 0}))))
+
   (it "calls nav/dist-and-bearing with correct arguments"
     (let [calls (atom [])
           [airport-lat airport-lon] config/airport-lat-lon
@@ -43,6 +65,10 @@
   (it "shortens METAR with RMK, taking before RMK"
     (should= {:line "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014" :color :white}
              (utils/shorten-metar {:rawOb "METAR KJFK 191251Z 31008KT 10SM FEW250 24/04 A3014 RMK AO2 SLP221 T02440044"})))
+
+  (it "keeps a METAR that is exactly one line"
+    (let [exact (apply str (repeat config/cols "A"))]
+      (should= {:line exact :color :white} (utils/shorten-metar {:rawOb exact}))))
 
   (it "truncates if the shortened METAR is longer than 64 characters"
     (let [long-part (apply str (repeat 70 "A"))]
@@ -102,6 +128,15 @@
                                    :max-alt 2000
                                    :name "NAME"}]))
     )
+  (it "includes an aircraft on the fence boundary"
+    (should= "EDGE" (utils/find-location ref-lat ref-lon 1000
+                                         [{:lat ref-lat
+                                           :lon ref-lon
+                                           :radius 0
+                                           :min-alt 1000
+                                           :max-alt 1000
+                                           :name "EDGE"}])))
+
   (it "finds first geofence"
     (should= "NAME" (utils/find-location ref-lat ref-lon 1100
                                      [
@@ -166,6 +201,24 @@
     (with-redefs [config/airport-elevation 100
                   config/pattern-altitude 2000]
       (should= "NEAR" (utils/generate-position-remark 3 3000 60 false 42 -87))))
+
+  (it "returns nothing when position data or coordinates are missing"
+    (should= "" (utils/generate-position-remark nil 100 10 false 42 -87))
+    (with-redefs [utils/find-location (fn [& _] "LOCATION")]
+      (should= "" (utils/generate-position-remark 10 5000 10 false nil nil))))
+
+  (it "treats the speed and distance cutoffs as the lower category"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000
+                  config/geofences []]
+      (should= "TAXI" (utils/generate-position-remark 1 105 2 true 42 -87))
+      (should= "TAXI" (utils/generate-position-remark 1 105 25 true 42 -87))
+      (should= "NEAR" (utils/generate-position-remark 3 120 60 false 42 -87))
+      (should= "NEAR" (utils/generate-position-remark 2 2150 60 false 42 -87))
+      (should= "NEAR" (utils/generate-position-remark 3 135 50 false 42 -87))
+      (should= "NEAR" (utils/generate-position-remark 3 130 60 false 42 -87))
+      (should= "NEAR" (utils/generate-position-remark 1 1500 60 false 42 -87))
+      (should= "NEAR" (utils/generate-position-remark 2 105 1 true 42 -87))))
 
   (it "returns location for distant aircraft"
     (with-redefs [config/airport-elevation 100

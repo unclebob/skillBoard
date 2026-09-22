@@ -10,10 +10,10 @@
     [skillBoard.presenters.utils :as utils]))
 
 (def test-adsb-aircraft
-  [{:reg "N12345" :lat 42.5 :lon -87.8 :alt 2500 :spd 120}
-   {:reg "N98765" :lat 42.4 :lon -87.9 :alt 728 :spd 2}
-   {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :spd 100}
-   {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :alt 2000}])
+  [{:reg "N12345" :lat 42.5 :lon -87.8 :alt 2500 :spd 120 :trk 315}
+   {:reg "N98765" :lat 42.4 :lon -87.9 :alt 728 :spd 2 :trk 315}
+   {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :alt 3000 :spd 100 :trk 315}
+   {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :alt 2000 :trk 315}])
 
 (defn- traffic-aircraft-source [adsb-aircraft test?]
   (if test? test-adsb-aircraft adsb-aircraft))

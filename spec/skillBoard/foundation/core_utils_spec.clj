@@ -22,9 +22,11 @@
                   core-utils/prune-old-logs! (fn [])
                   print (fn [& _])]
       (core-utils/log :status "Setup...")
-      (let [[file content] (first @@spit-calls)]
+      (let [[file content append-key append?] (first @@spit-calls)]
         (should= (dated-log-file "status.log") file)
-        (should-contain "Setup..." content))))
+        (should-contain "Setup..." content)
+        (should= :append append-key)
+        (should= true append?))))
 
   (it "writes error messages to the dated error log"
     (with-redefs [spit (fn [& args] (swap! @spit-calls conj args))
@@ -136,7 +138,19 @@
         (should= [] (core-utils/log-event-messages
                       :status
                       (java.time.LocalDate/parse "2026-09-07")
-                      :aircraft-report))))))
+                      :aircraft-report)))))
+
+  (it "ignores a timestamp that has no message"
+    (let [temp-dir (.toFile (java.nio.file.Files/createTempDirectory
+                              "skillBoard-event-messages-short"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))
+          date (java.time.LocalDate/parse "2026-09-07")]
+      (with-redefs [core-utils/log-directory (.getPath temp-dir)]
+        (spit (core-utils/log-file-path :status date)
+              (str "2026-09-07T10:00:00.00\n"
+                   "2026-09-07T10:01:00.00 [event:aircraft-report] kept\n"))
+        (should= ["kept"]
+                 (core-utils/log-event-messages :status date :aircraft-report))))))
 
 (describe "prune-old-logs!"
   (it "deletes dated status and error logs more than the retention period old"

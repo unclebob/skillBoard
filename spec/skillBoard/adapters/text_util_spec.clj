@@ -29,6 +29,14 @@
       )
     (it "fails for font sizes greater than 1000"
       (should-not= 1001 (text/find-font-size-for "AnyFont" 1001 mock-get-width)))
+
+    (it "accepts a size within half a unit of the demand"
+      (let [measure (fn [_ size]
+                      (cond
+                        (= size 15) 10.5
+                        (> size 15) 10000
+                        :else 0))]
+        (should= 15 (text/find-font-size-for "AnyFont" 10 measure))))
     )
   )
 

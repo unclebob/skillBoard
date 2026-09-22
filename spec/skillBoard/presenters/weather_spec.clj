@@ -65,4 +65,8 @@
                (weather/remove-airport-code
                  {:line "METAR KJFK Whatever" :color :some-color})))
 
+    (it "keeps a line of nine characters"
+      (should= {:line "123456789" :color :some-color}
+               (weather/remove-airport-code {:line "123456789" :color :some-color})))
+
     ))

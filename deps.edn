@@ -37,12 +37,12 @@
            :mutate {:main-opts ["-m" "clj-mutate.core"]
                     :extra-deps {io.github.unclebob/clj-mutate
                                  {:git/url "https://github.com/unclebob/clj-mutate.git"
-                                  :git/sha "1744720852f4ecbfa66662bea5d822d7dece043d"}}
+                                  :git/sha "cea397da5b10b27372e36b6764728c952058e802"}}
                     :extra-paths ["spec" "target/generated-acceptance/spec"]}
            :crap {:main-opts ["-m" "crap4clj.core"]
                   :extra-deps {io.github.unclebob/crap4clj
                                {:git/url "https://github.com/unclebob/crap4clj.git"
-                                :git/sha "1ee5b8cf1b3fd0dbb62c5308f3e2de528b80d077"}}
+                                :git/sha "e90be2e7aa02c2ec5d6544e9cecddc6b73ad3e4d"}}
                   :extra-paths ["spec"]}
            :check {:main-opts ["-m" "speclj-structure-check.core"]
                    :extra-deps {io.github.unclebob/speclj-structure-check

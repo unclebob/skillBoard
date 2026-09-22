@@ -12,6 +12,59 @@
     [quil.core :as q]
     [speclj.core :refer :all]))
 
+(describe "position remark"
+  (it "treats a missing on-ground flag as airborne once the aircraft reaches field elevation plus thirty feet"
+    (with-redefs [config/airport-elevation 100
+                  config/pattern-altitude 2000
+                  config/geofences []]
+      (let [[ground-remark] (#'flights/position-remark {:altitude 129
+                                                       :ground-speed 1
+                                                       :on-ground? false
+                                                       :lat-lon [42.4221486 -87.8679161]}
+                                                      1)
+            [air-remark] (#'flights/position-remark {:altitude 130
+                                                    :ground-speed 1
+                                                    :on-ground? false
+                                                    :lat-lon [42.4221486 -87.8679161]}
+                                                   1)]
+        (should (.contains ground-remark "RAMP"))
+        (should-not (.contains air-remark "RAMP")))))
+
+  (it "uses zero altitude and ground speed when a reservation omits them"
+    (with-redefs [config/airport-elevation 100
+                  config/geofences []]
+      (let [[remark color] (#'flights/position-remark {:lat-lon [42.4221486 -87.8679161]} 1)]
+        (should (.contains remark "RAMP"))
+        (should= config/on-ground-color color)))))
+
+(describe "demo traffic"
+  (it "uses the built-in aircraft only while the snapshot is a test"
+    (let [seen (atom nil)]
+      (with-redefs [config/display-info (atom {:line-count 4})
+                    utils/get-short-metar (fn [& _] {:line "METAR" :color :white})
+                    fsp/unpack-reservations (fn [_] [])
+                    fsp/unpack-flights (fn [_] [])
+                    fsp/sort-and-filter-reservations (fn [_ _] [])
+                    radar-cape/update-with-adsb (fn [reservations adsb-map]
+                                                  (reset! seen adsb-map)
+                                                  reservations)
+                    radar-cape/include-unscheduled-flights (fn [reservations _] reservations)]
+        (flights/make-flights-screen [] [] {:test? true})
+        (should (contains? @seen "N345TS"))
+        (flights/make-flights-screen [] [] {:test? false :adsbs [{:reg "N1"}]})
+        (should= {"N1" {:reg "N1"}} @seen)))))
+
+(describe "flights screen length"
+  (it "reserves two lines for the footer and the METAR"
+    (with-redefs [config/display-info (atom {:line-count 4})
+                  utils/get-short-metar (fn [& _] {:line "METAR" :color :white})
+                  fsp/unpack-reservations (fn [_] [])
+                  fsp/unpack-flights (fn [_] [])
+                  fsp/sort-and-filter-reservations (fn [_ _] [])
+                  radar-cape/update-with-adsb (fn [reservations _] reservations)
+                  radar-cape/include-unscheduled-flights (fn [reservations _] reservations)]
+      (should= 4 (count (flights/make-flights-screen [] [] {}))))))
+
 (describe "presenter functions"
   (context "format-res"
     (it "formats a basic reservation"

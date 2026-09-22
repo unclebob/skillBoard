@@ -122,8 +122,8 @@
          filtered-reservations (fsp/sort-and-filter-reservations unpacked-res flights)
          adsbs (:adsbs snapshot)
          adsb-map (if (:test? snapshot)
-                    {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :gda "A"}
-                     "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :gda "G"}}
+                    {"N345TS" {:reg "N345TS" :lat 42.5960633 :lon -87.9273236 :altg 3000 :spd 100 :trk 315 :gda "A"}
+                     "N378MA" {:reg "N378MA" :lat 42.4221486 :lon -87.8679161 :trk 315 :gda "G"}}
                     (make-adsb-tail-number-map adsbs))
 
         updated-reservations (radar-cape/update-with-adsb filtered-reservations adsb-map)

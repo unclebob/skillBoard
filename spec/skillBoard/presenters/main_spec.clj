@@ -1,6 +1,7 @@
 (ns skillBoard.presenters.main-spec
   (:require
     [quil.core :as q]
+    [skillBoard.foundation.atoms :as atoms]
     [skillBoard.foundation.config :as config]
     [skillBoard.presenters.airports :as airports]
     [skillBoard.presenters.flights :as flights]
@@ -53,4 +54,39 @@
         (should= :timeout-screen @main/screen-type)
         (should= 20 @main/screen-duration)
         (should= 7100 @main/screen-start-time)
-        (should= (rest original-screens) @config/screens)))))
+        (should= (rest original-screens) @config/screens))))
+
+  (it "keeps the current screen when the elapsed seconds equal its duration"
+    (reset! config/screens [{:screen :timeout-screen :duration 20}])
+    (reset! main/screen-type :flights)
+    (reset! main/screen-duration 5)
+    (reset! main/screen-start-time 1000)
+    (reset! atoms/change-screen? false)
+    (with-redefs [utils/get-now (fn [] 6000)
+                  flights/make-flights-screen (fn [& _] "still flights")]
+      (should= "still flights" (main/make-screen))
+      (should= :flights @main/screen-type)))
+
+  (it "advances when a screen change is requested before the duration elapses"
+    (let [original-screens [{:screen :timeout-screen :duration 20}]]
+      (reset! config/screens original-screens)
+      (reset! main/screen-type :flights)
+      (reset! main/screen-duration 10)
+      (reset! main/screen-start-time 5000)
+      (reset! atoms/change-screen? true)
+      (with-redefs [utils/get-now (fn [] 6000)]
+        (main/make-screen)
+        (should= :timeout-screen @main/screen-type)
+        (should= false @atoms/change-screen?)
+        (should= true @atoms/screen-changed?))))
+
+  (it "measures elapsed time forward from when the screen started"
+    (reset! config/screens [{:screen :timeout-screen :duration 20}])
+    (reset! main/screen-type :flights)
+    (reset! main/screen-duration 2)
+    (reset! main/screen-start-time 5000)
+    (reset! atoms/change-screen? false)
+    (with-redefs [utils/get-now (fn [] 6000)
+                  flights/make-flights-screen (fn [& _] "still flights")]
+      (should= "still flights" (main/make-screen))
+      (should= :flights @main/screen-type))))

@@ -30,12 +30,15 @@
     (q/text-size 18)
     (q/text config/airport (+ x 8) (+ y 8))))
 
+(defn- or-empty [m]
+  (or m {}))
+
 (defn flight-category-airport-markers
   ([] (flight-category-airport-markers {} {} {}))
   ([nearby-metars fallback-metars airspace-classes]
-   (let [nearby-metars (or nearby-metars {})
-         fallback-metars (or fallback-metars {})
-         airspace-classes (or airspace-classes {})
+   (let [nearby-metars (or-empty nearby-metars)
+         fallback-metars (or-empty fallback-metars)
+         airspace-classes (or-empty airspace-classes)
          metars (if (seq nearby-metars) nearby-metars fallback-metars)
         markers (map (fn [{:keys [lat lon fltCat icaoId] :as metar}]
                        {:airport icaoId

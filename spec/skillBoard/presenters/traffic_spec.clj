@@ -3,7 +3,8 @@
     [skillBoard.presenters.traffic :as traffic]
     [skillBoard.foundation.atoms :as atoms]
     [skillBoard.foundation.config :as config]
-    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.gateways.flight-schedule-pro :as fsp]
+    [skillBoard.gateways.radar-cape :as radar]
     [skillBoard.foundation.core-utils :as core-utils]
     [skillBoard.presenters.screen :as screen]
     [skillBoard.presenters.utils :as utils]
@@ -11,12 +12,21 @@
     [quil.core :as q]
     [speclj.core :refer :all]))
 
+(describe "close to the ground"
+  (it "treats an aircraft within thirty feet as on the ground"
+    (should (#'traffic/close-to-ground? {} (+ config/airport-elevation 29)))
+    (should-not (#'traffic/close-to-ground? {} (+ config/airport-elevation 30))))
+
+  (it "trusts a ground flag even when the altitude is high"
+    (should (#'traffic/close-to-ground? {:gda "G"} 10000))
+    (should-not (#'traffic/close-to-ground? {:gda "A"} 10000))))
+
 (describe "make-traffic-screen"
 
   (it "generates RAMP remark for nearby on-ground low speed aircraft"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -34,8 +44,8 @@
 
   (it "uses UNKNOWN if no tail number."
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -53,8 +63,8 @@
 
   (it "generates TAXI remark for nearby on-ground medium speed aircraft"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -72,8 +82,8 @@
 
   (it "generates NEAR remark for close aircraft"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -93,8 +103,8 @@
 
    (it "generates LOW remark for flying aircraft below pattern altitude"
      (with-redefs [atoms/test? (atom false)
-                   comm/polled-nearby-adsbs (atom [])
-                   comm/polled-aircraft (atom [])
+                   radar/polled-nearby-adsbs (atom [])
+                   fsp/polled-aircraft (atom [])
                    config/display-info (atom {:line-count 10})
                    config/airport-lat-lon [42.0 -87.0]
                    config/airport-elevation 100
@@ -115,8 +125,8 @@
 
    (it "generates PATN remark for nearby flying aircraft in pattern"
      (with-redefs [atoms/test? (atom false)
-                   comm/polled-nearby-adsbs (atom [])
-                   comm/polled-aircraft (atom [])
+                   radar/polled-nearby-adsbs (atom [])
+                   fsp/polled-aircraft (atom [])
                    config/display-info (atom {:line-count 10})
                    config/airport-lat-lon [42.0 -87.0]
                    config/airport-elevation 100
@@ -135,8 +145,8 @@
 
   (it "uses GND for aircraft with gda flag G"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -156,8 +166,8 @@
 
   (it "generates location remark for distant aircraft"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -177,8 +187,8 @@
 
   (it "uses on-ground color for on-ground aircraft"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom ["N12345"])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom ["N12345"])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -194,8 +204,8 @@
 
   (it "uses in-fleet color for in-fleet aircraft"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom ["N12345"])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom ["N12345"])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -213,8 +223,8 @@
 
   (it "sorts aircraft by distance"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100
@@ -236,8 +246,8 @@
 
   (it "pads with blank lines and adds metar"
     (with-redefs [atoms/test? (atom false)
-                  comm/polled-nearby-adsbs (atom [])
-                  comm/polled-aircraft (atom [])
+                  radar/polled-nearby-adsbs (atom [])
+                  fsp/polled-aircraft (atom [])
                   config/display-info (atom {:line-count 10})
                   config/airport-lat-lon [42.0 -87.0]
                   config/airport-elevation 100

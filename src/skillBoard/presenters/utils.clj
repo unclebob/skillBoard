@@ -36,25 +36,25 @@
       false
       (< dist1 dist2))))
 
-(defn shorten-metar [metar]
-  (let [metar-text (:rawOb metar)
-        short-metar (if (nil? metar-text)
+(defn- metar-line [raw]
+  (let [short-metar (if (nil? raw)
                       "NO-METAR"
-                      (-> metar-text
+                      (-> raw
                           (str/split #"RMK")
                           first))
-        final-metar (if (> (count short-metar) config/cols)
-                      (subs short-metar 0 config/cols)
-                      short-metar)
-        fltCat (:fltCat metar)
-        color (case fltCat
-                "VFR" :green
-                "MVFR" :blue
-                "IFR" :red
-                "LIFR" :magenta
-                :white)]
-    {:line (str/trim final-metar)
-     :color color}))
+        fitted (if (> (count short-metar) config/cols)
+                 (subs short-metar 0 config/cols)
+                 short-metar)]
+    (str/trim fitted)))
+
+(defn shorten-metar [metar]
+  {:line (metar-line (:rawOb metar))
+   :color (case (:fltCat metar)
+            "VFR" :green
+            "MVFR" :blue
+            "IFR" :red
+            "LIFR" :magenta
+            :white)})
 
 (defn get-short-metar
   ([metars]

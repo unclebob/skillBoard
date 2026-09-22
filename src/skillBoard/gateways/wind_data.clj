@@ -4,11 +4,11 @@
     [clojure.data.json :as json]
     [clojure.string :as str]
     [java-time.api :as time]
-    [skillBoard.gateways.comm-utils :as comm]
     [skillBoard.foundation.config :as config]
     [skillBoard.foundation.core-utils :as core-utils]))
 
 (def polled-wind-grid (atom nil))
+(def open-meteo-ok? (atom true))
 (def last-open-meteo-poll-ms (atom nil))
 (def open-meteo-poll-interval-ms (* 60 60 1000))
 (def open-meteo-url "https://api.open-meteo.com/v1/gfs")
@@ -99,12 +99,12 @@
   (try
     (when-let [grid (fetch-open-meteo-grid)]
       (reset! polled-wind-grid grid)
-      (reset! comm/open-meteo-ok? true)
+      (reset! open-meteo-ok? true)
       grid)
     (catch Exception e
       (core-utils/log-event :error :communication-issue
                             (str "Error fetching wind data: " (.getMessage e)))
-      (reset! comm/open-meteo-ok? false)
+      (reset! open-meteo-ok? false)
       @polled-wind-grid)))
 
 (defn open-meteo-poll-due? [now]
@@ -119,22 +119,26 @@
      (reset! last-open-meteo-poll-ms now)
      (refresh-wind-grid!))))
 
+(defn synthetic-wind [[center-lat center-lon] [lat lon]]
+  (let [east (- lon center-lon)
+        north (- lat center-lat)]
+    {:lat lat
+     :lon lon
+     :u (+ 10 (* 0.8 east))
+     :v (+ 4 (* 0.5 north))}))
+
 (defn synthetic-grid []
-  (let [[center-lat center-lon] config/airport-lat-lon
-        bounds (radius-bounds config/airport-lat-lon config/wind-map-radius-nm)
+  (let [center config/airport-lat-lon
+        bounds (radius-bounds center config/wind-map-radius-nm)
         lats (range (:bottom bounds) (:top bounds) 0.35)
         lons (range (:left bounds) (:right bounds) 0.35)
         points (for [lat lats
-                     lon lons
-                     :let [dy (- lat center-lat)
-                           dx (- lon center-lon)
-                           u (+ 10 (* 0.8 dx))
-                           v (+ 4 (* 0.5 dy))]]
-                 {:lat lat :lon lon :u u :v v})]
+                     lon lons]
+                 (synthetic-wind center [lat lon]))]
     {:source :synthetic
      :generated-at (str (time/local-date-time))
      :generated-at-ms (current-time-ms)
-     :center config/airport-lat-lon
+     :center center
      :radius-nm config/wind-map-radius-nm
      :points (vec points)}))
 

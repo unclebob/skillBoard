@@ -6,12 +6,18 @@
  :hierarchical true
  :foreign [quil clj-http java-time clojure.data.json]
  :order [core adapters presenters gateways domain foundation test]
- :edge-kinds {[:core :adapters.split-flap] :association
+ :omit [:test]
+ :edge-kinds {[:core :core.polling] :association
+              [:core :adapters.split-flap] :association
               [:core :adapters.heartbeat] :association
               [:core :adapters.text-util] :association
               [:core :presenters.main] :association
-              [:core :gateways.comm-utils] :association
-              [:core :gateways.wind-data] :association
+              [:core.polling :adapters.heartbeat] :association
+              [:core.polling :gateways.flight-schedule-pro] :association
+              [:core.polling :gateways.aviation-weather] :association
+              [:core.polling :gateways.airspace] :association
+              [:core.polling :gateways.radar-cape] :association
+              [:core.polling :gateways.wind-data] :association
               [:adapters.split-flap :presenters.main] :association
               [:adapters.split-flap :presenters.screen] :association
               [:adapters.heartbeat :foundation.core-utils] :association
@@ -24,6 +30,7 @@
               [:presenters.wind-map :presenters.screen] :association
               [:presenters.wind-map :presenters.wind-map.layer] :association
               [:presenters.wind-map :presenters.wind-map.particles] :association
+              [:presenters.wind-map :presenters.wind-map.aircraft] :association
               [:presenters.wind-map.layer :presenters.wind-map.geo] :association
               [:presenters.wind-map.layer :presenters.wind-map.markers] :association
               [:presenters.wind-map.layer :presenters.wind-map.overlays] :association

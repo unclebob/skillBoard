@@ -13,3 +13,7 @@ out
 /status.log
 /.claude/
 /.uml-viewer/
+
+# BEGIN UML-VIEWER
+.uml-viewer/
+# END UML-VIEWER

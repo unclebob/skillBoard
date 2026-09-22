@@ -2,9 +2,12 @@
   (:require
     [java-time.api :as time]
     [skillBoard.foundation.atoms :as atoms]
-    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.gateways.airspace :as airspace]
+    [skillBoard.gateways.aviation-weather :as weather]
+    [skillBoard.gateways.flight-schedule-pro :as fsp]
+    [skillBoard.gateways.radar-cape :as radar]
     [skillBoard.foundation.config :as config]
-    [skillBoard.core :as core]
+    [skillBoard.core.polling :as polling]
     [skillBoard.foundation.core-utils :as core-utils]
     [skillBoard.presenters.airports]
     [skillBoard.presenters.flights]
@@ -124,20 +127,21 @@
         change-screen? (atom false)
         screen-changed? (atom true)
         log-traffic? (atom false)]
-    (with-redefs [comm/polled-reservations polled-reservations
-                  comm/polled-flights polled-flights
-                  comm/polled-aircraft polled-aircraft
-                  comm/polled-metars polled-metars
-                  comm/polled-nearby-metars polled-nearby-metars
-                  comm/polled-airspace-classes polled-airspace-classes
-                  comm/polled-metar-history polled-metar-history
-                  comm/polled-tafs polled-tafs
-                  comm/polled-adsbs polled-adsbs
-                  comm/polled-nearby-adsbs polled-nearby-adsbs
-                  comm/reservation-com-errors (atom 0)
-                  comm/weather-com-errors (atom 0)
-                  comm/adsb-com-errors (atom 0)
-                  comm/open-meteo-ok? (atom true)
+    (with-redefs [fsp/polled-reservations polled-reservations
+                  fsp/polled-flights polled-flights
+                  fsp/polled-aircraft polled-aircraft
+                  weather/polled-metars polled-metars
+                  weather/polled-nearby-metars polled-nearby-metars
+                  airspace/polled-airspace-classes polled-airspace-classes
+                  weather/polled-metar-history polled-metar-history
+                  weather/polled-tafs polled-tafs
+                  radar/polled-adsbs polled-adsbs
+                  radar/polled-nearby-adsbs polled-nearby-adsbs
+                  fsp/reservation-com-errors (atom 0)
+                  weather/weather-com-errors (atom 0)
+                  airspace/airspace-com-errors (atom 0)
+                  radar/adsb-com-errors (atom 0)
+                  wind-data/open-meteo-ok? (atom true)
                   wind-data/polled-wind-grid polled-wind-grid
                   config/display-info display-info
                   config/screens screens
@@ -149,37 +153,37 @@
                   main/screen-type (atom :flights)
                   main/screen-duration (atom 1)
                   main/screen-start-time (atom 0)
-                  comm/get-aircraft (fn []
+                  fsp/get-aircraft (fn []
                                       (jitter! writer-rng max-ms)
                                       (reset! polled-aircraft [(str "N" (+ 100 (.nextInt writer-rng 50)) "TS")]))
-                  comm/get-adsb-by-tail-numbers (fn [_]
+                  radar/get-adsb-by-tail-numbers (fn [_]
                                                   (jitter! writer-rng max-ms)
                                                   (reset! polled-adsbs (mapv adsb (range (.nextInt writer-rng 20)))))
-                  comm/get-flights (fn []
+                  fsp/get-flights (fn []
                                      (jitter! writer-rng max-ms)
                                      (reset! polled-flights {:items (mapv flight (range (.nextInt writer-rng 20)))}))
-                  comm/get-reservations (fn []
+                  fsp/get-reservations (fn []
                                           (jitter! writer-rng max-ms)
                                           (reset! polled-reservations {:items (mapv reservation (range (.nextInt writer-rng 20)))}))
-                  comm/get-metars (fn [_]
+                  weather/get-metars (fn [_]
                                     (jitter! writer-rng max-ms)
                                     (reset! polled-metars {"KUGN" (metar "KUGN" (.nextInt writer-rng 100))
                                                            "KMDW" (metar "KMDW" (.nextInt writer-rng 100))}))
-                  comm/get-nearby-metars (fn []
+                  weather/get-nearby-metars (fn []
                                            (jitter! writer-rng max-ms)
                                            (reset! polled-nearby-metars {"KUGN" (metar "KUGN" (.nextInt writer-rng 100))
                                                                          "KPWK" (metar "KPWK" (.nextInt writer-rng 100))}))
-                  comm/get-airspace-classes (fn []
+                  airspace/get-airspace-classes (fn []
                                               (jitter! writer-rng max-ms)
                                               (reset! polled-airspace-classes {"KUGN" "D" "KMDW" "C" "KPWK" "D"}))
-                  comm/get-metar-history (fn [_]
+                  weather/get-metar-history (fn [_]
                                            (jitter! writer-rng max-ms)
                                            (reset! polled-metar-history [(metar "KUGN" (.nextInt writer-rng 100))
                                                                          (metar "KUGN" (.nextInt writer-rng 100))]))
-                  comm/get-tafs (fn [_]
+                  weather/get-tafs (fn [_]
                                   (jitter! writer-rng max-ms)
                                   (reset! polled-tafs {"KUGN" {:rawTAF "TAF KUGN 011130Z 0112/0212 26008KT P6SM BKN030"}}))
-                  comm/get-nearby-adsb (fn []
+                  radar/get-nearby-adsb (fn []
                                          (jitter! writer-rng max-ms)
                                          (reset! polled-nearby-adsbs (mapv adsb (range (.nextInt writer-rng 20)))))
                   wind-data/refresh-wind-grid-if-due! (fn []
@@ -188,7 +192,7 @@
       (let [writers [(future-result :poll-writer
                                     #(dotimes [_ iterations]
                                        (jitter! writer-rng max-ms)
-                                       (core/poll)))
+                                       (polling/poll)))
                      (future-result :screen-toggle-writer
                                     #(dotimes [_ iterations]
                                        (jitter! toggler-rng max-ms)
@@ -199,15 +203,15 @@
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
                                        (doseq [screen-type [:flights :traffic :taf :airports :wind-map]]
-                                         (should (valid-screen? (screen/make screen-type (core/board-snapshot)))))))
+                                         (should (valid-screen? (screen/make screen-type (polling/board-snapshot)))))))
                      (future-result :main-reader
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
-                                       (should (valid-screen? (main/make-screen (core/board-snapshot))))))
+                                       (should (valid-screen? (main/make-screen (polling/board-snapshot))))))
                      (future-result :wind-reader
                                     #(dotimes [_ iterations]
                                        (jitter! reader-rng max-ms)
-                                       (let [snapshot (core/board-snapshot)]
+                                       (let [snapshot (polling/board-snapshot)]
                                          (should (vector? (markers/flight-category-airport-markers
                                                             (:nearby-metars snapshot)
                                                             (:metars snapshot)

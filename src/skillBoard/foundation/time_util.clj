@@ -12,8 +12,13 @@
       (.withZoneSameInstant (time/zone-id "UTC"))
       (time/local-time)))
 
+(defn- format-clock [time timestamp?]
+  (if timestamp?
+    (time/format "yyyy-MM-dd'T'HH:mm:ss.SS" time)
+    (time/format "HH:mm" time)))
+
 (defn format-time [time]
-  (time/format "yyyy-MM-dd'T'HH:mm:ss.SS" time))
+  (format-clock time true))
 
 (defn get-HHmm [time]
-  (time/format "HH:mm" time))
+  (format-clock time false))

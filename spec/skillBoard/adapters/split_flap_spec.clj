@@ -1,7 +1,11 @@
 (ns skillBoard.adapters.split-flap-spec
   (:require
     [skillBoard.foundation.atoms :as atoms]
-    [skillBoard.gateways.comm-utils :as comm]
+    [skillBoard.gateways.airspace :as airspace]
+    [skillBoard.gateways.aviation-weather :as weather]
+    [skillBoard.gateways.flight-schedule-pro :as fsp]
+    [skillBoard.gateways.radar-cape :as radar]
+    [skillBoard.gateways.wind-data :as wind-data]
     [skillBoard.foundation.config :as config]
     [skillBoard.presenters.main :as presenter]
     [skillBoard.presenters.screen :as screen]
@@ -114,10 +118,11 @@
   (before
     (reset! split-flap/lines-layer-cache {:key nil :layer nil})
     (reset! split-flap/flapper-glyph-cache {:key nil :glyphs nil})
-    (reset! comm/reservation-com-errors 0)
-    (reset! comm/adsb-com-errors 2)
-    (reset! comm/weather-com-errors 4)
-    (reset! comm/open-meteo-ok? true)
+    (reset! fsp/reservation-com-errors 0)
+    (reset! radar/adsb-com-errors 2)
+    (reset! weather/weather-com-errors 4)
+    (reset! airspace/airspace-com-errors 0)
+    (reset! wind-data/open-meteo-ok? true)
     (reset! atoms/clock-pulse true)
     (reset! presenter/screen-type :test))
 
@@ -168,6 +173,7 @@
         (split-flap/draw state)
         (should= 2 (count (filter #(= [:background 30] %) @calls)))
         (should-contain [:text "HEADER" 40 15] @calls)
+        (should-contain [:image :departure-icon 0 0 30 30] @calls)
         (should-contain [:ellipse 20 20 10 10] @calls)
         (should-contain [:ellipse 20 35 10 10] @calls)
         (should-contain [:ellipse 20 50 10 10] @calls)
@@ -203,6 +209,8 @@
                     q/text-size (fn [& args] (swap! calls conj (into [:text-size] args)))]
         (should= 0 (#'split-flap/render-report-line! layer "" :white 0 12 20 40 1 2 8 16))
         (should= 2 (#'split-flap/render-line-chars! layer :white "A B" 5 12 1 2 8 16))
+        (#'split-flap/render-visible-line-char! layer :white \A 10 20 1 2 8 16)
+        (#'split-flap/render-report-line! layer "AB" :white 1 12 20 40 1 2 8 16)
         (should= {:line-char-count 2 :line-rect-count 2 :line-text-count 2}
                  (#'split-flap/render-lines-layer! layer [{:line "A " :color :white}
                                                           {:line " B" :color :yellow}]
@@ -213,10 +221,95 @@
         (#'split-flap/draw-uncached-flapper! :cyan \Z 3 4 nil 10 geometry)
         (#'split-flap/draw-flapper! [:cyan] {} nil 10 geometry {:at [0 0] :from \Z})
         (should= [255 0 0] (#'split-flap/status-light-rgb 4))
+        (should= [255 165 0] (#'split-flap/status-light-rgb 3))
         (should= [255 165 0] (#'split-flap/status-light-rgb 2))
+        (should= [0 255 0] (#'split-flap/status-light-rgb 1))
         (should= [0 255 0] (#'split-flap/status-light-rgb 0))
         (should= [0 255 0] (#'split-flap/weather-status-light-rgb {:weather 0 :open-meteo-ok? true}))
         (should= [255 0 0] (#'split-flap/weather-status-light-rgb {:weather 0 :open-meteo-ok? false}))
+        (should= [0 255 0] (#'split-flap/weather-status-light-rgb {}))
+        (let [seen (atom nil)]
+          (with-redefs [split-flap/status-light-rgb (fn [errors]
+                                                      (reset! seen errors)
+                                                      [0 255 0])]
+            (should= [0 255 0] (#'split-flap/weather-status-light-rgb {}))
+            (should= 0 @seen)))
+        (let [seen (atom [])]
+          (with-redefs [split-flap/draw-status-light! (fn [_ y errors]
+                                                        (swap! seen conj [y errors]))
+                        split-flap/draw-weather-status-light! (fn [_ errors]
+                                                                (swap! seen conj [:weather errors]))]
+            (#'split-flap/display-com-errors! 10 {})
+            (should= [[20 0] [35 0] [:weather {}]] @seen)))
+        (should= {:flap-width 12
+                  :flap-height 25.0
+                  :top-margin 30
+                  :label-margin 40
+                  :backing-rect-top-left-x 1
+                  :backing-rect-top-left-y 2
+                  :backing-rect-width 8
+                  :backing-rect-height 16}
+                 (#'split-flap/draw-geometry 10 20))
+        (should-not (#'split-flap/flap-duration-expired? 4000 1000))
+        (should (#'split-flap/flap-duration-expired? 4001 1000))
+        (let [chars (set (#'split-flap/flapper-char-set))]
+          (should-not (contains? chars \space))
+          (should (contains? chars \A)))
+        (should-contain [:layer-rect (float 11) (float 22) (float 8) (float 16)] @calls)
+        (should-contain [:layer-text "A" (float 10) (float 20)] @calls)
+        (should-contain [:layer-fill 0.0 0.0 0.0] @calls)
+        (should-contain [:layer-text "A" (float 0) (float 5)] @calls)
+        (should-not (some #(= [:layer-text " " (float 12) (float 5)] %) @calls))
+        (should-contain [:layer-text "B" (float 12) (float 60)] @calls)
+        (should-contain [:rect (+ 3 1) (+ 4 2) 8 16] @calls)
+        (should-contain [:text "Z" 3 4] @calls)
+        (should-contain [:fill 0 0 0] @calls)
+        (with-redefs [q/create-graphics (fn [w h]
+                                          (swap! calls conj [:create-graphics w h])
+                                          (fake-graphics calls))]
+          (let [before (count @calls)
+                wide (#'split-flap/render-flapper-glyphs! nil 10 2.2 0 1 2 8 16 [:red])
+                tall (#'split-flap/render-flapper-glyphs! nil 10 0 2.2 1 2 8 16 [:red])
+                fresh (drop before @calls)]
+            (should (contains? wide [:red \A]))
+            (should (contains? tall [:red \A]))
+            (should-contain [:create-graphics 3 1] fresh)
+            (should-contain [:create-graphics 1 3] fresh)
+            (should-contain [:layer-fill 0.0 0.0 0.0] fresh)
+            (should-contain [:layer-text "A" (float 0) (float 0)] fresh)))
+        (let [lines [{:line "A" :color :white}]
+              geometry (#'split-flap/draw-geometry 10 20)]
+          (reset! split-flap/lines-layer-cache {:key nil :layer nil})
+          (with-redefs [split-flap/current-lines-layer (fn [] {:layer layer :size-match? true})]
+            (#'split-flap/draw-lines! lines nil 10 geometry)
+            (let [draws (count (filter #(= [:begin-draw] %) @calls))]
+              (#'split-flap/draw-lines! lines nil 10 geometry)
+              (should= draws (count (filter #(= [:begin-draw] %) @calls)))
+              (should-contain [:image layer 0 0] @calls)))
+          (reset! split-flap/lines-layer-cache {:key (#'split-flap/lines-layer-key lines 10 geometry)
+                                                :layer layer})
+          (with-redefs [split-flap/current-lines-layer (fn [] {:layer layer :size-match? false})]
+            (let [draws (count (filter #(= [:begin-draw] %) @calls))]
+              (#'split-flap/draw-lines! lines nil 10 geometry)
+              (should= (inc draws) (count (filter #(= [:begin-draw] %) @calls)))))
+        (let [geometry (#'split-flap/draw-geometry 10 20)
+              key (#'split-flap/glyph-key nil 10 [:red] geometry)]
+          (reset! split-flap/flapper-glyph-cache {:key key :glyphs :cached})
+          (should= :cached (#'split-flap/cached-glyphs nil 10 [:red] geometry))
+          (reset! split-flap/flapper-glyph-cache {:key :stale :glyphs :stale})
+          (should-not= :stale (#'split-flap/cached-glyphs nil 10 [:red] geometry)))
+        (#'split-flap/draw-flapper! [:cyan] {[:cyan \Z] :glyph} nil 10 geometry {:at [0 0] :from \Z})
+        (should-contain [:image :glyph 0 40] @calls)
+        (let [before (count @calls)]
+          (#'split-flap/draw-flapper! [:cyan] {} nil 10 geometry {:at [0 0] :from \space})
+          (should= before (count @calls)))
+        (with-redefs [skillBoard.foundation.time-util/get-HHmm (fn [_] "12:00")
+                      skillBoard.foundation.time-util/local-to-utc identity
+                      java-time.api/local-date-time (fn [] :now)]
+          (reset! atoms/clock-pulse true)
+          (should= "12:00" (#'split-flap/draw-now-text))
+          (reset! atoms/clock-pulse false)
+          (should= "12 00" (#'split-flap/draw-now-text))))
         (should (some #(= :layer-rect (first %)) @calls))
         (should (some #(= :rect (first %)) @calls))))))
 
