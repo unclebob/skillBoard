@@ -36,7 +36,7 @@
   [:presenters.wind-map :presenters.wind-map.particles] :association,
   [:core :adapters.text-util] :association},
  :omit-edges [],
- :levels [],
+ :levels [[:domain :foundation] [:presenters :gateways] [:adapters] [:core]],
  :policy-file "examples/skillBoard.policy.edn",
  :order [:core :adapters :presenters :gateways :domain :foundation :test],
  :omit [:test],
@@ -186,127 +186,169 @@
  [{:id :adapters.heartbeat,
    :name "Heartbeat",
    :ns "skillBoard.adapters.heartbeat",
-   :stereotype nil}
+   :stereotype nil,
+   :level 2}
   {:id :adapters.split-flap,
    :name "SplitFlap",
    :ns "skillBoard.adapters.split-flap",
-   :stereotype nil}
+   :stereotype nil,
+   :level 2}
   {:id :adapters.text-util,
    :name "TextUtil",
    :ns "skillBoard.adapters.text-util",
-   :stereotype nil}
-  {:id :core, :name "Core", :ns "skillBoard.core", :stereotype nil}
-  {:id :core.polling, :name "Polling", :ns "skillBoard.core.polling", :stereotype nil}
+   :stereotype nil,
+   :level 2}
+  {:id :core, :name "Core", :ns "skillBoard.core", :stereotype nil, :level 3}
+  {:id :core.polling,
+   :name "Polling",
+   :ns "skillBoard.core.polling",
+   :stereotype nil,
+   :level 3}
   {:id :domain.flight-schedule-pro,
    :name "FlightSchedulePro",
    :ns "skillBoard.domain.flight-schedule-pro",
-   :stereotype nil}
+   :stereotype nil,
+   :level 0}
   {:id :domain.navigation,
    :name "Navigation",
    :ns "skillBoard.domain.navigation",
-   :stereotype nil}
+   :stereotype nil,
+   :level 0}
   {:id :domain.radar-cape,
    :name "RadarCape",
    :ns "skillBoard.domain.radar-cape",
-   :stereotype nil}
-  {:id :domain.time, :name "Time", :ns "skillBoard.domain.time", :stereotype nil}
+   :stereotype nil,
+   :level 0}
+  {:id :domain.time,
+   :name "Time",
+   :ns "skillBoard.domain.time",
+   :stereotype nil,
+   :level 0}
   {:id :foundation.atoms,
    :name "Atoms",
    :ns "skillBoard.foundation.atoms",
-   :stereotype nil}
+   :stereotype nil,
+   :level 0}
   {:id :foundation.config,
    :name "Config",
    :ns "skillBoard.foundation.config",
-   :stereotype nil}
+   :stereotype nil,
+   :level 0}
   {:id :foundation.core-utils,
    :name "CoreUtils",
    :ns "skillBoard.foundation.core-utils",
-   :stereotype nil}
+   :stereotype nil,
+   :level 0}
   {:id :foundation.time-util,
    :name "TimeUtil",
    :ns "skillBoard.foundation.time-util",
-   :stereotype nil}
+   :stereotype nil,
+   :level 0}
   {:id :gateways.airspace,
    :name "Airspace",
    :ns "skillBoard.gateways.airspace",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :gateways.aviation-weather,
    :name "AviationWeather",
    :ns "skillBoard.gateways.aviation-weather",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :gateways.comm-utils,
    :name "CommUtils",
    :ns "skillBoard.gateways.comm-utils",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :gateways.flight-schedule-pro,
    :name "FlightSchedulePro",
    :ns "skillBoard.gateways.flight-schedule-pro",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :gateways.radar-cape,
    :name "RadarCape",
    :ns "skillBoard.gateways.radar-cape",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :gateways.wind-data,
    :name "WindData",
    :ns "skillBoard.gateways.wind-data",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.airports,
    :name "Airports",
    :ns "skillBoard.presenters.airports",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.flights,
    :name "Flights",
    :ns "skillBoard.presenters.flights",
-   :stereotype nil}
-  {:id :presenters.main, :name "Main", :ns "skillBoard.presenters.main", :stereotype nil}
+   :stereotype nil,
+   :level 1}
+  {:id :presenters.main,
+   :name "Main",
+   :ns "skillBoard.presenters.main",
+   :stereotype nil,
+   :level 1}
   {:id :presenters.screen,
    :name "Screen",
    :ns "skillBoard.presenters.screen",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.traffic,
    :name "Traffic",
    :ns "skillBoard.presenters.traffic",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.utils,
    :name "Utils",
    :ns "skillBoard.presenters.utils",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.weather,
    :name "Weather",
    :ns "skillBoard.presenters.weather",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map,
    :name "WindMap",
    :ns "skillBoard.presenters.wind-map",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.aircraft,
    :name "Aircraft",
    :ns "skillBoard.presenters.wind-map.aircraft",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.draw,
    :name "Draw",
    :ns "skillBoard.presenters.wind-map.draw",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.geo,
    :name "Geo",
    :ns "skillBoard.presenters.wind-map.geo",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.layer,
    :name "Layer",
    :ns "skillBoard.presenters.wind-map.layer",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.markers,
    :name "Markers",
    :ns "skillBoard.presenters.wind-map.markers",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.overlays,
    :name "Overlays",
    :ns "skillBoard.presenters.wind-map.overlays",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :presenters.wind-map.particles,
    :name "Particles",
    :ns "skillBoard.presenters.wind-map.particles",
-   :stereotype nil}
+   :stereotype nil,
+   :level 1}
   {:id :test.acceptance-generator,
    :name "AcceptanceGenerator",
    :ns "skillBoard.test.acceptance-generator",

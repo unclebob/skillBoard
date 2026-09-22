@@ -6,6 +6,10 @@
  :hierarchical true
  :foreign [quil clj-http java-time clojure.data.json]
  :order [core adapters presenters gateways domain foundation test]
+ :levels [[domain foundation]
+          [presenters gateways]
+          [adapters]
+          [core]]
  :omit [:test]
  :edge-kinds {[:core :core.polling] :association
               [:core :adapters.split-flap] :association
