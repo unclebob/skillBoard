@@ -278,6 +278,89 @@
         (should (heartbeat/run-due! @now))
         (should= [0 60000 300000 3600000] @post-times))))
 
+  (it "sends when --no-heartbeat is absent"
+    (let [posts (atom [])]
+      (with-redefs [config/config (atom {:heartbeat-url "https://hc-ping.com/private-id"})
+                    heartbeat/scheduler-state (atom nil)
+                    heartbeat/submit! (fn [work] (work))
+                    heartbeat/snapshot (fn []
+                                         (apply array-map
+                                                (concat [:application "skillBoard"]
+                                                        (when @atoms/test? [:test true]))))
+                    http/post (fn [& args]
+                                (swap! posts conj args)
+                                {:status 200})
+                    atoms/no-heartbeat? (atom false)
+                    atoms/test? (atom false)
+                    core-utils/log (fn [& _])]
+        (should (heartbeat/start! 0))
+        (should (heartbeat/run-due! 0))
+        (should= 1 (count @posts))
+        (should-not (contains? (json/read-str (:body (second (first @posts))) :key-fn keyword)
+                               :test)))))
+
+  (it "sends a test payload when -t is set and --no-heartbeat is absent"
+    (let [posts (atom [])]
+      (with-redefs [config/config (atom {:heartbeat-url "https://hc-ping.com/private-id"})
+                    heartbeat/scheduler-state (atom nil)
+                    heartbeat/submit! (fn [work] (work))
+                    heartbeat/snapshot (fn []
+                                         (apply array-map
+                                                (concat [:application "skillBoard"]
+                                                        (when @atoms/test? [:test true]))))
+                    http/post (fn [& args]
+                                (swap! posts conj args)
+                                {:status 200})
+                    atoms/no-heartbeat? (atom false)
+                    atoms/test? (atom true)
+                    core-utils/log (fn [& _])]
+        (should (heartbeat/start! 0))
+        (should (heartbeat/run-due! 0))
+        (should= true (:test (json/read-str (:body (second (first @posts))) :key-fn keyword))))))
+
+  (it "does not schedule or send when launched with --no-heartbeat"
+    (let [url "http://secret.example/private-id"
+          posts (atom 0)
+          messages (atom [])]
+      (with-redefs [config/config (atom {:heartbeat-url url})
+                    heartbeat/scheduler-state (atom :old-state)
+                    heartbeat/submit! (fn [work] (work))
+                    heartbeat/send-heartbeat! (fn [] (swap! posts inc) true)
+                    atoms/no-heartbeat? (atom true)
+                    atoms/test? (atom false)
+                    core-utils/log (fn [level message]
+                                     (swap! messages conj [level message]))]
+        (should-not (heartbeat/start! 0))
+        (should-be-nil @heartbeat/scheduler-state)
+        (should-not (heartbeat/run-due! 0))
+        (should= 0 @posts)
+        (should= [[:status "Remote heartbeat reporting is disabled."]]
+                 @messages)
+        (should-not (str/includes? (str @messages) url)))))
+
+  (it "does not send when --no-heartbeat is combined with -t"
+    (let [url "https://hc-ping.com/private-id"
+          posts (atom 0)
+          messages (atom [])]
+      (with-redefs [config/config (atom {:heartbeat-url url})
+                    heartbeat/scheduler-state (atom {:next-regular-at 0
+                                                     :in-flight? false})
+                    heartbeat/submit! (fn [work] (work))
+                    heartbeat/send-heartbeat! (fn [] (swap! posts inc) true)
+                    atoms/no-heartbeat? (atom true)
+                    atoms/test? (atom true)
+                    core-utils/log (fn [level message]
+                                     (swap! messages conj [level message]))]
+        (should-not (heartbeat/run-due! 0))
+        (should= 0 @posts)
+        (should-not (heartbeat/start! 0))
+        (should-be-nil @heartbeat/scheduler-state)
+        (should-not (heartbeat/run-due! 0))
+        (should= 0 @posts)
+        (should= [[:status "Remote heartbeat reporting is disabled."]]
+                 @messages)
+        (should-not (str/includes? (str @messages) url)))))
+
   (it "disables reporting when the URL is absent"
     (let [messages (atom [])]
       (with-redefs [config/config (atom {})

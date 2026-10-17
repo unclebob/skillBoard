@@ -94,7 +94,23 @@ Screens can be manually changed by hitting the space bar.
     cd ~/skillBoard
     clojure -M:run
 
-Be patient.  
+Be patient.
+
+`--no-heartbeat` keeps a local run from posting to the configured Healthchecks
+check. Nothing is scheduled or sent, and SkillBoard logs one status line:
+`Remote heartbeat reporting is disabled.` The heartbeat URL is not logged.
+
+    clojure -M:run --no-heartbeat
+
+`-t` is the existing test argument. Heartbeats are still sent, and each payload
+includes `"test": true`.
+
+    clojure -M:run -t
+
+The flags combine. `--no-heartbeat` suppresses the post, and `-t` still selects
+test mode for the rest of SkillBoard:
+
+    clojure -M:run -t --no-heartbeat
 
 ### To exit the program
 Hit the escape key.
@@ -128,6 +144,9 @@ log entries, unique tail numbers, communication failures, and application
 starts. It also contains `reported_tails`, a map of each tail listed in
 `private/reported-tails` to today's instance count for that tail. Tails with a
 count of zero are omitted. If SkillBoard was launched with `-t`, the payload also includes `"test": true`.
+Launching with `--no-heartbeat` skips scheduling and sending, including when
+`-t` is also present; `-t` still adds `"test": true` only to heartbeats that
+are sent.
 The report does not contain reservations, names, weather reports, log contents,
 or the rest of the day's tail list.
 

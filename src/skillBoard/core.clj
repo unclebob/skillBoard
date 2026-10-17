@@ -64,7 +64,13 @@
     {:args args
      :window? (some? (args "-w"))
      :test? (some? (args "-t"))
+     :no-heartbeat? (some? (args "--no-heartbeat"))
      :log-stdout? (nil? (args "--no-stdout"))}))
+
+(defn- install-launch-options! [{:keys [test? log-stdout? no-heartbeat?]}]
+  (reset! atoms/test? test?)
+  (reset! atoms/log-stdout? log-stdout?)
+  (reset! atoms/no-heartbeat? no-heartbeat?))
 
 (defn load-display-info []
   (let [screen-width (q/width)
@@ -166,9 +172,8 @@
 
 (defn -main [& args]
   (log-application-start!)
-  (let [{:keys [args window? test? log-stdout?]} (launch-options args)]
-    (reset! atoms/test? test?)
-    (reset! atoms/log-stdout? log-stdout?)
+  (let [{:keys [args window?] :as options} (launch-options args)]
+    (install-launch-options! options)
     (core-utils/log :status (str "args: " args ", window? " window? ", test? " @atoms/test?))
     (q/defsketch skillBoard
                  :title "Skill Board"

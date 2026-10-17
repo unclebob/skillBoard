@@ -131,13 +131,50 @@
     (should= {:args #{}
               :window? false
               :test? false
+              :no-heartbeat? false
               :log-stdout? true}
              (#'skillBoard.core/launch-options []))
     (should= {:args #{"-w" "-t" "--no-stdout"}
               :window? true
               :test? true
+              :no-heartbeat? false
               :log-stdout? false}
-             (#'skillBoard.core/launch-options ["-w" "-t" "--no-stdout"]))))
+             (#'skillBoard.core/launch-options ["-w" "-t" "--no-stdout"]))
+    (should= {:args #{"--no-heartbeat"}
+              :window? false
+              :test? false
+              :no-heartbeat? true
+              :log-stdout? true}
+             (#'skillBoard.core/launch-options ["--no-heartbeat"]))
+    (should= {:args #{"-t" "--no-heartbeat"}
+              :window? false
+              :test? true
+              :no-heartbeat? true
+              :log-stdout? true}
+             (#'skillBoard.core/launch-options ["-t" "--no-heartbeat"])))
+
+  (it "installs -t and --no-heartbeat independently"
+    (let [test? @atoms/test?
+          log-stdout? @atoms/log-stdout?
+          no-heartbeat? @atoms/no-heartbeat?]
+      (try
+        (#'skillBoard.core/install-launch-options! (#'skillBoard.core/launch-options []))
+        (should= false @atoms/test?)
+        (should= false @atoms/no-heartbeat?)
+        (should= true @atoms/log-stdout?)
+        (#'skillBoard.core/install-launch-options! (#'skillBoard.core/launch-options ["-t"]))
+        (should= true @atoms/test?)
+        (should= false @atoms/no-heartbeat?)
+        (#'skillBoard.core/install-launch-options! (#'skillBoard.core/launch-options ["--no-heartbeat"]))
+        (should= false @atoms/test?)
+        (should= true @atoms/no-heartbeat?)
+        (#'skillBoard.core/install-launch-options! (#'skillBoard.core/launch-options ["-t" "--no-heartbeat"]))
+        (should= true @atoms/test?)
+        (should= true @atoms/no-heartbeat?)
+        (finally
+          (reset! atoms/test? test?)
+          (reset! atoms/log-stdout? log-stdout?)
+          (reset! atoms/no-heartbeat? no-heartbeat?))))))
 
 (describe "key-released"
   (it "requests a poll for p, a screen change for space, and ignores other keys"
