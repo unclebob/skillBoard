@@ -210,44 +210,47 @@
       (safe-log :error "Heartbeat reporting failed."))
     (complete-attempt! attempt success?)))
 
+(defn- stop-reporting! [level message]
+  (reset! scheduler-state nil)
+  (safe-log level message)
+  false)
+
 (defn run-due! [now]
-  (if-let [attempt (claim-due! now)]
-    (do
-      (try
-        (submit! #(execute-attempt! attempt))
-        (catch Exception _
-          (safe-log :error "Heartbeat reporting failed.")
-          (complete-attempt! attempt false)))
-      true)
-    false))
+  (if @atoms/no-heartbeat?
+    false
+    (if-let [attempt (claim-due! now)]
+      (do
+        (try
+          (submit! #(execute-attempt! attempt))
+          (catch Exception _
+            (safe-log :error "Heartbeat reporting failed.")
+            (complete-attempt! attempt false)))
+        true)
+      false)))
 
 (defn start!
   ([] (start! (System/currentTimeMillis)))
   ([now]
-   (let [url (configured-url)]
-     (cond
-       (str/blank? url)
-       (do
-         (reset! scheduler-state nil)
-         (safe-log :status "Remote heartbeat reporting is disabled.")
-         false)
+   (if @atoms/no-heartbeat?
+     (stop-reporting! :status "Remote heartbeat reporting is disabled.")
+     (let [url (configured-url)]
+       (cond
+         (str/blank? url)
+         (stop-reporting! :status "Remote heartbeat reporting is disabled.")
 
-       (not (valid-url? url))
-       (do
-         (reset! scheduler-state nil)
-         (safe-log :error "Remote heartbeat reporting requires an HTTPS URL.")
-         false)
+         (not (valid-url? url))
+         (stop-reporting! :error "Remote heartbeat reporting requires an HTTPS URL.")
 
-       :else
-       (do
-         (reset! scheduler-state
-                 {:generation (random-uuid)
-                  :next-regular-at now
-                  :scheduled-at nil
-                  :attempt-number nil
-                  :retry-at nil
-                  :in-flight? false})
-         true)))))
+         :else
+         (do
+           (reset! scheduler-state
+                   {:generation (random-uuid)
+                    :next-regular-at now
+                    :scheduled-at nil
+                    :attempt-number nil
+                    :retry-at nil
+                    :in-flight? false})
+           true))))))
 
 (defn stop! []
   (reset! scheduler-state nil))

@@ -7,6 +7,7 @@
   {:poll-key @atoms/poll-key
    :clock-pulse @atoms/clock-pulse
    :test? @atoms/test?
+   :no-heartbeat? @atoms/no-heartbeat?
    :change-screen? @atoms/change-screen?
    :screen-changed? @atoms/screen-changed?
    :log-traffic? @atoms/log-traffic?
@@ -17,6 +18,7 @@
     (should= false (:poll-key startup))
     (should= false (:clock-pulse startup))
     (should= false (:test? startup))
+    (should= false (:no-heartbeat? startup))
     (should= false (:change-screen? startup))
     (should= true (:screen-changed? startup))
     (should= false (:log-traffic? startup))

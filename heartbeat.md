@@ -47,7 +47,8 @@ Field names and meanings are part of the external heartbeat contract.
 - `application` is always `skillBoard`.
 - `version` is the running value of `skillBoard.foundation.config/version`.
 - `test` is present and `true` only when SkillBoard was launched with `-t`.
-  The field is omitted in normal operation.
+  The field is omitted in normal operation. `--no-heartbeat` does not change this
+  rule. It suppresses the post, so a run with both flags sends no payload.
 - `reported_at` is the time at which the snapshot was made, formatted as an
   ISO-8601 timestamp with a UTC offset.
 - `disk.usable_bytes` is the space available to the account running
@@ -92,6 +93,16 @@ date-boundary rules. The deployed system's local time zone is
 
 - Start the heartbeat scheduler only after secure configuration has been
   loaded.
+- If the process was launched with `--no-heartbeat`, do not start the
+  scheduler and do not send a heartbeat, even when `:heartbeat-url` is
+  present. Log one status message, `Remote heartbeat reporting is disabled.`,
+  and do not include the destination URL. `--no-heartbeat` is parsed like
+  `-t`: the launch options record it, and that flag is installed before the
+  display starts.
+- `-t` and `--no-heartbeat` may be used together. `-t` still selects test mode.
+  `--no-heartbeat` still suppresses every heartbeat, so nothing is posted.
+  When `--no-heartbeat` is absent, `-t` is unchanged: each posted payload
+  includes `"test": true`.
 - Make the first heartbeat immediately after the scheduler starts.
 - Schedule subsequent heartbeats at 60-minute intervals measured from the
   original schedule, rather than 60 minutes after a request finishes.
@@ -127,6 +138,12 @@ retry still in progress shall not overlap the next regular post.
   written to disk.
 - If `:heartbeat-url` is absent or blank, do not start the scheduler. Log one
   status message explaining that remote heartbeat reporting is disabled.
+- If the process was launched with `--no-heartbeat`, do not start the
+  scheduler and do not send. Log that same status message,
+  `Remote heartbeat reporting is disabled.`, once. Do not read the destination
+  into the log. A configured URL does not override the flag. Combined with
+  `-t`, the heartbeat is still suppressed; `-t` continues to mark payloads
+  only when a heartbeat is actually sent.
 - A failure to read one daily log because it does not exist means a count of
   zero. Other filesystem failures are heartbeat failures and must not be
   silently converted to zero.
@@ -203,6 +220,10 @@ behavior without contacting a live internet service:
     rest of SkillBoard.
 15. The JSON contains no personal or reservation data. The only aircraft
     identifiers are the operator-selected tails in `reported_tails`.
+16. `--no-heartbeat` disables scheduling and sending, including when `-t` is
+    also present and when a URL is configured. It logs one status line that
+    does not contain the URL. Without `--no-heartbeat`, reporting is unchanged,
+    and `-t` still adds `"test": true`.
 
 Clock, log access, disk measurement, and HTTP posting must be replaceable at
 the test boundary. Acceptance and unit tests must use controlled substitutes;
