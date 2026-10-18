@@ -22,7 +22,8 @@ let fetchTimer = null;
 let metarPlate = null;
 
 // Quil sets the text ascent from the ink of "d", which on Skyfont is the
-// plate rather than the em square. The line color is inset inside that plate.
+// plate rather than the em square. The letter cutout reaches the bottom of
+// that plate, so the line color runs to the plate's bottom edge.
 const skyfontPlate = {advance: 38 / 80, top: 4 / 80, height: 56 / 80};
 
 function layoutSize() {
@@ -114,7 +115,7 @@ function backingBox(fontSize) {
     x: fontSize * plate.advance * 0.1,
     y: fontSize * (plate.top + plate.height * 0.1),
     w: fontSize * plate.advance * 0.8,
-    h: fontSize * plate.height * 0.8
+    h: fontSize * plate.height * 0.9
   };
 }
 
@@ -531,7 +532,7 @@ function metarBacking(ctx, fontSize) {
     x: plate.advance * scale * 0.1,
     y: (plate.top + plate.height * 0.1) * scale,
     w: plate.advance * scale * 0.8,
-    h: plate.height * scale * 0.8
+    h: plate.height * scale * 0.9
   };
 }
 
