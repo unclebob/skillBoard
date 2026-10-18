@@ -28,7 +28,6 @@
   {:name "hideExtraCells", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "maybeAdvance", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "maybeAdvanceChar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
-  {:name "measureSkyfont", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextChar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextParticle", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextWindColor", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -48,7 +47,6 @@
   {:name "showScreen", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "showingWind", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "shownOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
-  {:name "skyfontScale", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "steadyOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "stepCell", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "stepFlaps", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -180,6 +178,7 @@
   {:name "positioned-aircraft", :namespace "skillBoard.presenters.wind-map.aircraft", :complexity 2, :coverage 96.7742, :crap 2.0001}
   {:name "bounds-aspect-ratio-nm", :namespace "skillBoard.presenters.wind-map.geo", :complexity 2, :coverage 96.6667, :crap 2.0001}
   {:name "addCell", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "backingBox", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "belowThreshold", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "birthParticle", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "clearFlap", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}

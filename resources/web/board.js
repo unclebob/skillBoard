@@ -19,7 +19,10 @@ let cells = [];
 let particles = [];
 let particleKey = "";
 let fetchTimer = null;
-let skyfontMeasured = null;
+
+// Quil sets the text ascent from the ink of "d", which on Skyfont is the
+// plate rather than the em square. The line color is inset inside that plate.
+const skyfontPlate = {advance: 38 / 80, top: 4 / 80, height: 56 / 80};
 
 function layoutSize() {
   const width = Math.max(1, window.innerWidth);
@@ -99,38 +102,29 @@ function ensureCells(size, lines) {
   });
 }
 
-function measureSkyfont() {
-  const ctx = document.createElement("canvas").getContext("2d");
-  ctx.font = "100px Skyfont, monospace";
-  const metrics = ctx.measureText("X");
-  const scale = {
-    advance: metrics.width / 100,
-    em: (metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 100
-  };
-  if (document.fonts.check("100px Skyfont")) skyfontMeasured = scale;
-  return scale;
-}
-
-function skyfontScale() {
-  if (skyfontMeasured) return skyfontMeasured;
-  return measureSkyfont();
-}
-
 function clearFlap(cell) {
   cell.el.textContent = "";
   cell.el.style.background = "none";
 }
 
+function backingBox(fontSize) {
+  const plate = skyfontPlate;
+  return {
+    x: fontSize * plate.advance * 0.1,
+    y: fontSize * (plate.top + plate.height * 0.1),
+    w: fontSize * plate.advance * 0.8,
+    h: fontSize * plate.height * 0.8
+  };
+}
+
 function placeBacking(cell, size) {
-  const scale = skyfontScale();
-  const fontWidth = size.fontHeight * scale.advance;
-  const em = size.fontHeight * scale.em;
+  const box = backingBox(size.fontHeight);
   cell.el.style.padding = "0";
   cell.el.style.backgroundColor = "transparent";
   cell.el.style.backgroundImage = "linear-gradient(" + rgba(cell.rgb) + "," + rgba(cell.rgb) + ")";
   cell.el.style.backgroundRepeat = "no-repeat";
-  cell.el.style.backgroundPosition = (fontWidth * 0.1) + "px " + (em * 0.1) + "px";
-  cell.el.style.backgroundSize = (fontWidth * 0.8) + "px " + (em * 0.8) + "px";
+  cell.el.style.backgroundPosition = box.x + "px " + box.y + "px";
+  cell.el.style.backgroundSize = box.w + "px " + box.h + "px";
 }
 
 function paintGlyph(cell, size) {
