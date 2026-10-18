@@ -4,6 +4,8 @@
     [quil.middleware :as m]
     [skillBoard.adapters.heartbeat :as heartbeat]
     [skillBoard.adapters.split-flap :as split-flap]
+    [skillBoard.adapters.web.process :as web-process]
+    [skillBoard.adapters.web.publish :as web-publish]
     [skillBoard.adapters.text-util :as text]
     [skillBoard.core.polling :as polling]
     [skillBoard.foundation.atoms :as atoms]
@@ -138,7 +140,7 @@
 
 (defn update-state [state]
   (try
-    (split-flap/do-update (assoc state :snapshot (polling/board-snapshot)))
+    (split-flap/do-update (assoc state :snapshot (web-publish/remember! (polling/board-snapshot))))
     (catch Exception e
       (core-utils/log :error e)
       state)))
@@ -153,6 +155,7 @@
 (defn on-close [_]
   (q/no-loop)
   (q/exit)
+  (web-process/stop!)
   (heartbeat/stop!)
   (core-utils/log :status "Skill Board closed.")
   (System/exit 0))
@@ -175,6 +178,9 @@
   (let [{:keys [args window?] :as options} (launch-options args)]
     (install-launch-options! options)
     (core-utils/log :status (str "args: " args ", window? " window? ", test? " @atoms/test?))
+    (web-process/start!)
+    (web-publish/start!)
+    (core-utils/log :status (str "web board http://127.0.0.1:" web-process/port))
     (q/defsketch skillBoard
                  :title "Skill Board"
                  :size :fullscreen
