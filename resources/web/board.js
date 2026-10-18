@@ -19,6 +19,7 @@ let cells = [];
 let particles = [];
 let particleKey = "";
 let fetchTimer = null;
+let metarPlate = null;
 
 // Quil sets the text ascent from the ink of "d", which on Skyfont is the
 // plate rather than the em square. The line color is inset inside that plate.
@@ -489,14 +490,63 @@ function drawScales(ctx, scene) {
   ["wind", "ceiling"].forEach((name) => drawScale(ctx, scene, name));
 }
 
+function skyfontReady(size, metrics) {
+  if (metrics.actualBoundingBoxAscent === undefined) return false;
+  return metrics.width <= size * 0.55;
+}
+
+function rememberPlate(size, metrics) {
+  if (!skyfontReady(size, metrics)) return null;
+  metarPlate = {
+    size: size,
+    advance: metrics.width,
+    top: -metrics.actualBoundingBoxAscent,
+    height: metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
+  };
+  return metarPlate;
+}
+
+function readPlate(ctx) {
+  const size = 100;
+  const previousFont = ctx.font;
+  const previousBaseline = ctx.textBaseline;
+  ctx.font = size + "px Skyfont, monospace";
+  ctx.textBaseline = "top";
+  const metrics = ctx.measureText("X");
+  ctx.font = previousFont;
+  ctx.textBaseline = previousBaseline;
+  return rememberPlate(size, metrics);
+}
+
+function plateForMetar(ctx) {
+  if (metarPlate) return metarPlate;
+  return readPlate(ctx);
+}
+
+function metarBacking(ctx, fontSize) {
+  const plate = plateForMetar(ctx);
+  if (!plate) return {x: 0, y: 0, w: 0, h: 0};
+  const scale = fontSize / plate.size;
+  return {
+    x: plate.advance * scale * 0.1,
+    y: (plate.top + plate.height * 0.1) * scale,
+    w: plate.advance * scale * 0.8,
+    h: plate.height * scale * 0.8
+  };
+}
+
+function paintMetarGlyph(ctx, metar, x, ch) {
+  const box = metarBacking(ctx, metar["font-size"]);
+  ctx.fillStyle = rgba(metar.rgb);
+  ctx.fillRect(x + box.x, metar.y + box.y, box.w, box.h);
+  ctx.fillStyle = "black";
+  ctx.fillText(ch, x, metar.y);
+}
+
 function drawMetarChar(ctx, metar, index) {
   const ch = metar.line[index];
   if (ch === " ") return;
-  const x = metar.x + index * metar["flap-width"];
-  ctx.fillStyle = rgba(metar.rgb);
-  ctx.fillRect(x + metar["pad-x"], metar.y + metar["pad-y"], metar["pad-w"], metar["pad-h"]);
-  ctx.fillStyle = "black";
-  ctx.fillText(ch, x, metar.y);
+  paintMetarGlyph(ctx, metar, metar.x + index * metar["flap-width"], ch);
 }
 
 function drawMetar(ctx, metar) {

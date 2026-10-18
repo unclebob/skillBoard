@@ -28,6 +28,7 @@
   {:name "hideExtraCells", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "maybeAdvance", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "maybeAdvanceChar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
+  {:name "metarBacking", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextChar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextParticle", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextWindColor", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -38,7 +39,9 @@
   {:name "particleOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "placeCell", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "placedParticle", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
+  {:name "plateForMetar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "refresh", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
+  {:name "rememberPlate", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "rgba", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "sameParticles", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "scaleAlign", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -47,6 +50,7 @@
   {:name "showScreen", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "showingWind", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "shownOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
+  {:name "skyfontReady", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "steadyOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "stepCell", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "stepFlaps", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -198,7 +202,9 @@
   {:name "keptParticle", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "layoutSize", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "paintGlyph", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "paintMetarGlyph", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "placeBacking", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "readPlate", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "resetCells", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "sampleField", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "screenExpired", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
