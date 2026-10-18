@@ -80,13 +80,24 @@
       (core-utils/log-event :status :aircraft-report (str "Traffic: " line)))
     (reset! atoms/log-traffic? false)))
 
+(defn- present-traffic [adsb-aircraft fleet-aircraft snapshot]
+  (let [sorted-aircraft (sorted-aircraft-lines adsb-aircraft fleet-aircraft (:test? snapshot))]
+    {:reported sorted-aircraft
+     :lines (displayed-traffic sorted-aircraft (utils/get-short-metar (:metars snapshot)))}))
+
+(defn traffic-lines
+  ([adsb-aircraft fleet-aircraft]
+   (traffic-lines adsb-aircraft fleet-aircraft {}))
+  ([adsb-aircraft fleet-aircraft snapshot]
+   (:lines (present-traffic adsb-aircraft fleet-aircraft snapshot))))
+
 (defn make-traffic-screen
   ([adsb-aircraft fleet-aircraft]
    (make-traffic-screen adsb-aircraft fleet-aircraft {}))
   ([adsb-aircraft fleet-aircraft snapshot]
-   (let [sorted-aircraft (sorted-aircraft-lines adsb-aircraft fleet-aircraft (:test? snapshot))]
-     (log-traffic! sorted-aircraft)
-     (displayed-traffic sorted-aircraft (utils/get-short-metar (:metars snapshot))))))
+   (let [{:keys [reported lines]} (present-traffic adsb-aircraft fleet-aircraft snapshot)]
+     (log-traffic! reported)
+     lines)))
 
 (defmethod screen/make :traffic [_ snapshot]
   (let [snapshot (or snapshot {})]
@@ -95,8 +106,11 @@
 (defmethod screen/header-text :traffic [_]
   "NEARBY TRAFFIC")
 
+(defmethod screen/column-headers :traffic [_]
+  [["AIRCRAFT" 0]
+   ["BRG/ALT/GS" 9]
+   ["REMARKS" 27]])
+
 (defmethod screen/display-column-headers :traffic [_ flap-width header-font label-font-size]
   (screen/draw-column-headers flap-width header-font label-font-size
-                              [["AIRCRAFT" 0]
-                               ["BRG/ALT/GS" 9]
-                               ["REMARKS" 27]]))
+                              (screen/column-headers :traffic)))

@@ -20,8 +20,12 @@
 
 (defmulti make (fn [screen-type & _] screen-type))
 (defmulti header-text identity)
+(defmulti column-headers identity)
 (defmulti display-column-headers (fn [screen-type & _args] screen-type))
 (defmulti draw-body (fn [screen-type & _args] screen-type))
+
+(defmethod column-headers :default [_]
+  nil)
 
 (defmethod header-text :default [_]
   "TILT")

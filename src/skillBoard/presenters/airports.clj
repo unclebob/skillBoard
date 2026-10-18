@@ -55,12 +55,15 @@
 (defmethod screen/header-text :airports [_]
   "FLIGHT CATEGORY")
 
+(defmethod screen/column-headers :airports [_]
+  [["AIRPORT" 0]
+   ["CATGRY" 5]
+   ["SKY" 10]
+   ["BASE" 14]
+   ["VIS" 20]
+   ["WIND" 25]
+   ["DIST" 31]])
+
 (defmethod screen/display-column-headers :airports [_ flap-width header-font label-font-size]
   (screen/draw-column-headers flap-width header-font label-font-size
-                              [["AIRPORT" 0]
-                               ["CATGRY" 5]
-                               ["SKY" 10]
-                               ["BASE" 14]
-                               ["VIS" 20]
-                               ["WIND" 25]
-                               ["DIST" 31]]))
+                              (screen/column-headers :airports)))

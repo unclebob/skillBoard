@@ -151,11 +151,14 @@
 (defmethod screen/header-text :flights [_]
   "FLIGHT OPERATIONS")
 
+(defmethod screen/column-headers :flights [_]
+  [["TIME" 0]
+   ["AIRCRAFT" 7]
+   ["CREW" 14]
+   ["OUT" 26]
+   ["BRG/ALT/GS" 33]
+   ["REMARKS" 51]])
+
 (defmethod screen/display-column-headers :flights [_ flap-width header-font label-font-size]
   (screen/draw-column-headers flap-width header-font label-font-size
-                              [["TIME" 0]
-                               ["AIRCRAFT" 7]
-                               ["CREW" 14]
-                               ["OUT" 26]
-                               ["BRG/ALT/GS" 33]
-                               ["REMARKS" 51]]))
+                              (screen/column-headers :flights)))

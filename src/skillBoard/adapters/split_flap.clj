@@ -366,7 +366,7 @@
 
 (def default-status-light-rgb [0 255 0])
 
-(defn- status-light-rgb [errors]
+(defn status-light-rgb [errors]
   (or (some (fn [[threshold rgb]]
               (when (> errors threshold) rgb))
             status-light-thresholds)
@@ -383,7 +383,7 @@
 (defn- com-errors-of [state]
   (:com-errors (snapshot-of state) {}))
 
-(defn- weather-status-light-rgb [com-errors]
+(defn weather-status-light-rgb [com-errors]
   (if (false? (:open-meteo-ok? com-errors))
     [255 0 0]
     (status-light-rgb (or (:weather com-errors) 0))))
