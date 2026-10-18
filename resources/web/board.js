@@ -29,10 +29,15 @@ const skyfontPlate = {advance: 38 / 80, top: 4 / 80, height: 56 / 80};
 function layoutSize() {
   const width = Math.max(1, window.innerWidth);
   const height = Math.max(1, window.innerHeight);
-  const flapWidth = width / 64;
-  const fontHeight = flapWidth * 1.15;
-  const lineHeight = fontHeight * 1.25;
-  const rows = Math.max(3, Math.floor((height * 0.87) / lineHeight));
+  const columns = 64;
+  const sideInset = 10;
+  const charGap = 0.08;
+  const lineGap = 0.25;
+  const textFraction = 0.87;
+  const flapWidth = Math.max(1, (width - sideInset) / columns);
+  const fontHeight = flapWidth * (1 - charGap) / skyfontPlate.advance;
+  const lineHeight = fontHeight * skyfontPlate.height * (1 + lineGap);
+  const rows = Math.max(3, Math.floor((height * textFraction) / lineHeight));
   return {width, height, rows, flapWidth, fontHeight, lineHeight};
 }
 
