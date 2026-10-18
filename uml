@@ -22,19 +22,35 @@ edn_path() {
   fi
 }
 
+LOG="uml-viewer-log.txt"
+
+launch_viewer() {
+  {
+    printf '----- %s starting uml-viewer' "$(date '+%Y-%m-%d %H:%M:%S')"
+    [[ $# -gt 0 ]] && printf ' %s' "$@"
+    printf '\n'
+  } >> "$LOG"
+  nohup clojure -Sdeps "$DEPS" -M -m uml-viewer.main.uml-viewer "$@" >> "$LOG" 2>&1 </dev/null &
+  disown
+  echo "UML viewer started (pid $!). Log: $LOG"
+}
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   echo "usage: ./uml [--restart]" >&2
   echo "  (no args)   fresh window; companion writes the diagram" >&2
   echo "  --restart   new JVM, same companion; restores last view" >&2
+  echo "  The viewer detaches; exceptions go to $LOG." >&2
   exit 0
 fi
 
 if [[ "${1:-}" == "--restart" ]]; then
   path="$(edn_path)"
   if [[ -n "$path" ]]; then
-    exec clj -Sdeps "$DEPS" -M -m uml-viewer.main.uml-viewer --restart "$path"
+    launch_viewer --restart "$path"
+  else
+    launch_viewer --restart
   fi
-  exec clj -Sdeps "$DEPS" -M -m uml-viewer.main.uml-viewer --restart
+  exit 0
 fi
 
-exec clj -Sdeps "$DEPS" -M -m uml-viewer.main.uml-viewer "$@"
+launch_viewer "$@"
