@@ -152,13 +152,15 @@
       (core-utils/log :error e)
       state)))
 
-(defn on-close [_]
-  (q/no-loop)
-  (q/exit)
+(defn exit! []
+  (System/exit 0))
+
+(defn on-close [& _]
   (web-process/stop!)
   (heartbeat/stop!)
   (core-utils/log :status "Skill Board closed.")
-  (System/exit 0))
+  (q/no-loop)
+  (exit!))
 
 (defn key-released [state event]
   (condp = (:key event)

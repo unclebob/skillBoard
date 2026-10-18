@@ -28,10 +28,16 @@
     (catch Exception _
       false)))
 
+(defn- halt! [^Process process]
+  (.destroy process)
+  (when-not (.waitFor process 500 java.util.concurrent.TimeUnit/MILLISECONDS)
+    (.destroyForcibly process)
+    (.waitFor process 500 java.util.concurrent.TimeUnit/MILLISECONDS)))
+
 (defn stop! []
   (when-let [process @child]
-    (.destroy process)
-    (reset! child nil)))
+    (reset! child nil)
+    (halt! process)))
 
 (defn- hook-shutdown! []
   (when (compare-and-set! hooked? false true)

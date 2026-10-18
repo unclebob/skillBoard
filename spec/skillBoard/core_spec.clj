@@ -4,7 +4,8 @@
     [skillBoard.foundation.config :as config]
     [skillBoard.adapters.heartbeat :as heartbeat]
     [skillBoard.adapters.text-util :as text]
-    [skillBoard.core :refer [key-released log-application-start!]]
+    [skillBoard.adapters.web.process :as web-process]
+    [skillBoard.core :as core :refer [key-released log-application-start!]]
     [skillBoard.core.polling :refer [poll poll-due? initialize-polling! run-due-poll!
                                      run-polling-step! update-clock-pulse!]]
     [skillBoard.foundation.atoms :as atoms]
@@ -175,6 +176,17 @@
           (reset! atoms/test? test?)
           (reset! atoms/log-stdout? log-stdout?)
           (reset! atoms/no-heartbeat? no-heartbeat?))))))
+
+(describe "on-close"
+  (it "stops the web server before the wall exits"
+    (let [order (atom [])]
+      (with-redefs [web-process/stop! #(swap! order conj :stop)
+                    heartbeat/stop! #(swap! order conj :heartbeat)
+                    core-utils/log (fn [& _] (swap! order conj :log))
+                    quil.core/no-loop #(swap! order conj :no-loop)
+                    core/exit! #(swap! order conj :exit)]
+        (core/on-close)
+        (should= [:stop :heartbeat :log :no-loop :exit] @order)))))
 
 (describe "key-released"
   (it "requests a poll for p, a screen change for space, and ignores other keys"

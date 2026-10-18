@@ -27,4 +27,18 @@
           open (:port info)]
       (should= true (process/listening? open))
       (server/stop! info)
-      (should= false (process/listening? open)))))
+      (should= false (process/listening? open))))
+
+  (it "closes the server process even when it ignores the first signal"
+    (let [process (-> (ProcessBuilder. ["python3" "-c" "import signal,sys,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print('ready', flush=True); time.sleep(30)"])
+                      .start)
+          child #'skillBoard.adapters.web.process/child]
+      (try
+        (should= "ready" (.readLine (java.io.BufferedReader. (java.io.InputStreamReader. (.getInputStream process)))))
+        (reset! @child process)
+        (process/stop!)
+        (should-not (.isAlive process))
+        (should-be-nil @@child)
+        (finally
+          (.destroyForcibly process)
+          (reset! @child nil))))))
