@@ -28,6 +28,7 @@
   {:name "hideExtraCells", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "maybeAdvance", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "maybeAdvanceChar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
+  {:name "measureSkyfont", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextChar", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextParticle", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "nextWindColor", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -47,6 +48,7 @@
   {:name "showScreen", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "showingWind", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "shownOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
+  {:name "skyfontScale", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "steadyOpacity", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "stepCell", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
   {:name "stepFlaps", :namespace "resources.web.board", :complexity 2, :coverage 0.0, :crap 6.0}
@@ -63,7 +65,6 @@
   {:name "update-state", :namespace "skillBoard.core", :complexity 2, :coverage 5.8824, :crap 5.3348}
   {:name "start-polling", :namespace "skillBoard.core.polling", :complexity 2, :coverage 5.8824, :crap 5.3348}
   {:name "hook-shutdown!", :namespace "skillBoard.adapters.web.process", :complexity 2, :coverage 6.6667, :crap 5.2521}
-  {:name "stop!", :namespace "skillBoard.adapters.web.process", :complexity 2, :coverage 6.6667, :crap 5.2521}
   {:name "start!", :namespace "skillBoard.adapters.web.publish", :complexity 2, :coverage 6.6667, :crap 5.2521}
   {:name "complete-attempt!", :namespace "skillBoard.adapters.heartbeat", :complexity 5, :coverage 81.3333, :crap 5.1626}
   {:name "filter-active-reservations", :namespace "skillBoard.domain.flight-schedule-pro", :complexity 5, :coverage 83.0189, :crap 5.1224}
@@ -156,6 +157,7 @@
   {:name "screen-aspect-ratio", :namespace "skillBoard.presenters.wind-map.geo", :complexity 2, :coverage 88.8889, :crap 2.0055}
   {:name "row-count", :namespace "skillBoard.adapters.web.view", :complexity 2, :coverage 90.0, :crap 2.004}
   {:name "same-attempt?", :namespace "skillBoard.adapters.heartbeat", :complexity 2, :coverage 91.6667, :crap 2.0023}
+  {:name "halt!", :namespace "skillBoard.adapters.web.process", :complexity 2, :coverage 91.6667, :crap 2.0023}
   {:name "file-request?", :namespace "skillBoard.adapters.web.server", :complexity 2, :coverage 91.6667, :crap 2.0023}
   {:name "out-of-bounds?", :namespace "skillBoard.presenters.wind-map.particles", :complexity 2, :coverage 92.0, :crap 2.002}
   {:name "polygon-rings", :namespace "skillBoard.presenters.wind-map.geo", :complexity 2, :coverage 92.3077, :crap 2.0018}
@@ -180,6 +182,7 @@
   {:name "addCell", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "belowThreshold", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "birthParticle", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "clearFlap", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "currentEntry", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "currentScreen", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "drawBand", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
@@ -195,6 +198,8 @@
   {:name "flapSettled", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "keptParticle", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "layoutSize", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "paintGlyph", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "placeBacking", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "resetCells", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "sampleField", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "screenExpired", :namespace "resources.web.board", :complexity 1, :coverage 0.0, :crap 2.0}
@@ -220,6 +225,7 @@
   {:name "screen-summary", :namespace "skillBoard.adapters.split-flap", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "snapshot-of", :namespace "skillBoard.adapters.split-flap", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "listening?", :namespace "skillBoard.adapters.web.process", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "stop!", :namespace "skillBoard.adapters.web.process", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "board-json", :namespace "skillBoard.adapters.web.server", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "content-type", :namespace "skillBoard.adapters.web.server", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "dispatch", :namespace "skillBoard.adapters.web.server", :complexity 2, :coverage 100.0, :crap 2.0}
@@ -315,7 +321,6 @@
   {:name "get-keyed-aviation-weather", :namespace "skillBoard.gateways.aviation-weather", :complexity 1, :coverage 3.0303, :crap 1.9118}
   {:name "get-metar-history", :namespace "skillBoard.gateways.aviation-weather", :complexity 1, :coverage 4.5455, :crap 1.8697}
   {:name "-main", :namespace "skillBoard.adapters.web.server", :complexity 1, :coverage 5.8824, :crap 1.8337}
-  {:name "on-close", :namespace "skillBoard.core", :complexity 1, :coverage 6.25, :crap 1.824}
   {:name "disk-capacity", :namespace "skillBoard.adapters.heartbeat", :complexity 1, :coverage 7.1429, :crap 1.8007}
   {:name "blank-line", :namespace "skillBoard.adapters.split-flap", :complexity 1, :coverage 8.3333, :crap 1.7703}
   {:name "blank-screen", :namespace "skillBoard.adapters.split-flap", :complexity 1, :coverage 10.0, :crap 1.729}
@@ -328,6 +333,7 @@
   {:name "find-font-size-for-width", :namespace "skillBoard.adapters.text-util", :complexity 1, :coverage 16.6667, :crap 1.5787}
   {:name "get-metars", :namespace "skillBoard.gateways.aviation-weather", :complexity 1, :coverage 16.6667, :crap 1.5787}
   {:name "get-tafs", :namespace "skillBoard.gateways.aviation-weather", :complexity 1, :coverage 16.6667, :crap 1.5787}
+  {:name "exit!", :namespace "skillBoard.core", :complexity 1, :coverage 25.0, :crap 1.4219}
   {:name "current-time-ms", :namespace "skillBoard.adapters.split-flap", :complexity 1, :coverage 33.3333, :crap 1.2963}
   {:name "wind-pixel-delta", :namespace "skillBoard.presenters.wind-map.particles", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "draw-particles!", :namespace "skillBoard.presenters.wind-map.particles", :complexity 1, :coverage 54.8387, :crap 1.0921}
@@ -416,6 +422,7 @@
   {:name "install-launch-options!", :namespace "skillBoard.core", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "launch-options", :namespace "skillBoard.core", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "log-application-start!", :namespace "skillBoard.core", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "on-close", :namespace "skillBoard.core", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "screen-margins", :namespace "skillBoard.core", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "text-line-count", :namespace "skillBoard.core", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "board-snapshot", :namespace "skillBoard.core.polling", :complexity 1, :coverage 100.0, :crap 1.0}

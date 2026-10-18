@@ -126,5 +126,7 @@ header {
   color: black;
   font-family: Skyfont, monospace;
   line-height: 1;
+  padding: 0;
+  background: none;
   overflow: hidden;
 }

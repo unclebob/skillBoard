@@ -19,6 +19,7 @@ let cells = [];
 let particles = [];
 let particleKey = "";
 let fetchTimer = null;
+let skyfontMeasured = null;
 
 function layoutSize() {
   const width = Math.max(1, window.innerWidth);
@@ -98,16 +99,48 @@ function ensureCells(size, lines) {
   });
 }
 
-function paintCell(cell, size) {
-  if (cell.char === " ") {
-    cell.el.textContent = "";
-    cell.el.style.background = "transparent";
-    return;
-  }
+function measureSkyfont() {
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = "100px Skyfont, monospace";
+  const metrics = ctx.measureText("X");
+  const scale = {
+    advance: metrics.width / 100,
+    em: (metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 100
+  };
+  if (document.fonts.check("100px Skyfont")) skyfontMeasured = scale;
+  return scale;
+}
+
+function skyfontScale() {
+  if (skyfontMeasured) return skyfontMeasured;
+  return measureSkyfont();
+}
+
+function clearFlap(cell) {
+  cell.el.textContent = "";
+  cell.el.style.background = "none";
+}
+
+function placeBacking(cell, size) {
+  const scale = skyfontScale();
+  const fontWidth = size.fontHeight * scale.advance;
+  const em = size.fontHeight * scale.em;
+  cell.el.style.padding = "0";
+  cell.el.style.backgroundColor = "transparent";
+  cell.el.style.backgroundImage = "linear-gradient(" + rgba(cell.rgb) + "," + rgba(cell.rgb) + ")";
+  cell.el.style.backgroundRepeat = "no-repeat";
+  cell.el.style.backgroundPosition = (fontWidth * 0.1) + "px " + (em * 0.1) + "px";
+  cell.el.style.backgroundSize = (fontWidth * 0.8) + "px " + (em * 0.8) + "px";
+}
+
+function paintGlyph(cell, size) {
   cell.el.textContent = cell.char;
-  cell.el.style.background = rgba(cell.rgb);
-  cell.el.style.backgroundClip = "content-box";
-  cell.el.style.padding = (size.fontHeight * 0.1) + "px " + (size.flapWidth * 0.1) + "px";
+  placeBacking(cell, size);
+}
+
+function paintCell(cell, size) {
+  if (cell.char === " ") return clearFlap(cell);
+  paintGlyph(cell, size);
 }
 
 function flapSettled(flap, elapsed) {
