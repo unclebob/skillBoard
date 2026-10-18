@@ -156,7 +156,7 @@
 (defn start!
   ([port] (start! port (atom (board/empty-board))))
   ([port state]
-   (let [address (InetSocketAddress. "127.0.0.1" (int port))
+   (let [address (InetSocketAddress. "0.0.0.0" (int port))
          server (HttpServer/create address 0)]
      (.createContext server "/" (handler state))
      (.start server)
